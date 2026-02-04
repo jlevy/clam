@@ -215,10 +215,18 @@ describe('InputReader', () => {
       };
 
       // Should not throw for any mode (even without TTY)
-      expect(() => { readerWithRecolor.recolorLine('test', 'shell'); }).not.toThrow();
-      expect(() => { readerWithRecolor.recolorLine('test', 'nl'); }).not.toThrow();
-      expect(() => { readerWithRecolor.recolorLine('test', 'slash'); }).not.toThrow();
-      expect(() => { readerWithRecolor.recolorLine('', 'nl'); }).not.toThrow();
+      expect(() => {
+        readerWithRecolor.recolorLine('test', 'shell');
+      }).not.toThrow();
+      expect(() => {
+        readerWithRecolor.recolorLine('test', 'nl');
+      }).not.toThrow();
+      expect(() => {
+        readerWithRecolor.recolorLine('test', 'slash');
+      }).not.toThrow();
+      expect(() => {
+        readerWithRecolor.recolorLine('', 'nl');
+      }).not.toThrow();
     });
   });
 });
