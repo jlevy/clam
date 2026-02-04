@@ -10,12 +10,18 @@
  * future upgrade to Clam codes without code changes.
  */
 
-export type { AcpClientOptions, PermissionHandler } from './lib/acp.js';
+export type { AcpClientOptions, AcpCommand, PermissionHandler } from './lib/acp.js';
 // ACP client
 export { AcpClient, createAcpClient } from './lib/acp.js';
 export type { ClamCodeConfig } from './lib/config.js';
 // Configuration
-export { formatConfig, getConfigDir, loadConfig, saveConfig } from './lib/config.js';
+export {
+  formatConfig,
+  getConfigDir,
+  getHistoryPath,
+  loadConfig,
+  saveConfig,
+} from './lib/config.js';
 // Formatting utilities
 export {
   colors,

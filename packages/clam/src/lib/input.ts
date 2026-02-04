@@ -11,6 +11,7 @@
  * Future: autocomplete, history, slash command completion.
  */
 
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import * as readline from 'node:readline';
 import { formatConfig, type ClamCodeConfig } from './config.js';
 import { colors, inputColors, promptChars } from './formatting.js';
@@ -63,6 +64,21 @@ export interface InputReaderOptions {
 
   /** Callback when user requests to cancel current operation */
   onCancel?: () => void | Promise<void>;
+
+  /** Check if a command name is an ACP command (without leading slash) */
+  isAcpCommand?: (name: string) => boolean;
+
+  /** Send an ACP command. Returns when command completes. */
+  onAcpCommand?: (name: string, args: string) => Promise<void>;
+
+  /** Get available ACP commands for help display */
+  getAcpCommands?: () => { name: string; description?: string }[];
+
+  /** Path to history file for persistence */
+  historyPath?: string;
+
+  /** Maximum history entries to keep (default: 1000) */
+  historySize?: number;
 }
 
 /**
@@ -79,10 +95,48 @@ export class InputReader {
   private options: InputReaderOptions;
   private commands = new Map<string, SlashCommand>();
   private running = false;
+  private history: string[] = [];
 
   constructor(options: InputReaderOptions) {
     this.options = options;
+    this.loadHistory();
     this.registerBuiltinCommands();
+  }
+
+  /**
+   * Load command history from file.
+   */
+  private loadHistory(): void {
+    const { historyPath } = this.options;
+    if (!historyPath) return;
+
+    try {
+      if (existsSync(historyPath)) {
+        const content = readFileSync(historyPath, 'utf-8');
+        this.history = content.split('\n').filter((line) => line.trim().length > 0);
+      }
+    } catch {
+      // Ignore errors loading history
+    }
+  }
+
+  /**
+   * Save command history to file.
+   */
+  private saveHistory(): void {
+    const { historyPath, historySize = 1000 } = this.options;
+    if (!historyPath || !this.rl) return;
+
+    try {
+      // Get history from readline (it's in reverse order, newest first)
+      const rlHistory = (this.rl as readline.Interface & { history?: string[] }).history ?? [];
+      // Limit to historySize entries
+      const trimmedHistory = rlHistory.slice(0, historySize);
+      // Save to file (one entry per line)
+      writeFileSync(historyPath, trimmedHistory.join('\n'), 'utf-8');
+    } catch {
+      // Ignore errors saving history
+    }
   }
 
   /**
@@ -122,9 +176,23 @@ export class InputReader {
       description: 'Show available commands',
       execute: () => {
         output.newline();
-        output.info(colors.bold('Available Commands:'));
+        output.info(colors.bold('Local Commands:'));
         for (const [name, cmd] of this.commands) {
           output.info(`  /${name.padEnd(12)} ${colors.muted(cmd.description)}`);
+        }
+
+        // Show ACP commands if available
+        const { getAcpCommands } = this.options;
+        if (getAcpCommands) {
+          const acpCommands = getAcpCommands();
+          if (acpCommands.length > 0) {
+            output.newline();
+            output.info(colors.bold('Claude Code Commands:'));
+            for (const cmd of acpCommands) {
+              const desc = cmd.description ?? '';
+              output.info(`  /${cmd.name.padEnd(12)} ${colors.muted(desc)}`);
+            }
+          }
         }
       },
     });
@@ -330,12 +398,15 @@ export class InputReader {
 
     process.stdin.on('keypress', keypressHandler);
 
-    // Create readline interface with Tab completion
+    // Create readline interface with Tab completion and history
+    const { historySize = 1000 } = this.options;
     this.rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout,
       terminal: process.stdin.isTTY ?? false,
       completer: this.createCompleter(),
+      history: this.history,
+      historySize,
     });
 
     // Handle Ctrl+C - delegate to onCancel handler for all messaging
@@ -441,6 +512,7 @@ export class InputReader {
   stop(): void {
     this.running = false;
     if (this.rl) {
+      this.saveHistory();
       this.rl.close();
       this.rl = null;
     }
@@ -542,7 +614,7 @@ export class InputReader {
    * Handle a slash command.
    */
   private async handleSlashCommand(input: string): Promise<void> {
-    const { output } = this.options;
+    const { output, isAcpCommand, onAcpCommand } = this.options;
 
     // Parse command and args
     const withoutSlash = input.slice(1);
@@ -550,7 +622,22 @@ export class InputReader {
     const commandName = spaceIndex === -1 ? withoutSlash : withoutSlash.slice(0, spaceIndex);
     const args = spaceIndex === -1 ? '' : withoutSlash.slice(spaceIndex + 1).trim();
 
-    // Look up command
+    // Check for ACP command first (e.g., /commit, /review, /model)
+    if (isAcpCommand && onAcpCommand && isAcpCommand(commandName)) {
+      try {
+        output.spinnerStart();
+        await onAcpCommand(commandName, args);
+        output.spinnerStop();
+      } catch (error) {
+        output.spinnerStop();
+        if (error instanceof Error) {
+          output.error(`ACP command error: ${error.message}`);
+        }
+      }
+      return;
+    }
+
+    // Look up local command
     const command = this.commands.get(commandName);
 
     if (!command) {
@@ -559,7 +646,7 @@ export class InputReader {
       return;
     }
 
-    // Execute command
+    // Execute local command
     const ctx: InputContext = {
       output,
       quit: () => {

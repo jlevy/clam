@@ -64,6 +64,13 @@ export function getConfigPath(filename: string): string {
 }
 
 /**
+ * Get path to the history file.
+ */
+export function getHistoryPath(): string {
+  return getConfigPath('history');
+}
+
+/**
  * Load configuration from files and environment.
  *
  * Priority (highest to lowest):

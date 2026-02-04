@@ -53,12 +53,24 @@ export interface AcpClientOptions {
 /**
  * ACP Client for connecting to Claude Code via claude-code-acp adapter.
  */
+/**
+ * Available command from ACP.
+ */
+export interface AcpCommand {
+  name: string;
+  description?: string;
+}
+
+/**
+ * ACP Client for connecting to Claude Code via claude-code-acp adapter.
+ */
 export class AcpClient {
   private process: ChildProcess | null = null;
   private connection: acp.ClientSideConnection | null = null;
   private sessionId: string | null = null;
   private options: AcpClientOptions;
   private isPrompting = false;
+  private availableCommands: AcpCommand[] = [];
 
   constructor(options: AcpClientOptions) {
     this.options = options;
@@ -250,10 +262,46 @@ export class AcpClient {
   }
 
   /**
+   * Get available ACP commands.
+   */
+  getAvailableCommands(): AcpCommand[] {
+    return [...this.availableCommands];
+  }
+
+  /**
+   * Check if a command name is an available ACP command.
+   * @param name - Command name without the leading slash
+   */
+  hasCommand(name: string): boolean {
+    return this.availableCommands.some((cmd) => cmd.name === name);
+  }
+
+  /**
+   * Send a slash command to the ACP session.
+   * Commands are sent as prompts with the / prefix.
+   * @param name - Command name without the leading slash
+   * @param args - Optional command arguments
+   */
+  async sendCommand(name: string, args?: string): Promise<string> {
+    const commandText = args ? `/${name} ${args}` : `/${name}`;
+    return this.prompt(commandText);
+  }
+
+  /**
+   * Update available commands from ACP.
+   * This is called from the sessionUpdate handler.
+   */
+  private setAvailableCommands(commands: AcpCommand[]): void {
+    this.availableCommands = commands;
+  }
+
+  /**
    * Create the ACP client implementation.
    */
   private createClientImplementation(): acp.Client {
     const { output, onPermission } = this.options;
+    // Bind the setter for use in callbacks
+    const setCommands = this.setAvailableCommands.bind(this);
 
     return {
       async requestPermission(
@@ -357,8 +405,17 @@ export class AcpClient {
             break;
 
           case 'available_commands_update':
-            // Store available commands for slash command completion
-            output.debug(`Available commands: ${JSON.stringify(update.availableCommands)}`);
+            // Store available commands for slash command routing and completion
+            if (update.availableCommands) {
+              const commands = update.availableCommands.map(
+                (cmd: { name: string; description?: string }) => ({
+                  name: cmd.name,
+                  description: cmd.description,
+                })
+              );
+              setCommands(commands);
+              output.debug(`Available commands: ${commands.map((c) => c.name).join(', ')}`);
+            }
             break;
 
           case 'current_mode_update':

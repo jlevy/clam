@@ -9,7 +9,7 @@
 
 import { createRequire } from 'node:module';
 import { createAcpClient } from './lib/acp.js';
-import { ensureConfigDir, loadConfig } from './lib/config.js';
+import { ensureConfigDir, getHistoryPath, loadConfig } from './lib/config.js';
 import { colors } from './lib/formatting.js';
 import { createInputReader } from './lib/input.js';
 import { createModeDetector } from './lib/mode-detection.js';
@@ -212,6 +212,13 @@ async function main(): Promise<void> {
     config,
     shell,
     modeDetector,
+    historyPath: getHistoryPath(),
+    historySize: 1000,
+    isAcpCommand: (name) => acpClient.hasCommand(name),
+    onAcpCommand: async (name, args) => {
+      await acpClient.sendCommand(name, args);
+    },
+    getAcpCommands: () => acpClient.getAvailableCommands(),
     onQuit: () => {
       output.info('Goodbye!');
       acpClient.disconnect();
