@@ -550,8 +550,16 @@ export class InputReader {
 
     // Handle Ctrl+C - delegate to onCancel handler for all messaging
     this.rl.on('SIGINT', () => {
-      // Newline first to move past any ^C the terminal shows
-      output.newline();
+      const isTTY = process.stdout.isTTY ?? false;
+
+      if (isTTY) {
+        // Clear the current prompt line (which may show ^C)
+        // Move to start of line and clear it
+        process.stdout.write('\r\x1b[2K');
+      } else {
+        // Non-TTY: just add a newline
+        output.newline();
+      }
 
       if (onCancel) {
         void onCancel();
@@ -559,7 +567,7 @@ export class InputReader {
         output.info('Press Ctrl+C again to exit, or type /quit');
       }
 
-      // Newline after message, then redisplay prompt so user can continue
+      // Show fresh prompt so user can continue
       output.newline();
       process.stdout.write(
         `${colors.inputPrompt(`${promptChars.input} `)}${inputColors.naturalLanguage}`
@@ -742,12 +750,10 @@ export class InputReader {
           break;
         }
 
-        // Empty first line - keep waiting
-        if (line === '' && lines.length === 0) {
-          // Clear the empty prompt line
-          if (isTTY) {
-            process.stdout.write('\x1b[1A\x1b[2K');
-          }
+        // Empty line on first prompt - add visual spacing (newline above prompt)
+        if (line.trim() === '' && lines.length === 0) {
+          // Keep the newline that readline added (creates visual spacing)
+          // Just continue to show a fresh prompt
           continue;
         }
 
