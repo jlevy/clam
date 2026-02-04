@@ -348,6 +348,9 @@ export class InputReader {
   private menuItems: string[] = []; // Command names in the menu
   private menuSelectedIndex = -1; // -1 means no selection (user is typing)
 
+  // Track current input mode for proper submit behavior and coloring
+  private currentInputMode: InputMode = 'nl';
+
   /**
    * Show command menu below current line (ephemeral - will be cleared on next keypress).
    * @param selectedIndex - Index of highlighted item (-1 for none)
@@ -421,8 +424,8 @@ export class InputReader {
     // Track if we've shown the menu for this input session
     let menuShownForCurrentInput = false;
 
-    // Track detected mode for coloring
-    let currentMode: InputMode = 'nl';
+    // Reset input mode at start
+    this.currentInputMode = 'nl';
 
     // Listen for keypresses to detect mode and update colors
     const keypressHandler = (_ch: string, key: readline.Key | undefined) => {
@@ -434,7 +437,7 @@ export class InputReader {
       // When "/" is pressed at start of empty line, show menu and switch color
       if (key.sequence === '/' && currentLine === '' && !menuShownForCurrentInput) {
         menuShownForCurrentInput = true;
-        currentMode = 'slash';
+        this.currentInputMode = 'slash';
         // Switch to slash command color
         process.stdout.write(inputColors.slashCommand);
         // Defer to after the "/" is added to the line
@@ -500,8 +503,8 @@ export class InputReader {
           key.name === 'backspace' ? currentLine.slice(0, -1) : currentLine + (key.sequence ?? '');
 
         const newMode = modeDetector.detectModeSync(nextLine);
-        if (newMode !== currentMode) {
-          currentMode = newMode;
+        if (newMode !== this.currentInputMode) {
+          this.currentInputMode = newMode;
           // Apply new color
           switch (newMode) {
             case 'shell':
@@ -518,15 +521,15 @@ export class InputReader {
         }
       }
 
-      // Reset menu flag and color on Enter or when line is cleared completely
+      // Reset menu flag on Enter or when line is cleared completely
+      // NOTE: Don't reset currentInputMode here - prompt() needs it to know what mode the line was
       if (key.name === 'return') {
         this.clearCommandMenu(true);
         menuShownForCurrentInput = false;
-        currentMode = 'nl';
       } else if (key.name === 'backspace' && currentLine.length <= 1) {
         this.clearCommandMenu(true);
         menuShownForCurrentInput = false;
-        currentMode = 'nl';
+        this.currentInputMode = 'nl';
         // Switch back to natural language color
         process.stdout.write(inputColors.naturalLanguage);
       }
@@ -691,6 +694,20 @@ export class InputReader {
               `${colors.inputPromptDim(`${promptChars.input} `)}${colors.slashCommand(line)}\n`
             );
           }
+          this.currentInputMode = 'nl'; // Reset for next input
+          return line;
+        }
+
+        // Shell commands submit immediately on first Enter (if mode is still 'shell')
+        if (isFirstLine && this.currentInputMode === 'shell') {
+          // Reprint with shell colors (white/default)
+          if (isTTY) {
+            process.stdout.write('\x1b[1A\x1b[2K'); // Move up, clear line
+            process.stdout.write(
+              `${colors.inputPromptDim(`${promptChars.input} `)}${colors.shellCommand(line)}\n`
+            );
+          }
+          this.currentInputMode = 'nl'; // Reset for next input
           return line;
         }
 
@@ -721,6 +738,7 @@ export class InputReader {
             // Add newline for spacing after output
             process.stdout.write('\n');
           }
+          this.currentInputMode = 'nl'; // Reset for next input
           break;
         }
 

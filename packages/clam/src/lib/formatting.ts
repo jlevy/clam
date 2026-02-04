@@ -52,6 +52,9 @@ export const colors = {
   /** Slash command text - purple/blue to distinguish from regular input */
   slashCommand: (s: string) => pc.blue(s),
 
+  /** Shell command text - white/default to distinguish from NL input */
+  shellCommand: (s: string) => pc.reset(s),
+
   /** Streaming indicator while agent is thinking/responding */
   streaming: (s: string) => pc.cyan(s),
 
