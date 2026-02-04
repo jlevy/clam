@@ -193,6 +193,18 @@ const editorProcess = spawn(editor, [tempFile], {
 - [ ] Expand acp.ts tests
 - [ ] Expand input.ts tests
 
+## UX Improvements
+
+### 13. Arrow key navigation for completion menu
+
+**Location:** `packages/clam/src/lib/input.ts`
+
+**Problem:** When pressing `/` or Tab to show slash command completions, only Tab cycles through options. Down Arrow should also work to navigate the menu.
+
+**Expected:** Down Arrow (and Up Arrow) should navigate through completion options, similar to shell autocomplete behavior.
+
+**Fix:** Add keypress handlers for Up/Down arrows in the completion menu state.
+
 ## References
 
 - PR #1: https://github.com/jlevy/clam/pull/1
