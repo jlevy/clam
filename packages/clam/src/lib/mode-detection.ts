@@ -294,6 +294,51 @@ function looksLikeQuestion(trimmed: string, firstWord: string): boolean {
 }
 
 /**
+ * Modal verbs that start request patterns.
+ * "can you...", "could you...", "would you...", etc.
+ */
+const REQUEST_STARTERS = new Set([
+  'can',
+  'could',
+  'would',
+  'will',
+  'should',
+  'might',
+  'may',
+  'please',
+  'kindly',
+]);
+
+/**
+ * Pronouns that commonly follow request starters.
+ */
+const REQUEST_PRONOUNS = new Set(['you', 'we', 'i', 'someone', 'anybody', 'anyone']);
+
+/**
+ * Check if input looks like a natural language request.
+ * e.g., "can you give me an overview", "please help me", "could you explain"
+ */
+function looksLikeRequest(trimmed: string): boolean {
+  const words = trimmed.toLowerCase().split(/\s+/);
+  if (words.length < 2) return false;
+
+  const firstWord = words[0] ?? '';
+  const secondWord = words[1] ?? '';
+
+  // "can you...", "could you...", etc.
+  if (REQUEST_STARTERS.has(firstWord) && REQUEST_PRONOUNS.has(secondWord)) {
+    return true;
+  }
+
+  // "please ..." at the start
+  if (firstWord === 'please' && words.length >= 2) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Detection heuristics applied in priority order.
  * Each rule returns a mode or null to continue to next rule.
  */
@@ -383,6 +428,13 @@ const DETECTION_RULES: {
     // Questions starting with what/how/why/when/where/who followed by NL words
     // e.g., "what does this codebase do", "how do I list files"
     test: (_input, trimmed, firstWord) => (looksLikeQuestion(trimmed, firstWord) ? 'nl' : null),
+    definitive: true,
+  },
+  {
+    name: 'request-sentence',
+    // Requests starting with modal verbs + pronouns
+    // e.g., "can you give me an overview", "please help me", "could you explain"
+    test: (_input, trimmed) => (looksLikeRequest(trimmed) ? 'nl' : null),
     definitive: true,
   },
   {

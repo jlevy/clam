@@ -122,6 +122,18 @@ describe('ModeDetection', () => {
       // But "test -f file.txt" looks like shell (no NL words after)
       expect(detector.detectModeSync('test -f file.txt')).toBe('shell');
     });
+
+    it('should detect request patterns as NL', () => {
+      // "can you..." patterns
+      expect(detector.detectModeSync('can you give me an overview')).toBe('nl');
+      expect(detector.detectModeSync('can you help me')).toBe('nl');
+      expect(detector.detectModeSync('could you explain this')).toBe('nl');
+      expect(detector.detectModeSync('would you fix this')).toBe('nl');
+      expect(detector.detectModeSync('will you help')).toBe('nl');
+      // "please..." patterns
+      expect(detector.detectModeSync('please help me')).toBe('nl');
+      expect(detector.detectModeSync('please explain this code')).toBe('nl');
+    });
   });
 
   describe('detectMode (async)', () => {

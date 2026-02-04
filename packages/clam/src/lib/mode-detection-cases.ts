@@ -248,7 +248,45 @@ export const QUESTION_CASES: TestCategory = {
 };
 
 /**
- * 9. NATURAL LANGUAGE - COMMON PHRASES
+ * 9. NATURAL LANGUAGE - REQUEST PATTERNS
+ * Requests starting with modal verbs (can you, could you, would you, etc.)
+ */
+export const REQUEST_PATTERN_CASES: TestCategory = {
+  name: 'Natural Language Requests',
+  description: 'Request patterns that should be sent to Claude',
+  cases: [
+    // "can you..." patterns
+    { input: 'can you help me', expected: 'nl', reason: 'Request pattern: can you' },
+    { input: 'can you explain this', expected: 'nl', reason: 'Request pattern: can you' },
+    {
+      input: 'can you give me an overview of the codebase',
+      expected: 'nl',
+      reason: 'Request pattern with uncommon words',
+    },
+    { input: 'can you fix this bug', expected: 'nl', reason: 'Request pattern: can you' },
+    { input: 'can i ask a question', expected: 'nl', reason: 'Request pattern: can i' },
+
+    // "could you..." patterns
+    { input: 'could you explain this', expected: 'nl', reason: 'Request pattern: could you' },
+    { input: 'could you help me understand', expected: 'nl', reason: 'Request pattern: could you' },
+
+    // "would you..." patterns
+    { input: 'would you help me', expected: 'nl', reason: 'Request pattern: would you' },
+    { input: 'would you mind explaining', expected: 'nl', reason: 'Request pattern: would you' },
+
+    // "will you..." patterns
+    { input: 'will you fix this', expected: 'nl', reason: 'Request pattern: will you' },
+    { input: 'will you help', expected: 'nl', reason: 'Request pattern: will you' },
+
+    // "please..." patterns
+    { input: 'please help me', expected: 'nl', reason: 'Request pattern: please' },
+    { input: 'please explain this code', expected: 'nl', reason: 'Request pattern: please' },
+    { input: 'please fix the bug', expected: 'nl', reason: 'Request pattern: please' },
+  ],
+};
+
+/**
+ * 10. NATURAL LANGUAGE - COMMON PHRASES
  * Phrases that are clearly conversational
  */
 export const NL_PHRASE_CASES: TestCategory = {
@@ -387,6 +425,7 @@ export const ALL_TEST_CATEGORIES: TestCategory[] = [
   SHELL_BUILTIN_CASES,
   COMMON_COMMAND_CASES,
   QUESTION_CASES,
+  REQUEST_PATTERN_CASES,
   NL_PHRASE_CASES,
   AMBIGUOUS_CASES,
   EMPTY_CASES,
