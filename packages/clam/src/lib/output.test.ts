@@ -208,19 +208,19 @@ describe('OutputWriter', () => {
   });
 
   describe('tool separators', () => {
-    it('should add separator between tool headers', () => {
+    it('should add blank line between tool headers', () => {
       output.toolHeader('bash', 'execute', 'completed');
       output.toolHeader('write', 'file', 'completed');
       const result = mock.getOutput();
-      // Should have at least one separator between tools
-      expect(result.match(/─/g)?.length).toBeGreaterThan(0);
+      // Should have a blank line (double newline) between tools
+      expect(result).toContain('\n\n');
     });
 
-    it('should not add separator before first tool header', () => {
+    it('should not add blank line before first tool header', () => {
       output.toolHeader('bash', 'execute', 'completed');
       const result = mock.getOutput();
-      // First line should not be the separator
-      expect(result.startsWith('─')).toBe(false);
+      // First character should not be a newline
+      expect(result.startsWith('\n')).toBe(false);
     });
   });
 

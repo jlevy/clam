@@ -166,7 +166,7 @@ export const symbols = {
   info: pc.cyan('\u2139'), // ℹ
   arrow: pc.cyan(promptChars.tool), // > for tool headers
   bullet: pc.gray('\u2022'), // •
-  separator: pc.gray('\u2500'.repeat(60)), // ────────
+  separator: '', // Just a blank line (no visual clutter)
 };
 
 /**
