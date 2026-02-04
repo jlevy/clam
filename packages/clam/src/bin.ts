@@ -12,7 +12,9 @@ import { createAcpClient } from './lib/acp.js';
 import { ensureConfigDir, loadConfig } from './lib/config.js';
 import { colors } from './lib/formatting.js';
 import { createInputReader } from './lib/input.js';
+import { createModeDetector } from './lib/mode-detection.js';
 import { createOutputWriter, type PermissionOption } from './lib/output.js';
+import { createShellModule } from './lib/shell.js';
 
 interface CliArgs {
   help: boolean;
@@ -197,12 +199,19 @@ async function main(): Promise<void> {
   }
 
   output.writeLine(colors.status('Type /help for commands, /quit to exit'));
+  output.writeLine(colors.status('Shell commands run directly, natural language goes to Claude'));
   output.newline();
+
+  // Create shell module and mode detector
+  const shell = createShellModule({ cwd });
+  const modeDetector = createModeDetector({ shell });
 
   // Create input reader
   const inputReader = createInputReader({
     output,
     config,
+    shell,
+    modeDetector,
     onQuit: () => {
       output.info('Goodbye!');
       acpClient.disconnect();

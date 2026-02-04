@@ -21,6 +21,7 @@ import {
   symbols,
   truncateLines,
 } from './formatting.js';
+import type { ExecResult } from './shell.js';
 
 /**
  * Tool execution status.
@@ -66,6 +67,9 @@ export interface OutputWriter {
   diffBlock(path: string, additions: number, deletions: number, content: string): void;
   toolHeader(title: string, kind: string, status: ToolStatus): void;
   toolOutput(content: string, options?: { truncateAfter?: number }): void;
+
+  // Shell output
+  shellOutput(result: ExecResult, command?: string): void;
 
   // Interactive elements
   permissionPrompt(tool: string, command: string, options: PermissionOption[]): void;
@@ -210,6 +214,41 @@ export function createOutputWriter(options: OutputWriterOptions = {}): OutputWri
 
       if (truncated) {
         writeLine(colors.muted(`... (${hiddenLines} more lines)`));
+      }
+    },
+
+    shellOutput(result: ExecResult, command?: string): void {
+      // Shell command output - distinct from ACP tool output
+      // Show command if provided (for context)
+      if (command) {
+        writeLine(colors.muted(`$ ${command}`));
+      }
+
+      // Show stdout
+      if (result.stdout) {
+        write(result.stdout);
+        // Ensure we end with a newline
+        if (!result.stdout.endsWith('\n')) {
+          writeLine('');
+        }
+      }
+
+      // Show stderr in warning color
+      if (result.stderr) {
+        write(colors.warn(result.stderr));
+        if (!result.stderr.endsWith('\n')) {
+          writeLine('');
+        }
+      }
+
+      // Show non-zero exit code
+      if (result.exitCode !== 0) {
+        writeLine(colors.error(`exit ${result.exitCode}`));
+      }
+
+      // Show signal if killed
+      if (result.signal) {
+        writeLine(colors.warn(`killed by ${result.signal}`));
       }
     },
 

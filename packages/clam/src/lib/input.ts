@@ -14,7 +14,10 @@
 import * as readline from 'node:readline';
 import { formatConfig, type ClamCodeConfig } from './config.js';
 import { colors, inputColors, promptChars } from './formatting.js';
+import type { ModeDetector, InputMode } from './mode-detection.js';
+import { isExplicitShell, stripShellTrigger } from './mode-detection.js';
 import type { OutputWriter } from './output.js';
+import type { ShellModule } from './shell.js';
 
 /** Check if stdout is a TTY for cursor control sequences */
 const isTTY = process.stdout.isTTY ?? false;
@@ -45,6 +48,12 @@ export interface InputReaderOptions {
 
   /** Configuration */
   config?: ClamCodeConfig;
+
+  /** Shell module for executing shell commands */
+  shell?: ShellModule;
+
+  /** Mode detector for input classification */
+  modeDetector?: ModeDetector;
 
   /** Callback when user requests to quit */
   onQuit: () => void;
@@ -252,15 +261,20 @@ export class InputReader {
     // Track if we've shown the menu for this input session
     let menuShownForCurrentInput = false;
 
-    // Listen for "/" keypress to show command menu and change colors
+    // Track detected mode for coloring
+    let currentMode: InputMode = 'nl';
+
+    // Listen for keypresses to detect mode and update colors
     const keypressHandler = (_ch: string, key: readline.Key | undefined) => {
       if (!key) return;
 
       const currentLine = this.rl?.line ?? '';
+      const modeDetector = this.options.modeDetector;
 
       // When "/" is pressed at start of empty line, show menu and switch color
       if (key.sequence === '/' && currentLine === '' && !menuShownForCurrentInput) {
         menuShownForCurrentInput = true;
+        currentMode = 'slash';
         // Switch to slash command color
         process.stdout.write(inputColors.slashCommand);
         // Defer to after the "/" is added to the line
@@ -275,13 +289,40 @@ export class InputReader {
         this.clearCommandMenu();
       }
 
+      // Update mode detection and colors on each keypress
+      if (modeDetector && key.name !== 'return') {
+        // Get the line after this keypress
+        const nextLine =
+          key.name === 'backspace' ? currentLine.slice(0, -1) : currentLine + (key.sequence ?? '');
+
+        const newMode = modeDetector.detectModeSync(nextLine);
+        if (newMode !== currentMode) {
+          currentMode = newMode;
+          // Apply new color
+          switch (newMode) {
+            case 'shell':
+              process.stdout.write(inputColors.shell);
+              break;
+            case 'slash':
+              process.stdout.write(inputColors.slashCommand);
+              break;
+            case 'nl':
+            default:
+              process.stdout.write(inputColors.naturalLanguage);
+              break;
+          }
+        }
+      }
+
       // Reset menu flag and color on Enter or when line is cleared completely
       if (key.name === 'return') {
         this.clearCommandMenu();
         menuShownForCurrentInput = false;
+        currentMode = 'nl';
       } else if (key.name === 'backspace' && currentLine.length <= 1) {
         this.clearCommandMenu();
         menuShownForCurrentInput = false;
+        currentMode = 'nl';
         // Switch back to natural language color
         process.stdout.write(inputColors.naturalLanguage);
       }
@@ -343,7 +384,40 @@ export class InputReader {
           continue;
         }
 
-        // Send to prompt handler
+        // Check for shell commands using mode detection
+        const { shell, modeDetector } = this.options;
+        if (shell && modeDetector) {
+          // Get sync mode first to see if it looked like a command
+          const syncMode = modeDetector.detectModeSync(trimmed);
+          const mode = await modeDetector.detectMode(trimmed);
+
+          if (mode === 'shell') {
+            // Route shell command directly
+            const command = isExplicitShell(trimmed) ? stripShellTrigger(trimmed) : trimmed;
+            try {
+              const result = await shell.exec(command, { captureOutput: true });
+              output.shellOutput(result);
+            } catch (error) {
+              if (error instanceof Error) {
+                output.error(`Shell error: ${error.message}`);
+              }
+            }
+            continue;
+          }
+
+          // Partial command rejection: if sync thought it was shell but async said NL,
+          // and it's a single word, it might be a typo/partial command
+          if (syncMode === 'shell' && mode === 'nl') {
+            const words = trimmed.split(/\s+/);
+            if (words.length === 1 && /^[a-zA-Z0-9_-]+$/.test(trimmed)) {
+              // Single word that looked like a command but isn't
+              output.info(`"${trimmed}" is not a recognized command. Sending to Claude...`);
+              output.info(colors.muted('Tip: Use !command to force shell mode'));
+            }
+          }
+        }
+
+        // Send to prompt handler (natural language)
         try {
           await onPrompt(trimmed);
         } catch (error) {
