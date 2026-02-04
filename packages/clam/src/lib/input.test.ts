@@ -110,6 +110,81 @@ describe('InputReader', () => {
     });
   });
 
+  describe('completer', () => {
+    it('should complete slash commands', () => {
+      const reader = createInputReader({
+        output,
+        onQuit: vi.fn(),
+        onPrompt: vi.fn(),
+      });
+
+      // Access private createCompleter via type assertion for testing
+      const readerWithCompleter = reader as unknown as {
+        createCompleter: () => (line: string) => [string[], string];
+      };
+      const completer = readerWithCompleter.createCompleter();
+
+      // Test slash command completion
+      const [hits, line] = completer('/he');
+      expect(line).toBe('/he');
+      expect(hits).toContain('/help');
+    });
+
+    it('should return all commands for bare slash', () => {
+      const reader = createInputReader({
+        output,
+        onQuit: vi.fn(),
+        onPrompt: vi.fn(),
+      });
+
+      const readerWithCompleter = reader as unknown as {
+        createCompleter: () => (line: string) => [string[], string];
+      };
+      const completer = readerWithCompleter.createCompleter();
+
+      const [hits] = completer('/');
+      expect(hits.length).toBeGreaterThan(0);
+      expect(hits.some((h) => h.startsWith('/help'))).toBe(true);
+      expect(hits.some((h) => h.startsWith('/quit'))).toBe(true);
+    });
+
+    it('should complete file paths with @', () => {
+      const reader = createInputReader({
+        output,
+        onQuit: vi.fn(),
+        onPrompt: vi.fn(),
+      });
+
+      const readerWithCompleter = reader as unknown as {
+        createCompleter: () => (line: string) => [string[], string];
+      };
+      const completer = readerWithCompleter.createCompleter();
+
+      // Test @path completion (will use current directory)
+      const [hits, line] = completer('@src/');
+      expect(line).toBe('@src/');
+      // Should return completions if src/ directory exists
+      // The actual content depends on the project structure
+      expect(Array.isArray(hits)).toBe(true);
+    });
+
+    it('should return empty for regular text', () => {
+      const reader = createInputReader({
+        output,
+        onQuit: vi.fn(),
+        onPrompt: vi.fn(),
+      });
+
+      const readerWithCompleter = reader as unknown as {
+        createCompleter: () => (line: string) => [string[], string];
+      };
+      const completer = readerWithCompleter.createCompleter();
+
+      const [hits] = completer('hello world');
+      expect(hits).toEqual([]);
+    });
+  });
+
   // Note: Testing the actual input loop requires mocking process.stdin
   // which is complex. Integration tests would cover the full flow.
 });

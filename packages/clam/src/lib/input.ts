@@ -11,7 +11,8 @@
  * Future: autocomplete, history, slash command completion.
  */
 
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import * as readline from 'node:readline';
 import { formatConfig, type ClamCodeConfig } from './config.js';
 import { colors, inputColors, promptChars } from './formatting.js';
@@ -141,20 +142,93 @@ export class InputReader {
 
   /**
    * Create a completer function for Tab completion.
-   * Returns matching slash commands when input starts with '/'.
+   * Supports:
+   * - Slash commands: /quit, /help, etc.
+   * - File paths: @./path/to/file or @path/to/file
    */
   private createCompleter(): Completer {
     return (line: string): CompleterResult => {
-      // Only complete slash commands
+      // Complete slash commands
       if (line.startsWith('/')) {
         const commands = Array.from(this.commands.keys()).map((c) => `/${c}`);
         const hits = commands.filter((c) => c.startsWith(line));
         // Return all matches, or all commands if no partial match
         return [hits.length ? hits : commands, line];
       }
+
+      // Complete file paths starting with @
+      // Find the last @ symbol in the line (could be mid-sentence)
+      const atIndex = line.lastIndexOf('@');
+      if (atIndex >= 0) {
+        // Get text after @ to the end of line
+        const pathPart = line.slice(atIndex + 1);
+        // Only complete if it looks like a path (no spaces after @)
+        if (!pathPart.includes(' ')) {
+          const completions = this.completeFilePath(pathPart);
+          if (completions.length > 0) {
+            // Return completions with the @ prefix and preserve text before @
+            const prefix = line.slice(0, atIndex);
+            const hits = completions.map((c) => `${prefix}@${c}`);
+            return [hits, line];
+          }
+        }
+      }
+
       // No completion for regular text
       return [[], line];
     };
+  }
+
+  /**
+   * Complete a file path, returning matching files/directories.
+   */
+  private completeFilePath(partial: string): string[] {
+    try {
+      // Handle empty path - complete from current directory
+      if (partial === '') {
+        const entries = readdirSync('.');
+        return entries.slice(0, 20).map((e) => {
+          const stat = statSync(e);
+          return stat.isDirectory() ? `${e}/` : e;
+        });
+      }
+
+      // Resolve the path
+      const resolvedPath = resolve(partial);
+      const dir = dirname(resolvedPath);
+      const base = partial.endsWith('/') ? '' : (resolvedPath.split('/').pop() ?? '');
+
+      // Check if this is a complete directory path (ends with /)
+      if (partial.endsWith('/') && existsSync(resolvedPath)) {
+        const entries = readdirSync(resolvedPath);
+        return entries.slice(0, 20).map((e) => {
+          const fullPath = join(resolvedPath, e);
+          const stat = statSync(fullPath);
+          return stat.isDirectory() ? `${partial}${e}/` : `${partial}${e}`;
+        });
+      }
+
+      // Complete partial path
+      if (existsSync(dir)) {
+        const entries = readdirSync(dir);
+        const matches = entries.filter((e) => e.startsWith(base));
+        const dirPath = partial.slice(0, partial.length - base.length);
+
+        return matches.slice(0, 20).map((e) => {
+          const fullPath = join(dir, e);
+          try {
+            const stat = statSync(fullPath);
+            return stat.isDirectory() ? `${dirPath}${e}/` : `${dirPath}${e}`;
+          } catch {
+            return `${dirPath}${e}`;
+          }
+        });
+      }
+
+      return [];
+    } catch {
+      return [];
+    }
   }
 
   /**
