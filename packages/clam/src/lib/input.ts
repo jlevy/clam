@@ -6,16 +6,11 @@
  * - Special commands (/quit, /help, etc.)
  * - Ctrl+C interruption
  * - Multi-line input with backslash continuation
- * - /edit command to open $EDITOR
  *
  * Uses Node.js readline for basic functionality.
  * Future: autocomplete, history, slash command completion.
  */
 
-import { spawn } from 'node:child_process';
-import { mkdtempSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import * as readline from 'node:readline';
 import { formatConfig, type ClamCodeConfig } from './config.js';
 import { colors, inputColors, promptChars } from './formatting.js';
@@ -177,88 +172,6 @@ export class InputReader {
         output.info(colors.muted('Env vars: CLAM_CODE_TRUNCATE_AFTER, CLAM_CODE_VERBOSE, etc.'));
       },
     });
-
-    // /edit - open $EDITOR for multi-line input
-    this.registerCommand({
-      name: 'edit',
-      description: 'Open $EDITOR for multi-line input',
-      execute: async () => {
-        const text = await this.openEditor();
-        if (text) {
-          output.info(colors.muted(`[Submitting ${text.split('\n').length} lines]`));
-          try {
-            await this.options.onPrompt(text);
-          } catch (error) {
-            if (error instanceof Error) {
-              output.error(`Error: ${error.message}`);
-            }
-          }
-        } else {
-          output.info(colors.muted('[Editor cancelled or empty]'));
-        }
-      },
-    });
-  }
-
-  /**
-   * Open $EDITOR for multi-line input.
-   */
-  private async openEditor(): Promise<string | null> {
-    const { output } = this.options;
-    const editor = process.env.EDITOR ?? process.env.VISUAL ?? 'nano';
-
-    // Create temp file
-    const tempDir = mkdtempSync(join(tmpdir(), 'clam-'));
-    const tempFile = join(tempDir, 'input.md');
-
-    // Write placeholder
-    writeFileSync(
-      tempFile,
-      '# Enter your prompt below\n# Lines starting with # are comments and will be ignored\n\n',
-      'utf-8'
-    );
-
-    output.info(colors.muted(`Opening ${editor}...`));
-
-    try {
-      // Spawn editor
-      const editorProcess = spawn(editor, [tempFile], {
-        stdio: 'inherit',
-        shell: true,
-      });
-
-      // Wait for editor to close
-      await new Promise<void>((resolve, reject) => {
-        editorProcess.on('close', (code) => {
-          if (code === 0) {
-            resolve();
-          } else {
-            reject(new Error(`Editor exited with code ${code}`));
-          }
-        });
-        editorProcess.on('error', reject);
-      });
-
-      // Read result
-      const content = readFileSync(tempFile, 'utf-8');
-
-      // Filter out comments and empty lines
-      const lines = content
-        .split('\n')
-        .filter((line) => !line.startsWith('#'))
-        .join('\n')
-        .trim();
-
-      // Clean up temp file
-      unlinkSync(tempFile);
-
-      return lines || null;
-    } catch (error) {
-      if (error instanceof Error) {
-        output.error(`Editor error: ${error.message}`);
-      }
-      return null;
-    }
   }
 
   /**

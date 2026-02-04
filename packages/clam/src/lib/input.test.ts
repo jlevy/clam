@@ -77,7 +77,6 @@ describe('InputReader', () => {
       expect(readerWithCommands.commands.has('clear')).toBe(true);
       expect(readerWithCommands.commands.has('status')).toBe(true);
       expect(readerWithCommands.commands.has('config')).toBe(true);
-      expect(readerWithCommands.commands.has('edit')).toBe(true);
     });
 
     it('should allow registering custom commands', () => {

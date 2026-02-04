@@ -369,26 +369,28 @@ export class AcpClient {
       },
 
       async readTextFile(params: acp.ReadTextFileRequest): Promise<acp.ReadTextFileResponse> {
-        // TODO: Implement file reading
         output.debug(`Read file: ${params.path}`);
         try {
           const { readFileSync } = await import('node:fs');
           const content = readFileSync(params.path, 'utf-8');
           return { content };
-        } catch {
-          return { content: '' };
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          output.error(`Failed to read file ${params.path}: ${message}`);
+          throw new Error(`Failed to read file ${params.path}: ${message}`);
         }
       },
 
       async writeTextFile(params: acp.WriteTextFileRequest): Promise<acp.WriteTextFileResponse> {
-        // TODO: Implement file writing
         output.debug(`Write file: ${params.path}`);
         try {
           const { writeFileSync } = await import('node:fs');
           writeFileSync(params.path, params.content, 'utf-8');
           return {};
-        } catch {
-          return {};
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          output.error(`Failed to write file ${params.path}: ${message}`);
+          throw new Error(`Failed to write file ${params.path}: ${message}`);
         }
       },
     };
