@@ -38,8 +38,8 @@ export interface StoredPermissions {
  * Permission manager for handling tool permissions.
  */
 export class PermissionManager {
-  private sessionPermissions: Map<string, 'allow' | 'reject'> = new Map();
-  private persistentPermissions: Map<string, 'allow' | 'reject'> = new Map();
+  private sessionPermissions = new Map<string, 'allow' | 'reject'>();
+  private persistentPermissions = new Map<string, 'allow' | 'reject'>();
 
   constructor() {
     this.loadPersistentPermissions();
