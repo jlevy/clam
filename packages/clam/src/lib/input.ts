@@ -97,6 +97,7 @@ export class InputReader {
   private commands = new Map<string, SlashCommand>();
   private running = false;
   private history: string[] = [];
+  private lastCtrlCTime = 0; // Track last Ctrl+C for double-tap to quit
 
   constructor(options: InputReaderOptions) {
     this.options = options;
@@ -332,12 +333,22 @@ export class InputReader {
    * Promisified question wrapper for callback-based readline.
    */
   private question(prompt: string): Promise<string> {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       if (!this.rl) {
-        resolve('');
+        reject(new Error('readline was closed'));
         return;
       }
-      this.rl.question(prompt, (answer) => {
+
+      const rl = this.rl;
+
+      // Handle Ctrl+D (EOF) - readline closes without calling the callback
+      const closeHandler = () => {
+        reject(new Error('readline was closed'));
+      };
+      rl.once('close', closeHandler);
+
+      rl.question(prompt, (answer) => {
+        rl.removeListener('close', closeHandler);
         resolve(answer);
       });
     });
@@ -440,6 +451,20 @@ export class InputReader {
     const charsFromEnd = line.length - cursorPos;
     if (charsFromEnd > 0) {
       process.stdout.write(`\x1b[${charsFromEnd}D`); // Move left N chars
+    }
+
+    // Set the terminal color for subsequent input (picocolors resets after each string)
+    // This prevents flicker on the next keystroke
+    switch (mode) {
+      case 'shell':
+        process.stdout.write(inputColors.shell);
+        break;
+      case 'slash':
+        process.stdout.write(inputColors.slashCommand);
+        break;
+      case 'nl':
+        process.stdout.write(inputColors.naturalLanguage);
+        break;
     }
   }
 
@@ -576,9 +601,11 @@ export class InputReader {
       historySize,
     });
 
-    // Handle Ctrl+C - delegate to onCancel handler for all messaging
+    // Handle Ctrl+C - double-tap to quit, single tap to cancel current input
     this.rl.on('SIGINT', () => {
       const isTTY = process.stdout.isTTY ?? false;
+      const now = Date.now();
+      const timeSinceLastCtrlC = now - this.lastCtrlCTime;
 
       if (isTTY) {
         // Clear the current prompt line (which may show ^C)
@@ -589,14 +616,25 @@ export class InputReader {
         output.newline();
       }
 
-      if (onCancel) {
-        void onCancel();
-      } else {
-        output.info('Press Ctrl+C again to exit, or type /quit');
+      // If double Ctrl+C within 2 seconds, quit
+      if (timeSinceLastCtrlC < 2000) {
+        this.lastCtrlCTime = 0; // Reset
+        this.options.onQuit();
+        return;
       }
 
-      // Show fresh prompt so user can continue (with extra spacing)
-      output.newline();
+      this.lastCtrlCTime = now;
+
+      // First Ctrl+C - cancel current input, show message
+      if (onCancel) {
+        void onCancel();
+      }
+      output.info('Cancelled. Hit Ctrl+C again to quit.');
+
+      // Reset input mode and show fresh prompt
+      this.currentInputMode = 'nl';
+      menuShownForCurrentInput = false;
+      this.clearCommandMenu(true);
       output.newline();
       process.stdout.write(
         `${colors.inputPrompt(`${promptChars.input} `)}${inputColors.naturalLanguage}`

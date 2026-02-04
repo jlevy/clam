@@ -248,11 +248,49 @@ const NL_ONLY_WORDS = new Set([
 ]);
 
 /**
+ * Strip trailing punctuation from a word for NL word matching.
+ * Handles: . , ! ? ; : ' "
+ */
+function stripTrailingPunctuation(word: string): string {
+  return word.replace(/[.,!?;:'"]+$/, '');
+}
+
+/**
  * Check if all words in input are natural language words.
+ * Strips trailing punctuation to handle "do?" matching "do".
  */
 function isAllNaturalLanguageWords(trimmed: string): boolean {
   const words = trimmed.toLowerCase().split(/\s+/);
-  return words.length > 0 && words.every((w) => NL_ONLY_WORDS.has(w));
+  return words.length > 0 && words.every((w) => NL_ONLY_WORDS.has(stripTrailingPunctuation(w)));
+}
+
+/**
+ * Question words that strongly indicate natural language when at start of multi-word input.
+ */
+const QUESTION_WORDS = new Set([
+  'what',
+  'how',
+  'why',
+  'when',
+  'where',
+  'who',
+  'which',
+  'whose',
+  'whom',
+]);
+
+/**
+ * Check if input looks like a natural language question.
+ * e.g., "what does this do", "how do I list files"
+ */
+function looksLikeQuestion(trimmed: string, firstWord: string): boolean {
+  const words = trimmed.split(/\s+/);
+  // Must have multiple words and start with a question word
+  if (words.length < 2) return false;
+  if (!QUESTION_WORDS.has(firstWord.toLowerCase())) return false;
+  // Check if any of the other words look like NL
+  const restWords = words.slice(1);
+  return restWords.some((w) => NL_ONLY_WORDS.has(stripTrailingPunctuation(w.toLowerCase())));
 }
 
 /**
@@ -341,6 +379,13 @@ const DETECTION_RULES: {
     definitive: true,
   },
   {
+    name: 'question-sentence',
+    // Questions starting with what/how/why/when/where/who followed by NL words
+    // e.g., "what does this codebase do", "how do I list files"
+    test: (_input, trimmed, firstWord) => (looksLikeQuestion(trimmed, firstWord) ? 'nl' : null),
+    definitive: true,
+  },
+  {
     name: 'ambiguous-command-with-nl',
     // Ambiguous commands like "yes" or "test" followed by NL words → NL
     // e.g., "yes please" → NL, "test this out" → NL
@@ -354,7 +399,9 @@ const DETECTION_RULES: {
       }
       // Multiple words with ambiguous first word - check if rest looks like NL
       const restWords = words.slice(1);
-      const restLooksLikeNL = restWords.some((w) => NL_ONLY_WORDS.has(w.toLowerCase()));
+      const restLooksLikeNL = restWords.some((w) =>
+        NL_ONLY_WORDS.has(stripTrailingPunctuation(w.toLowerCase()))
+      );
       return restLooksLikeNL ? 'nl' : null;
     },
     definitive: true,
