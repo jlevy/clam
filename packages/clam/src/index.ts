@@ -43,3 +43,11 @@ export {
 export type { ExecOptions, ExecResult, ShellModule, ShellModuleOptions } from './lib/shell.js';
 // Shell utilities
 export { createShellModule, isShellBuiltin } from './lib/shell.js';
+export type { InputMode, ModeDetector, ModeDetectorOptions } from './lib/mode-detection.js';
+// Mode detection
+export {
+  createModeDetector,
+  hasShellOperators,
+  isExplicitShell,
+  stripShellTrigger,
+} from './lib/mode-detection.js';
