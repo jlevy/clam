@@ -17,7 +17,7 @@ import * as readline from 'node:readline';
 import { formatConfig, type ClamCodeConfig } from './config.js';
 import { colors, getColorForMode, inputColors, promptChars } from './formatting.js';
 import type { ModeDetector, InputMode } from './mode-detection.js';
-import { isExplicitShell, stripShellTrigger } from './mode-detection.js';
+import { isExplicitShell, stripShellTrigger, suggestCommand } from './mode-detection.js';
 import type { OutputWriter } from './output.js';
 import type { ShellModule } from './shell.js';
 
@@ -465,6 +465,12 @@ export class InputReader {
       case 'nl':
         process.stdout.write(inputColors.naturalLanguage);
         break;
+      case 'ambiguous':
+        process.stdout.write(inputColors.ambiguous);
+        break;
+      case 'nothing':
+        process.stdout.write(inputColors.nothing);
+        break;
     }
   }
 
@@ -690,6 +696,59 @@ export class InputReader {
             continue;
           }
 
+          // Ambiguous mode: prompt user to confirm
+          if (mode === 'ambiguous') {
+            const confirmed = await this.confirmShellCommand(trimmed);
+            if (confirmed) {
+              // User confirmed - execute as shell command
+              try {
+                const result = await shell.exec(trimmed, { captureOutput: true });
+                output.shellOutput(result);
+              } catch (error) {
+                if (error instanceof Error) {
+                  output.error(`Shell error: ${error.message}`);
+                }
+              }
+            } else {
+              // User declined - send to Claude instead
+              output.info(colors.muted('Sending to Claude...'));
+              try {
+                await onPrompt(trimmed);
+              } catch (error) {
+                if (error instanceof Error) {
+                  output.error(`Error: ${error.message}`);
+                }
+              }
+            }
+            continue;
+          }
+
+          // Nothing mode: invalid input, show error and suggestions
+          if (mode === 'nothing') {
+            const firstWord = trimmed.split(/\s+/)[0] ?? '';
+            const restOfCommand = trimmed.slice(firstWord.length).trim();
+            const suggestion = suggestCommand(firstWord);
+
+            if (suggestion) {
+              // Suggest corrected command
+              const suggestedFull = restOfCommand ? `${suggestion} ${restOfCommand}` : suggestion;
+              output.warning(`"${firstWord}" is not a recognized command`);
+              output.info(
+                `${colors.muted('Did you mean:')} ${colors.bold(suggestedFull)}${colors.muted('?')}`
+              );
+              output.info(
+                colors.muted('Tip: Use !command to force shell mode, or ?text to send to Claude')
+              );
+            } else {
+              // No suggestion found
+              output.warning(`"${firstWord}" is not a recognized command`);
+              output.info(
+                colors.muted('Tip: Use ?text to send to Claude, or !command to force shell mode')
+              );
+            }
+            continue;
+          }
+
           // Partial command rejection: if sync thought it was shell but async said NL,
           // and it's a single word, it might be a typo/partial command
           if (syncMode === 'shell' && mode === 'nl') {
@@ -818,10 +877,16 @@ export class InputReader {
           break;
         }
 
-        // Empty line on first prompt - add visual spacing (newline above prompt)
+        // Empty line on first prompt - erase the prompt line and continue
         if (line.trim() === '' && lines.length === 0) {
-          // Keep the newline that readline added (creates visual spacing)
-          // Just continue to show a fresh prompt
+          if (isTTY) {
+            // Move up to the prompt line and clear it (removes the empty prompt)
+            // The newline before the prompt means we're now 2 lines down:
+            // 1. The newline before prompt
+            // 2. The prompt line itself
+            // Move up 1 line to the prompt and clear it
+            process.stdout.write('\x1b[1A\x1b[2K');
+          }
           continue;
         }
 
@@ -896,6 +961,34 @@ export class InputReader {
    */
   isRunning(): boolean {
     return this.running;
+  }
+
+  /**
+   * Prompt user to confirm executing a command.
+   * Used for ambiguous inputs like "who" or "date" that could be shell commands or NL.
+   *
+   * @param command - The command to confirm
+   * @returns true if user wants to run as shell command, false to send to Claude
+   */
+  private async confirmShellCommand(command: string): Promise<boolean> {
+    const { output } = this.options;
+
+    // Show confirmation prompt
+    output.info(`"${command}" could be a shell command or a question for Claude.`);
+
+    return new Promise((resolve) => {
+      if (!this.rl) {
+        resolve(false);
+        return;
+      }
+
+      // Use simple y/n prompt
+      const prompt = `${colors.muted('Run as shell command?')} ${colors.bold('[y/N]')} `;
+      this.rl.question(prompt, (answer) => {
+        const trimmed = answer.trim().toLowerCase();
+        resolve(trimmed === 'y' || trimmed === 'yes');
+      });
+    });
   }
 }
 

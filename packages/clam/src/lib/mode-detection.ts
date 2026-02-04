@@ -27,8 +27,14 @@ import { isShellBuiltin, type ShellModule } from './shell.js';
 
 /**
  * Input mode types.
+ *
+ * - 'shell'     : Execute as shell command directly
+ * - 'nl'        : Send to Claude as natural language
+ * - 'slash'     : Handle as local slash command
+ * - 'ambiguous' : Prompt user to confirm (could be shell or NL)
+ * - 'nothing'   : Invalid input - show error, don't execute
  */
-export type InputMode = 'shell' | 'nl' | 'slash';
+export type InputMode = 'shell' | 'nl' | 'slash' | 'ambiguous' | 'nothing';
 
 /**
  * Mode detector interface.
@@ -124,29 +130,42 @@ const ABSOLUTE_PATH_PATTERN = /^\/[a-zA-Z0-9._-]+\/[a-zA-Z0-9._/-]+$/;
  * - Words that aren't shell commands (they'll be handled by `which` returning null)
  * - Rare English words (not worth the complexity)
  */
-const AMBIGUOUS_COMMANDS = new Set([
-  // Actual shell commands that conflict with English
-  'yes', // /usr/bin/yes - also "yes" as a response
-  'test', // Shell builtin - also "test this"
-  'time', // /usr/bin/time - also "time to..."
-  'man', // /usr/bin/man - also "man, this is..."
-  'make', // /usr/bin/make - also "make this work"
-  'watch', // /usr/bin/watch - also "watch out"
-  'who', // /usr/bin/who - also "who is..."
-  'date', // /usr/bin/date - also "date" as noun
-  'which', // /usr/bin/which - also "which one"
-  'where', // zsh builtin - also "where is"
-  'what', // zsh alias sometimes - also "what is"
-
-  // Shell builtins that conflict with English
-  'true', // Shell builtin - also "true" as adjective
-  'false', // Shell builtin - also "false" as adjective
-  'wait', // Shell builtin - also "wait a moment"
-  'read', // Shell builtin - also "read this"
-  'let', // Shell keyword - also "let me..."
-  'type', // Shell builtin - also "type of..."
-  'set', // Shell builtin - also "set this up"
+/**
+ * Words that return 'ambiguous' when used ALONE - prompt user to confirm.
+ * These are common shell commands that users might actually want to run.
+ */
+const PROMPT_AMBIGUOUS_COMMANDS = new Set([
+  'who', // /usr/bin/who - commonly run to see logged-in users
+  'date', // /usr/bin/date - commonly run to see current date
+  'time', // /usr/bin/time - commonly run to time commands
+  'man', // /usr/bin/man - but also "man, this is..."
 ]);
+
+/**
+ * Words that return 'nl' when used ALONE for safety - unlikely to be intentional commands.
+ * User can use ! prefix to force shell mode.
+ */
+const SAFE_NL_COMMANDS = new Set([
+  'yes', // /usr/bin/yes - dangerous to run unintentionally (infinite output)
+  'test', // Shell builtin - more commonly "test this" in NL
+  'true', // Shell builtin - more commonly adjective
+  'false', // Shell builtin - more commonly adjective
+  'wait', // Shell builtin - more commonly "wait a moment"
+  'read', // Shell builtin - more commonly "read this"
+  'let', // Shell keyword - more commonly "let me..."
+  'type', // Shell builtin - more commonly "type of..."
+  'set', // Shell builtin - more commonly "set this up"
+  'make', // /usr/bin/make - more commonly "make this work"
+  'watch', // /usr/bin/watch - more commonly "watch out"
+  'which', // /usr/bin/which - more commonly "which one"
+  'where', // zsh builtin - more commonly "where is"
+  'what', // zsh alias sometimes - more commonly "what is"
+]);
+
+/**
+ * All ambiguous commands (union of both sets).
+ */
+const AMBIGUOUS_COMMANDS = new Set([...PROMPT_AMBIGUOUS_COMMANDS, ...SAFE_NL_COMMANDS]);
 
 // =============================================================================
 // COMMON NL WORDS: For sync detection of obvious natural language
@@ -262,6 +281,7 @@ const NL_ONLY_WORDS = new Set([
   'some',
   'all',
   'thing',
+  'world', // "hello world" - classic test phrase
 ]);
 
 /**
@@ -400,8 +420,9 @@ const DETECTION_RULES: {
   },
   {
     name: 'shell-operators',
+    // Has shell operators like |, >, &&, etc. - likely shell, but validate first word async
     test: (_input, trimmed) => (SHELL_OPERATORS.test(trimmed) ? 'shell' : null),
-    definitive: true,
+    definitive: false, // Validate first word is a real command
   },
   {
     name: 'env-variables',
@@ -411,6 +432,17 @@ const DETECTION_RULES: {
   {
     name: 'shell-builtin',
     test: (_input, _trimmed, firstWord) => (isShellBuiltin(firstWord) ? 'shell' : null),
+    definitive: true,
+  },
+  {
+    name: 'single-prompt-ambiguous',
+    // Single words like "who", "date", "time" - prompt user to confirm
+    // Must come before all-nl-words since "who" is in NL_ONLY_WORDS
+    test: (_input, trimmed, firstWord) => {
+      const words = trimmed.split(/\s+/);
+      if (words.length !== 1) return null;
+      return PROMPT_AMBIGUOUS_COMMANDS.has(firstWord.toLowerCase()) ? 'ambiguous' : null;
+    },
     definitive: true,
   },
   {
@@ -438,12 +470,18 @@ const DETECTION_RULES: {
     name: 'ambiguous-command-with-nl',
     // Ambiguous commands like "yes" or "test" followed by NL words → NL
     // e.g., "yes please" → NL, "test this out" → NL
+    // Single ambiguous commands → either 'ambiguous' (prompt) or 'nl' (safe default)
     test: (_input, trimmed, firstWord) => {
-      if (!AMBIGUOUS_COMMANDS.has(firstWord.toLowerCase())) return null;
+      const lowerFirst = firstWord.toLowerCase();
+      if (!AMBIGUOUS_COMMANDS.has(lowerFirst)) return null;
       const words = trimmed.split(/\s+/);
       if (words.length === 1) {
-        // Single ambiguous word - treat as NL for safety
-        // User can use ! prefix to force shell
+        // Single word - check which category it belongs to
+        if (PROMPT_AMBIGUOUS_COMMANDS.has(lowerFirst)) {
+          // Commands like "who", "date" - prompt user to confirm
+          return 'ambiguous';
+        }
+        // Commands like "test", "yes" - treat as NL for safety
         return 'nl';
       }
       // Multiple words with ambiguous first word - check if rest looks like NL
@@ -503,7 +541,7 @@ export function createModeDetector(options: ModeDetectorOptions): ModeDetector {
     // If disabled, always return natural language
     if (!enabled) return 'nl';
 
-    const { mode, definitive } = applyRules(input);
+    const { mode, definitive, rule } = applyRules(input);
 
     // If detection is definitive, return immediately
     if (definitive) return mode;
@@ -511,9 +549,53 @@ export function createModeDetector(options: ModeDetectorOptions): ModeDetector {
     // Non-definitive detection (command-like or absolute-path) needs which validation
     if (mode === 'shell') {
       const trimmed = input.trim();
+      const words = trimmed.split(/\s+/);
+      const firstWord = words[0] ?? '';
+      const isCmd = await shell.isCommand(firstWord);
+
+      if (isCmd) {
+        return 'shell';
+      }
+
+      // Command not found - determine if this is 'nothing' (invalid) or 'nl' (natural language)
+      // If has shell operators → clearly trying to run shell, so 'nothing'
+      if (SHELL_OPERATORS.test(trimmed)) {
+        return 'nothing';
+      }
+
+      // If has env var syntax → clearly trying to run shell, so 'nothing'
+      if (trimmed.includes('$')) {
+        return 'nothing';
+      }
+
+      // Check if rest of words look like NL (suggests user query, not typo)
+      // e.g., "fix this bug" → rest has NL words → 'nl'
+      // e.g., "gti status" → rest has no NL words → 'nothing'
+      if (words.length > 1) {
+        const restWords = words.slice(1);
+        const restLooksLikeNL = restWords.some((w) =>
+          NL_ONLY_WORDS.has(stripTrailingPunctuation(w.toLowerCase()))
+        );
+        if (restLooksLikeNL) {
+          return 'nl';
+        }
+      }
+
+      // Single word or no NL words in rest → likely typo or unknown command → 'nothing'
+      // Exception: if the single word is in NL_ONLY_WORDS (sync should have caught this, but just in case)
+      if (words.length === 1 && NL_ONLY_WORDS.has(firstWord.toLowerCase())) {
+        return 'nl';
+      }
+
+      return 'nothing';
+    }
+
+    // For absolute-path rule, check if path exists and is executable
+    if (rule === 'absolute-path') {
+      const trimmed = input.trim();
       const firstWord = trimmed.split(/\s+/)[0] ?? '';
       const isCmd = await shell.isCommand(firstWord);
-      return isCmd ? 'shell' : 'nl';
+      return isCmd ? 'shell' : 'ambiguous';
     }
 
     return mode;
@@ -566,4 +648,153 @@ export function stripNLTrigger(input: string): string {
     return trimmed.slice(1);
   }
   return input;
+}
+
+// =============================================================================
+// COMMAND SUGGESTIONS
+// =============================================================================
+
+/**
+ * Common shell commands for typo suggestions.
+ * These are frequently used commands that users might mistype.
+ */
+const COMMON_COMMANDS = [
+  'ls',
+  'cd',
+  'git',
+  'npm',
+  'pnpm',
+  'node',
+  'cat',
+  'grep',
+  'find',
+  'rm',
+  'cp',
+  'mv',
+  'mkdir',
+  'rmdir',
+  'echo',
+  'curl',
+  'wget',
+  'docker',
+  'kubectl',
+  'python',
+  'python3',
+  'pip',
+  'brew',
+  'apt',
+  'yum',
+  'ssh',
+  'scp',
+  'tar',
+  'unzip',
+  'zip',
+  'make',
+  'gcc',
+  'go',
+  'cargo',
+  'rust',
+  'vim',
+  'nano',
+  'code',
+  'man',
+  'which',
+  'where',
+  'whoami',
+  'date',
+  'time',
+  'history',
+  'clear',
+  'pwd',
+  'env',
+  'export',
+  'source',
+  'chmod',
+  'chown',
+  'ps',
+  'kill',
+  'top',
+  'htop',
+  'df',
+  'du',
+  'head',
+  'tail',
+  'less',
+  'more',
+  'sort',
+  'uniq',
+  'wc',
+  'diff',
+  'sed',
+  'awk',
+  'xargs',
+  'tee',
+];
+
+/**
+ * Calculate Levenshtein distance between two strings.
+ * Used for typo detection and command suggestions.
+ */
+function levenshteinDistance(a: string, b: string): number {
+  const m = a.length;
+  const n = b.length;
+
+  // Create a 2D matrix
+  const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0) as number[]);
+
+  // Initialize first row and column
+  for (let i = 0; i <= m; i++) dp[i]![0] = i;
+  for (let j = 0; j <= n; j++) dp[0]![j] = j;
+
+  // Fill the matrix
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      if (a[i - 1] === b[j - 1]) {
+        dp[i]![j] = dp[i - 1]![j - 1]!;
+      } else {
+        dp[i]![j] = 1 + Math.min(dp[i - 1]![j]!, dp[i]![j - 1]!, dp[i - 1]![j - 1]!);
+      }
+    }
+  }
+
+  return dp[m]![n]!;
+}
+
+/**
+ * Suggest a command based on a mistyped word.
+ * Returns the closest matching command if within a reasonable distance.
+ *
+ * @param typo - The mistyped command
+ * @returns The suggested command, or null if no good match found
+ */
+export function suggestCommand(typo: string): string | null {
+  const lower = typo.toLowerCase();
+
+  // Don't suggest for very short or very long inputs
+  if (lower.length < 2 || lower.length > 20) {
+    return null;
+  }
+
+  let bestMatch: string | null = null;
+  let bestDistance = Infinity;
+
+  // Maximum distance threshold based on typo length
+  // Allow more edits for longer words, but always allow at least 2
+  // This catches common transposition typos (gti → git, sl → ls)
+  const maxDistance = Math.max(2, Math.floor(lower.length / 2));
+
+  for (const cmd of COMMON_COMMANDS) {
+    // Skip if the exact command is typed (not a typo)
+    if (lower === cmd) {
+      return null;
+    }
+
+    const distance = levenshteinDistance(lower, cmd);
+    if (distance < bestDistance && distance <= maxDistance) {
+      bestDistance = distance;
+      bestMatch = cmd;
+    }
+  }
+
+  return bestMatch;
 }

@@ -15,10 +15,10 @@
 import type { InputMode } from './mode-detection.js';
 
 /**
- * Extended mode type including ambiguous and nothing for test cases.
- * The actual InputMode type doesn't include these yet.
+ * Expected mode type for test cases.
+ * Now uses InputMode directly since it includes all modes.
  */
-export type ExpectedMode = InputMode | 'ambiguous' | 'nothing';
+export type ExpectedMode = InputMode;
 
 /**
  * A single test case for mode detection.

@@ -159,6 +159,10 @@ export const inputColors = {
   slashCommand: isTTY ? '\x1b[1;34m' : '',
   /** Shell command input - white (future) */
   shell: isTTY ? '\x1b[37m' : '',
+  /** Ambiguous input - yellow (caution) */
+  ambiguous: isTTY ? '\x1b[33m' : '',
+  /** Invalid input - red (error) */
+  nothing: isTTY ? '\x1b[31m' : '',
   /** Reset to default */
   reset: isTTY ? '\x1b[0m' : '',
 };
@@ -178,6 +182,10 @@ export function getColorForMode(mode: InputMode): (s: string) => string {
       return pc.magenta;
     case 'slash':
       return pc.blue;
+    case 'ambiguous':
+      return pc.yellow; // Yellow to indicate "caution"
+    case 'nothing':
+      return pc.red; // Red to indicate error/invalid
   }
 }
 
