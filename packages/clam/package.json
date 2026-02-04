@@ -19,7 +19,8 @@
     "clam": "./dist/bin.mjs"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
   "engines": {
     "node": ">=22"
@@ -42,6 +43,7 @@
     "shell"
   ],
   "scripts": {
+    "prebuild": "cp ../../README.md ./README.md",
     "build": "tsdown",
     "dev": "tsx watch src/bin.ts",
     "start": "tsx src/bin.ts",
