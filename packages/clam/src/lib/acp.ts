@@ -320,9 +320,9 @@ export class AcpClient {
                     output.toolOutput(content.content.text);
                   } else if (content.type === 'diff') {
                     // Count additions and deletions
-                    const additions = (content.newText.match(/\n/g) || []).length;
+                    const additions = (content.newText.match(/\n/g) ?? []).length;
                     const deletions = content.oldText
-                      ? (content.oldText.match(/\n/g) || []).length
+                      ? (content.oldText.match(/\n/g) ?? []).length
                       : 0;
                     output.diffBlock(content.path, additions, deletions, content.newText);
                   }
@@ -364,6 +364,8 @@ export class AcpClient {
             // Unknown update type
             break;
         }
+        // Satisfy eslint require-await for async method
+        await Promise.resolve();
       },
 
       async readTextFile(params: acp.ReadTextFileRequest): Promise<acp.ReadTextFileResponse> {

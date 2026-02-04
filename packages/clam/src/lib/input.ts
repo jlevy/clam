@@ -27,7 +27,7 @@ import type { OutputWriter } from './output.js';
 export interface SlashCommand {
   name: string;
   description: string;
-  execute: (args: string, ctx: InputContext) => Promise<void>;
+  execute: (args: string, ctx: InputContext) => void | Promise<void>;
 }
 
 /**
@@ -55,7 +55,7 @@ export interface InputReaderOptions {
   onPrompt: (text: string) => Promise<void>;
 
   /** Callback when user requests to cancel current operation */
-  onCancel?: () => void;
+  onCancel?: () => void | Promise<void>;
 }
 
 /**
@@ -70,7 +70,7 @@ type Completer = (line: string) => CompleterResult;
 export class InputReader {
   private rl: readline.Interface | null = null;
   private options: InputReaderOptions;
-  private commands: Map<string, SlashCommand> = new Map();
+  private commands = new Map<string, SlashCommand>();
   private running = false;
 
   constructor(options: InputReaderOptions) {
@@ -113,7 +113,7 @@ export class InputReader {
     this.registerCommand({
       name: 'help',
       description: 'Show available commands',
-      execute: async () => {
+      execute: () => {
         output.newline();
         output.info(colors.bold('Available Commands:'));
         for (const [name, cmd] of this.commands) {
@@ -126,7 +126,7 @@ export class InputReader {
     this.registerCommand({
       name: 'quit',
       description: 'Exit clam',
-      execute: async () => {
+      execute: () => {
         onQuit();
       },
     });
@@ -134,7 +134,7 @@ export class InputReader {
     this.registerCommand({
       name: 'exit',
       description: 'Exit clam (alias for /quit)',
-      execute: async () => {
+      execute: () => {
         onQuit();
       },
     });
@@ -143,7 +143,7 @@ export class InputReader {
     this.registerCommand({
       name: 'clear',
       description: 'Clear the terminal',
-      execute: async () => {
+      execute: () => {
         // Just print many newlines to "clear" without cursor positioning
         for (let i = 0; i < 50; i++) {
           output.newline();
@@ -155,7 +155,7 @@ export class InputReader {
     this.registerCommand({
       name: 'status',
       description: 'Show session status',
-      execute: async () => {
+      execute: () => {
         output.info('Session status: connected');
         // TODO: Show more status info (tokens used, permissions granted, etc.)
       },
@@ -165,7 +165,7 @@ export class InputReader {
     this.registerCommand({
       name: 'config',
       description: 'Show current configuration',
-      execute: async () => {
+      execute: () => {
         const config = this.options.config ?? {};
         output.newline();
         output.info(colors.bold('Current Configuration:'));
@@ -342,7 +342,7 @@ export class InputReader {
         // Switch to slash command color
         process.stdout.write(inputColors.slashCommand);
         // Defer to after the "/" is added to the line
-        setImmediate(() => this.showCommandMenu());
+        setImmediate(() => { this.showCommandMenu(); });
         return;
       }
 
@@ -379,7 +379,7 @@ export class InputReader {
       output.newline();
 
       if (onCancel) {
-        onCancel();
+        void onCancel();
       } else {
         output.info('Press Ctrl+C again to exit, or type /quit');
       }
@@ -558,7 +558,7 @@ export class InputReader {
     // Execute command
     const ctx: InputContext = {
       output,
-      quit: () => this.options.onQuit(),
+      quit: () => { this.options.onQuit(); },
     };
 
     try {
