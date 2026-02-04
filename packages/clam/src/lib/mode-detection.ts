@@ -1,12 +1,26 @@
 /**
  * Mode Detection - Input mode detection for clam.
  *
- * This module handles:
- * - Detecting whether input is shell, natural language, or slash command
- * - Sync detection for real-time coloring
- * - Async detection with which lookup for accuracy
+ * DESIGN PHILOSOPHY:
+ * We do NOT try to enumerate all of English. That's impossible and unnecessary.
+ * Instead, we rely on two layers:
  *
- * All detection heuristics are consolidated in DETECTION_HEURISTICS below.
+ * 1. SYNC DETECTION (detectModeSync) - For real-time coloring UX
+ *    - Definitive patterns: shell operators (|, >, &&), builtins (cd, export), $vars
+ *    - Conflict words: AMBIGUOUS_COMMANDS (words that ARE shell commands AND English)
+ *    - Common NL: NL_ONLY_WORDS (obvious NL phrases like "yes please")
+ *    - Fallback: command-like pattern → tentatively shell
+ *
+ * 2. ASYNC DETECTION (detectMode) - For accuracy before execution
+ *    - Uses `which` to verify if first word is actually a command
+ *    - If `which` returns null → NL (not a command)
+ *    - This catches everything sync detection misses
+ *
+ * MANAGING COMPLEXITY:
+ * - Word lists are TEST-DRIVEN: add words only when tests require them
+ * - Test cases live in mode-detection-cases.ts and mode-detection.test.ts
+ * - When a phrase is misclassified, add a test case FIRST, then fix
+ * - Some sync flicker is acceptable - async validation ensures correctness
  */
 
 import { isShellBuiltin, type ShellModule } from './shell.js';
@@ -81,76 +95,146 @@ const COMMAND_LIKE_PATTERN = /^[a-zA-Z0-9_-]+$/;
  */
 const ABSOLUTE_PATH_PATTERN = /^\/[a-zA-Z0-9._-]+\/[a-zA-Z0-9._/-]+$/;
 
-/**
- * Ambiguous commands that look like natural language but are valid shell commands.
- * If these appear alone without arguments, they're ambiguous.
- * With additional NL-looking words, they're treated as natural language.
- */
-const AMBIGUOUS_COMMANDS = new Set([
-  'yes', // Unix command, but also just "yes"
-  'no', // Not a command, but pattern
-  'ok', // Not a command, but pattern
-  'sure', // Not a command
-  'true', // Shell builtin
-  'false', // Shell builtin
-  'test', // Shell builtin, but also "test this"
-  'time', // Shell command, but also "time to..."
-  'help', // Common word
-  'man', // Manual command, but also "man this is..."
-  'make', // Build tool, but also "make this..."
-  'watch', // Command, but also "watch out..."
-  'wait', // Shell builtin, but also "wait a moment"
-  'read', // Shell builtin, but also "read this"
-  'let', // Shell keyword, but also "let me..."
-  'type', // Shell builtin, but also "type of..."
-  'set', // Shell builtin, but also "set this up"
-]);
+// =============================================================================
+// CONFLICT WORDS: Shell commands that are also common English words
+// =============================================================================
+//
+// PHILOSOPHY: We do NOT try to enumerate all of English. That's impossible.
+// Instead, we ONLY handle words that create ACTUAL CONFLICTS:
+// - Words that ARE valid shell commands (verified by `which`)
+// - AND are commonly used in natural language
+//
+// For everything else, async `which` validation handles it:
+// - "hello" → `which hello` returns null → NL
+// - "ls" → `which ls` returns path → shell
+//
+// The sync detection is just for real-time coloring. Some flicker is acceptable.
+// Final mode is determined by async validation before execution.
+// =============================================================================
 
 /**
- * Common natural language words that are never shell commands.
- * If ALL words in input are from this set, it's definitely NL.
+ * Words that are BOTH valid shell commands AND common English words.
+ * These need special handling because `which` would find them.
+ *
+ * KEEP THIS LIST MINIMAL - only add words that:
+ * 1. Actually exist as shell commands (test with `which <word>`)
+ * 2. Are commonly used at the START of natural language sentences
+ *
+ * Do NOT add:
+ * - Words that aren't shell commands (they'll be handled by `which` returning null)
+ * - Rare English words (not worth the complexity)
+ */
+const AMBIGUOUS_COMMANDS = new Set([
+  // Actual shell commands that conflict with English
+  'yes', // /usr/bin/yes - also "yes" as a response
+  'test', // Shell builtin - also "test this"
+  'time', // /usr/bin/time - also "time to..."
+  'man', // /usr/bin/man - also "man, this is..."
+  'make', // /usr/bin/make - also "make this work"
+  'watch', // /usr/bin/watch - also "watch out"
+  'who', // /usr/bin/who - also "who is..."
+  'date', // /usr/bin/date - also "date" as noun
+  'which', // /usr/bin/which - also "which one"
+  'where', // zsh builtin - also "where is"
+  'what', // zsh alias sometimes - also "what is"
+
+  // Shell builtins that conflict with English
+  'true', // Shell builtin - also "true" as adjective
+  'false', // Shell builtin - also "false" as adjective
+  'wait', // Shell builtin - also "wait a moment"
+  'read', // Shell builtin - also "read this"
+  'let', // Shell keyword - also "let me..."
+  'type', // Shell builtin - also "type of..."
+  'set', // Shell builtin - also "set this up"
+]);
+
+// =============================================================================
+// COMMON NL WORDS: For sync detection of obvious natural language
+// =============================================================================
+//
+// PURPOSE: Improve real-time coloring UX for common phrases.
+//
+// HOW IT WORKS:
+// - If ALL words in input are from this set → definitely NL
+// - Used for phrases like "yes please", "ok thanks", "how are you"
+// - Prevents flicker for obvious NL that would otherwise look command-like
+//
+// WHY NOT ENUMERATE ALL ENGLISH?
+// - Impossible to be complete
+// - Async `which` validation catches everything we miss
+// - Sync detection is just for UX - final mode is async-validated
+//
+// WHAT TO ADD:
+// - Only words needed to pass specific test cases
+// - Common responses, greetings, question words, pronouns, auxiliaries
+// - Do NOT add obscure words - let `which` handle them
+// =============================================================================
+
+/**
+ * Words that are definitely NOT shell commands.
+ * If ALL words in input are from this set, it's NL without needing `which`.
+ *
+ * This list should be TEST-DRIVEN: add words only when tests require them.
  */
 const NL_ONLY_WORDS = new Set([
-  // Responses
+  // Common responses (tested: "yes please", "ok thanks")
   'yes',
   'no',
   'ok',
   'okay',
   'sure',
   'thanks',
-  'thank',
-  'you',
   'please',
+
+  // Greetings (tested: "hi", "hello")
   'hi',
   'hello',
   'hey',
   'bye',
-  'goodbye',
-  // Common words
-  'the',
-  'a',
-  'an',
+
+  // Pronouns (needed for "can you...", "how do I...")
+  'you',
+  'i',
+  'me',
+  'my',
+  'we',
+  'us',
+  'our',
+  'it',
+  'this',
+  'that',
+
+  // Question words (tested: "what does this do", "how are you")
+  'what',
+  'how',
+  'why',
+  'when',
+  'where',
+  'which',
+  'who',
+
+  // Auxiliaries (needed for "can you help", "do you know")
+  'do',
+  'does',
+  'did',
   'is',
   'are',
   'was',
   'were',
   'be',
-  'been',
-  'being',
   'have',
   'has',
   'had',
-  'do',
-  'does',
-  'did',
-  'will',
-  'would',
-  'could',
-  'should',
-  'may',
-  'might',
-  'must',
   'can',
+  'could',
+  'would',
+  'will',
+  'should',
+
+  // Common prepositions/articles (needed for multi-word NL)
+  'the',
+  'a',
+  'an',
   'to',
   'of',
   'in',
@@ -160,91 +244,24 @@ const NL_ONLY_WORDS = new Set([
   'at',
   'by',
   'from',
-  'as',
-  'into',
-  'through',
-  'about',
-  'that',
-  'this',
-  'it',
-  'what',
-  'which',
-  'who',
-  'how',
-  'why',
-  'when',
-  'where',
-  'i',
-  'me',
-  'my',
-  'we',
-  'us',
-  'our',
-  'and',
-  'or',
-  'but',
-  'if',
-  'then',
-  'else',
-  'so',
-  'not',
-  'all',
-  'some',
-  'any',
-  'each',
-  'every',
-  'both',
-  'more',
-  'most',
-  'other',
-  'just',
-  'only',
-  'also',
-  'very',
-  'really',
-  'now',
-  'here',
-  'there',
-  'up',
-  'out',
-  'new',
-  'good',
-  'great',
-  'well',
-  'thing',
-  'things',
-  'like',
-  'want',
-  'need',
+
+  // Common verbs/words that appear in NL phrases
+  'help',
+  'give',
+  'tell',
+  'show',
   'know',
   'think',
-  'see',
-  'get',
-  'go',
-  'come',
-  'say',
-  'make',
-  'take',
-  'give',
-  'use',
-  'find',
-  'tell',
-  'work',
-  'try',
-  'ask',
-  'seem',
-  'feel',
-  'look',
-  'even',
-  'much',
-  'back',
-  'still',
-  'after',
-  'again',
-  'never',
-  'always',
-  'often',
-  'before',
+  'want',
+  'need',
+  'about',
+  'out',
+  'up',
+  'just',
+  'more',
+  'some',
+  'all',
+  'thing',
 ]);
 
 /**
@@ -265,19 +282,12 @@ function isAllNaturalLanguageWords(trimmed: string): boolean {
 }
 
 /**
- * Question words that strongly indicate natural language when at start of multi-word input.
+ * Question words at start of multi-word input → NL.
+ * Note: "who", "which", "where", "what" are also shell commands on some systems,
+ * but when followed by NL words they're clearly questions.
+ * TEST-DRIVEN: only add words that tests require.
  */
-const QUESTION_WORDS = new Set([
-  'what',
-  'how',
-  'why',
-  'when',
-  'where',
-  'who',
-  'which',
-  'whose',
-  'whom',
-]);
+const QUESTION_WORDS = new Set(['what', 'how', 'why', 'when', 'where', 'who', 'which']);
 
 /**
  * Check if input looks like a natural language question.
@@ -294,25 +304,12 @@ function looksLikeQuestion(trimmed: string, firstWord: string): boolean {
 }
 
 /**
- * Modal verbs that start request patterns.
- * "can you...", "could you...", "would you...", etc.
+ * Request patterns: modal verb + pronoun → NL.
+ * "can you...", "could you...", "please help...", etc.
+ * TEST-DRIVEN: only add patterns that tests require.
  */
-const REQUEST_STARTERS = new Set([
-  'can',
-  'could',
-  'would',
-  'will',
-  'should',
-  'might',
-  'may',
-  'please',
-  'kindly',
-]);
-
-/**
- * Pronouns that commonly follow request starters.
- */
-const REQUEST_PRONOUNS = new Set(['you', 'we', 'i', 'someone', 'anybody', 'anyone']);
+const REQUEST_STARTERS = new Set(['can', 'could', 'would', 'will', 'should', 'please']);
+const REQUEST_PRONOUNS = new Set(['you', 'we', 'i']);
 
 /**
  * Check if input looks like a natural language request.
