@@ -271,24 +271,36 @@ export class InputReader {
 
   // Track menu state for ephemeral display
   private menuLinesShown = 0;
+  private menuItems: string[] = []; // Command names in the menu
+  private menuSelectedIndex = -1; // -1 means no selection (user is typing)
 
   /**
    * Show command menu below current line (ephemeral - will be cleared on next keypress).
+   * @param selectedIndex - Index of highlighted item (-1 for none)
    */
-  private showCommandMenu(): void {
+  private showCommandMenu(selectedIndex = -1): void {
     // Skip cursor control if not TTY
     if (!isTTY) return;
 
     const commands = Array.from(this.commands.entries());
-    const menuLines = commands.map(
-      ([name, cmd]) =>
-        `  ${colors.slashCommand(`/${name.padEnd(10)}`)} ${colors.muted(cmd.description)}`
-    );
+    this.menuItems = commands.map(([name]) => name);
+    this.menuSelectedIndex = selectedIndex;
+
+    const menuLines = commands.map(([name, cmd], index) => {
+      const isSelected = index === selectedIndex;
+      if (isSelected) {
+        // Highlight selected item with inverse colors
+        return `  ${colors.bold(`→ /${name.padEnd(10)}`)} ${cmd.description}`;
+      }
+      return `  ${colors.slashCommand(`  /${name.padEnd(10)}`)} ${colors.muted(cmd.description)}`;
+    });
 
     // Use save/restore cursor to show menu below without disrupting input
     process.stdout.write('\x1b[s'); // Save cursor position
     process.stdout.write('\n'); // Move to next line
-    process.stdout.write(`${colors.muted('Commands:')}\n`);
+    process.stdout.write(
+      `${colors.muted('Commands:')} ${colors.muted('↑↓ navigate, Tab complete, Enter select')}\n`
+    );
     for (const line of menuLines) {
       process.stdout.write(`${line}\n`);
     }
@@ -300,8 +312,9 @@ export class InputReader {
 
   /**
    * Clear the ephemeral menu if shown.
+   * @param resetSelection - Whether to also reset the selection state (default: false)
    */
-  private clearCommandMenu(): void {
+  private clearCommandMenu(resetSelection = false): void {
     // Skip cursor control if not TTY
     if (!isTTY) return;
 
@@ -312,6 +325,11 @@ export class InputReader {
       process.stdout.write('\x1b[J');
       process.stdout.write('\x1b[u'); // Restore cursor
       this.menuLinesShown = 0;
+    }
+
+    if (resetSelection) {
+      this.menuSelectedIndex = -1;
+      this.menuItems = [];
     }
   }
 
@@ -352,9 +370,53 @@ export class InputReader {
         return;
       }
 
-      // Any other keypress while menu is shown - clear the menu
+      // Handle arrow key navigation when menu is shown
+      if (menuShownForCurrentInput && this.menuItems.length > 0) {
+        if (key.name === 'down') {
+          // Move selection down
+          const newIndex =
+            this.menuSelectedIndex < this.menuItems.length - 1 ? this.menuSelectedIndex + 1 : 0;
+          this.clearCommandMenu();
+          this.showCommandMenu(newIndex);
+          return;
+        }
+        if (key.name === 'up') {
+          // Move selection up
+          const newIndex =
+            this.menuSelectedIndex > 0 ? this.menuSelectedIndex - 1 : this.menuItems.length - 1;
+          this.clearCommandMenu();
+          this.showCommandMenu(newIndex);
+          return;
+        }
+        if (key.name === 'return' && this.menuSelectedIndex >= 0) {
+          // Select the highlighted item
+          const selectedCommand = this.menuItems[this.menuSelectedIndex];
+          if (selectedCommand && this.rl) {
+            // Clear current line and insert selected command
+            this.clearCommandMenu();
+            // Clear the current input line
+            process.stdout.write('\x1b[2K\r');
+            // Write prompt and selected command
+            process.stdout.write(
+              `${colors.inputPrompt(`${promptChars.input} `)}${inputColors.slashCommand}/${selectedCommand}`
+            );
+            // Update readline's internal line buffer
+            // We need to simulate the input by writing to readline
+            (this.rl as readline.Interface & { line: string; cursor: number }).line =
+              `/${selectedCommand}`;
+            (this.rl as readline.Interface & { line: string; cursor: number }).cursor =
+              selectedCommand.length + 1;
+          }
+          menuShownForCurrentInput = false;
+          this.menuSelectedIndex = -1;
+          this.menuItems = [];
+          return;
+        }
+      }
+
+      // Any other keypress while menu is shown - clear the menu and reset selection
       if (menuShownForCurrentInput && key.sequence !== '/') {
-        this.clearCommandMenu();
+        this.clearCommandMenu(true);
       }
 
       // Update mode detection and colors on each keypress
@@ -384,11 +446,11 @@ export class InputReader {
 
       // Reset menu flag and color on Enter or when line is cleared completely
       if (key.name === 'return') {
-        this.clearCommandMenu();
+        this.clearCommandMenu(true);
         menuShownForCurrentInput = false;
         currentMode = 'nl';
       } else if (key.name === 'backspace' && currentLine.length <= 1) {
-        this.clearCommandMenu();
+        this.clearCommandMenu(true);
         menuShownForCurrentInput = false;
         currentMode = 'nl';
         // Switch back to natural language color
