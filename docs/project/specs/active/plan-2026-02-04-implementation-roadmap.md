@@ -378,6 +378,13 @@ From main spec "Critical Implementation Details":
 | 7   | Prompt Indicator      | How to show current mode?                 | Color only (post-submit)         |
 | 8   | Ambiguous Commands    | Handle `test`, `time`, etc.?              | Needs user testing               |
 | 9   | Long-Running Commands | Capture vs stream output?                 | Capture for v0.1                 |
+| 10  | Shell Builtins        | Handle `history`, `cd`, `export`, etc.?   | Route to clam equivalents        |
+
+**Note on #10 (Shell Builtins):** Commands like `history` are shell builtins that don't work in subprocess execution. These should be intercepted and routed to clam equivalents:
+
+- `history` → `/history` (show clam command history)
+- `cd <dir>` → Change clam's working directory
+- `export VAR=val` → Set environment variable for session
 
 ---
 

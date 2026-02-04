@@ -114,13 +114,25 @@ export function createOutputWriter(options: OutputWriterOptions = {}): OutputWri
   let spinnerInterval: ReturnType<typeof setInterval> | null = null;
   const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
   let spinnerIndex = 0;
+  // Track whether last output ended with a newline (for clean formatting)
+  let lastEndedWithNewline = true;
 
   const write = (text: string): void => {
     stream.write(text);
+    lastEndedWithNewline = text.endsWith('\n');
   };
 
   const writeLine = (text: string): void => {
     stream.write(`${text}\n`);
+    lastEndedWithNewline = true;
+  };
+
+  // Ensure we're on a fresh line before important output
+  const ensureNewline = (): void => {
+    if (!lastEndedWithNewline) {
+      stream.write('\n');
+      lastEndedWithNewline = true;
+    }
   };
 
   return {
@@ -192,6 +204,9 @@ export function createOutputWriter(options: OutputWriterOptions = {}): OutputWri
         stream.write('\r                              \r');
       }
 
+      // Ensure we're on a fresh line before tool header
+      ensureNewline();
+
       // Add separator between consecutive tool headers
       if (_lastToolHeader) {
         writeLine(symbols.separator);
@@ -261,6 +276,9 @@ export function createOutputWriter(options: OutputWriterOptions = {}): OutputWri
       //   d = deny once      D = deny always
       //
       // Box drawing with semantic colors for clear visual separation
+
+      // Ensure we're on a fresh line before permission box
+      ensureNewline();
 
       const box = colors.permissionBox;
 
@@ -348,7 +366,9 @@ export function createOutputWriter(options: OutputWriterOptions = {}): OutputWri
           '\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518'
         )
       );
-      write(colors.bold('Choice (a/A/d/D): '));
+      // Build prompt from actual available keys
+      const keyList = optionKeys.map((o) => o.key).join('/');
+      write(colors.bold(`Choice (${keyList}): `));
     },
 
     thinking(charCount: number): void {
