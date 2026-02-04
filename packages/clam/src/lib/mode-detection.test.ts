@@ -13,7 +13,9 @@ import {
   createModeDetector,
   hasShellOperators,
   isExplicitShell,
+  isExplicitNL,
   stripShellTrigger,
+  stripNLTrigger,
   type ModeDetector,
 } from './mode-detection.js';
 import type { ShellModule } from './shell.js';
@@ -45,6 +47,15 @@ describe('ModeDetection', () => {
       expect(detector.detectModeSync('/help')).toBe('slash');
       expect(detector.detectModeSync('/quit')).toBe('slash');
       expect(detector.detectModeSync('/commit message')).toBe('slash');
+      // Unknown slash commands are still treated as slash (not shell)
+      expect(detector.detectModeSync('/unknown')).toBe('slash');
+    });
+
+    it('should detect absolute paths as shell, not slash', () => {
+      // Absolute paths like /bin/ls are shell commands, not slash commands
+      expect(detector.detectModeSync('/bin/ls')).toBe('shell');
+      expect(detector.detectModeSync('/usr/bin/grep foo')).toBe('shell');
+      expect(detector.detectModeSync('/home/user/script.sh')).toBe('shell');
     });
 
     it('should detect explicit shell trigger', () => {
@@ -85,6 +96,31 @@ describe('ModeDetection', () => {
       // Sync detection guesses shell for command-like words
       expect(detector.detectModeSync('ls -la')).toBe('shell');
       expect(detector.detectModeSync('git status')).toBe('shell');
+    });
+
+    it('should detect explicit NL trigger', () => {
+      expect(detector.detectModeSync('?how do I list files')).toBe('nl');
+      expect(detector.detectModeSync('?ls')).toBe('nl');
+    });
+
+    it('should detect natural language words as NL', () => {
+      // Single NL words
+      expect(detector.detectModeSync('yes')).toBe('nl');
+      expect(detector.detectModeSync('no')).toBe('nl');
+      expect(detector.detectModeSync('ok')).toBe('nl');
+      // Multiple NL words
+      expect(detector.detectModeSync('yes please')).toBe('nl');
+      expect(detector.detectModeSync('ok thanks')).toBe('nl');
+      expect(detector.detectModeSync('sure thing')).toBe('nl');
+    });
+
+    it('should detect ambiguous commands with NL words as NL', () => {
+      // "test" alone is ambiguous, treated as NL for safety
+      expect(detector.detectModeSync('test')).toBe('nl');
+      // "test this" has NL word, so it's NL
+      expect(detector.detectModeSync('test this out')).toBe('nl');
+      // But "test -f file.txt" looks like shell (no NL words after)
+      expect(detector.detectModeSync('test -f file.txt')).toBe('shell');
     });
   });
 
@@ -180,6 +216,37 @@ describe('ModeDetection', () => {
 
     it('should return unchanged if no prefix', () => {
       expect(stripShellTrigger('ls')).toBe('ls');
+    });
+  });
+
+  describe('isExplicitNL', () => {
+    it('should detect ? prefix', () => {
+      expect(isExplicitNL('?how do I')).toBe(true);
+      expect(isExplicitNL('?ls')).toBe(true);
+    });
+
+    it('should handle whitespace', () => {
+      expect(isExplicitNL('  ?query')).toBe(true);
+    });
+
+    it('should return false without prefix', () => {
+      expect(isExplicitNL('how do I')).toBe(false);
+      expect(isExplicitNL('what?')).toBe(false);
+    });
+  });
+
+  describe('stripNLTrigger', () => {
+    it('should remove ? prefix', () => {
+      expect(stripNLTrigger('?how do I')).toBe('how do I');
+      expect(stripNLTrigger('?ls')).toBe('ls');
+    });
+
+    it('should handle whitespace', () => {
+      expect(stripNLTrigger('  ?query')).toBe('query');
+    });
+
+    it('should return unchanged if no prefix', () => {
+      expect(stripNLTrigger('how do I')).toBe('how do I');
     });
   });
 });
