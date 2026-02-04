@@ -125,8 +125,13 @@ export class AcpClient {
     });
 
     // Create NDJSON streams
-    const input = Writable.toWeb(this.process.stdin!);
-    const stdout = Readable.toWeb(this.process.stdout!) as ReadableStream<Uint8Array>;
+    // stdin/stdout are guaranteed non-null when spawn uses stdio: ['pipe', 'pipe', ...]
+    const { stdin, stdout: stdoutStream } = this.process;
+    if (!stdin || !stdoutStream) {
+      throw new Error('Failed to create stdio streams for agent process');
+    }
+    const input = Writable.toWeb(stdin);
+    const stdout = Readable.toWeb(stdoutStream) as ReadableStream<Uint8Array>;
 
     // Create the ACP connection
     const stream = acp.ndJsonStream(input, stdout);

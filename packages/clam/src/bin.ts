@@ -7,6 +7,7 @@
  * All output goes through OutputWriter - NO console.log() in this file.
  */
 
+import { createRequire } from 'node:module';
 import { createAcpClient } from './lib/acp.js';
 import { ensureConfigDir, loadConfig } from './lib/config.js';
 import { colors } from './lib/formatting.js';
@@ -93,11 +94,24 @@ function showHelp(output: ReturnType<typeof createOutputWriter>): void {
 }
 
 /**
+ * Get version from package.json.
+ */
+function getVersion(): string {
+  try {
+    const require = createRequire(import.meta.url);
+    const pkg = require('../package.json') as { version: string };
+    return pkg.version;
+  } catch {
+    return '0.1.0'; // Fallback
+  }
+}
+
+/**
  * Show version.
  */
 function showVersion(output: ReturnType<typeof createOutputWriter>): void {
-  // TODO: Read from package.json
-  output.writeLine('clam 0.1.0');
+  const version = getVersion();
+  output.writeLine(`clam ${version}`);
 }
 
 /**

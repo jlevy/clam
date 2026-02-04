@@ -110,9 +110,6 @@ export function createOutputWriter(options: OutputWriterOptions = {}): OutputWri
   let spinnerInterval: ReturnType<typeof setInterval> | null = null;
   const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
   let spinnerIndex = 0;
-  // Track state for streaming markdown
-  let _inCodeBlock = false;
-  let _streamBuffer = ''; // Buffer for detecting ``` across chunks
 
   const write = (text: string): void => {
     stream.write(text);
@@ -336,9 +333,6 @@ export function createOutputWriter(options: OutputWriterOptions = {}): OutputWri
       thinkingChars = 0;
       // Reset tool separator state
       _lastToolHeader = false;
-      // Reset markdown state
-      _inCodeBlock = false;
-      _streamBuffer = '';
     },
 
     streamChunk(text: string): void {
