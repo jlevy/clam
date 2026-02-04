@@ -3,7 +3,6 @@ title: Research Brief - Terminal UI Libraries
 description: Survey of rich terminal libraries for TypeScript and bindable languages
 author: Joshua Levy with Claude assistance
 ---
-
 # Research: Terminal UI Libraries for Modern TypeScript CLIs
 
 **Date:** 2026-02-03 (last updated 2026-02-03)
@@ -50,7 +49,7 @@ This research informs the clam-code project’s input handling strategy.
 - Full terminal multiplexers (tmux, screen)
 - GUI toolkits
 
----
+* * *
 
 ## Findings
 
@@ -73,28 +72,28 @@ These extend Node’s built-in readline with additional features.
 
 **Built-in Emacs keybindings (work automatically):**
 
-| Category       | Keybinding        | Action                           |
-| -------------- | ----------------- | -------------------------------- |
-| **Navigation** | `Ctrl+A`          | Beginning of line                |
-|                | `Ctrl+E`          | End of line                      |
-|                | `Ctrl+B`          | Back one character               |
-|                | `Ctrl+F`          | Forward one character            |
-|                | `Alt+B`           | Back one word                    |
-|                | `Alt+F`           | Forward one word                 |
-| **Editing**    | `Ctrl+K`          | Kill to end of line              |
-|                | `Ctrl+U`          | Kill to beginning of line        |
-|                | `Ctrl+W`          | Kill previous word               |
-|                | `Alt+D`           | Kill next word                   |
-|                | `Ctrl+Y`          | Yank (paste) killed text         |
-|                | `Ctrl+T`          | Transpose characters             |
-|                | `Alt+T`           | Transpose words                  |
-|                | `Ctrl+H`          | Delete backward (backspace)      |
-|                | `Ctrl+D`          | Delete forward (or EOF if empty) |
-| **History**    | `Up` / `Ctrl+P`   | Previous history                 |
-|                | `Down` / `Ctrl+N` | Next history                     |
-| **Other**      | `Ctrl+L`          | Clear screen                     |
-|                | `Ctrl+C`          | SIGINT (interrupt)               |
-|                | `Tab`             | Completion (via completer)       |
+| Category | Keybinding | Action |
+| --- | --- | --- |
+| **Navigation** | `Ctrl+A` | Beginning of line |
+|  | `Ctrl+E` | End of line |
+|  | `Ctrl+B` | Back one character |
+|  | `Ctrl+F` | Forward one character |
+|  | `Alt+B` | Back one word |
+|  | `Alt+F` | Forward one word |
+| **Editing** | `Ctrl+K` | Kill to end of line |
+|  | `Ctrl+U` | Kill to beginning of line |
+|  | `Ctrl+W` | Kill previous word |
+|  | `Alt+D` | Kill next word |
+|  | `Ctrl+Y` | Yank (paste) killed text |
+|  | `Ctrl+T` | Transpose characters |
+|  | `Alt+T` | Transpose words |
+|  | `Ctrl+H` | Delete backward (backspace) |
+|  | `Ctrl+D` | Delete forward (or EOF if empty) |
+| **History** | `Up` / `Ctrl+P` | Previous history |
+|  | `Down` / `Ctrl+N` | Next history |
+| **Other** | `Ctrl+L` | Clear screen |
+|  | `Ctrl+C` | SIGINT (interrupt) |
+|  | `Tab` | Completion (via completer) |
 
 **Note:** `Alt+*` keybindings use escape sequences and may not work in all terminals,
 especially over SSH or in certain terminal emulators.
@@ -128,7 +127,7 @@ const rl = readline.createInterface({
 **Verdict:** Good baseline for scrollback-safe completion.
 Use for slash commands.
 
----
+* * *
 
 #### 1.2 Google’s zx
 
@@ -159,7 +158,7 @@ let answer = await question('What is your name? ');
 
 **Verdict:** Good for scripts, but no advantage over raw readline for our use case.
 
----
+* * *
 
 #### 1.3 readline-sync
 
@@ -171,7 +170,7 @@ let answer = await question('What is your name? ');
 
 **Verdict:** Avoid - synchronous API is problematic, unmaintained.
 
----
+* * *
 
 ### Category 2: Interactive Prompt Libraries
 
@@ -183,13 +182,13 @@ Full-featured prompt libraries with rich UX.
 
 **Scrollback compatible:** Partial - depends on prompt type
 
-| Prompt Type  | Scrollback Safe? | Notes                           |
-| ------------ | ---------------- | ------------------------------- |
-| input        | Yes              | Basic text input                |
-| confirm      | Yes              | y/n prompt                      |
-| list         | No               | Uses cursor positioning         |
-| checkbox     | No               | Uses cursor positioning         |
-| autocomplete | No               | Renders menu with cursor tricks |
+| Prompt Type | Scrollback Safe? | Notes |
+| --- | --- | --- |
+| input | Yes | Basic text input |
+| confirm | Yes | y/n prompt |
+| list | No | Uses cursor positioning |
+| checkbox | No | Uses cursor positioning |
+| autocomplete | No | Renders menu with cursor tricks |
 
 **Features:**
 
@@ -207,7 +206,7 @@ Not scrollback-safe.
 **Verdict:** Use for simple prompts (input, confirm).
 Avoid for autocomplete.
 
----
+* * *
 
 #### 2.2 prompts
 
@@ -233,7 +232,7 @@ Avoid for autocomplete.
 **Verdict:** Same trade-offs as Inquirer.
 Not for clam-code autocomplete.
 
----
+* * *
 
 #### 2.3 Enquirer
 
@@ -252,7 +251,7 @@ Not for clam-code autocomplete.
 
 **Verdict:** Not suitable - uses cursor positioning extensively.
 
----
+* * *
 
 ### Category 3: TUI Frameworks
 
@@ -284,7 +283,7 @@ Full terminal UI frameworks (typically NOT scrollback-compatible).
 **Verdict:** Great for full TUI apps.
 Not for scrollback-safe CLI.
 
----
+* * *
 
 #### 3.2 Blessed / Blessed-contrib
 
@@ -306,7 +305,7 @@ Not for scrollback-safe CLI.
 **Verdict:** Legacy.
 Not suitable for new projects.
 
----
+* * *
 
 #### 3.3 Terminal-kit
 
@@ -338,7 +337,7 @@ const input = await term.inputField({
 
 **Verdict:** Worth exploring - has inline mode that may be scrollback-safe.
 
----
+* * *
 
 ### Category 4: Rust Libraries with Node.js Bindings
 
@@ -361,7 +360,7 @@ const input = await term.inputField({
 **Verdict:** Would need custom bindings.
 Very capable but significant work.
 
----
+* * *
 
 #### 4.2 Ratatui (Rust)
 
@@ -375,7 +374,7 @@ Very capable but significant work.
 
 **Verdict:** Not relevant - full TUI, no Node bindings.
 
----
+* * *
 
 #### 4.3 Rustyline (Rust)
 
@@ -410,7 +409,7 @@ impl Hinter for MyHinter {
 **Verdict:** Excellent candidate if we build napi-rs bindings.
 Has ghost text!
 
----
+* * *
 
 #### 4.4 Reedline (Rust) - Nushell’s Line Editor
 
@@ -449,7 +448,7 @@ pub trait Hinter: Send {
 **Verdict:** Excellent modern alternative to rustyline.
 Powers Nushell. Would need napi-rs bindings but has superior hint/completion system.
 
----
+* * *
 
 #### 4.5 Linenoise (C) - Minimal Readline
 
@@ -480,7 +479,7 @@ Used by Redis, MongoDB, Android.
 Would need N-API bindings.
 Simpler than rustyline but fewer features.
 
----
+* * *
 
 ### Category 5: Go Libraries with Potential Bindings
 
@@ -496,7 +495,7 @@ Simpler than rustyline but fewer features.
 
 **Verdict:** Great Go TUI, but not bindable to Node easily.
 
----
+* * *
 
 #### 5.2 go-prompt (Go)
 
@@ -515,7 +514,7 @@ Simpler than rustyline but fewer features.
 
 **Verdict:** Not easily bindable, not scrollback-safe anyway.
 
----
+* * *
 
 ### Category 6: Python Libraries (Pattern Reference)
 
@@ -550,7 +549,7 @@ positioning. When user types, old text is overwritten naturally.
 **Verdict:** Best-in-class.
 Study for patterns, but can’t use directly in Node.
 
----
+* * *
 
 #### 6.2 rich (Python)
 
@@ -572,7 +571,7 @@ Study for patterns, but can’t use directly in Node.
 **Verdict:** Pattern reference for pretty output.
 Not input handling.
 
----
+* * *
 
 ### Category 7: Low-Level Terminal Libraries
 
@@ -593,7 +592,7 @@ Not input handling.
 
 **Verdict:** Building block, not a solution.
 
----
+* * *
 
 #### 7.2 picocolors / chalk
 
@@ -606,7 +605,7 @@ Not input handling.
 **Verdict:** Already using picocolors.
 Good choice.
 
----
+* * *
 
 ### Category 8: Autocomplete-Specific Libraries
 
@@ -618,7 +617,7 @@ Good choice.
 
 **Verdict:** Avoid.
 
----
+* * *
 
 #### 8.2 Omelette
 
@@ -632,35 +631,35 @@ Good choice.
 
 **Verdict:** Different use case - generates shell completion files.
 
----
+* * *
 
 ## Scrollback Compatibility Summary
 
-| Library                   | Language | Scrollback Safe | Ghost Text | Emacs Keys | Vi Mode | Ctrl+R | Active | Notes                 |
-| ------------------------- | -------- | --------------- | ---------- | ---------- | ------- | ------ | ------ | --------------------- |
-| **Node.js Native**        |          |                 |            |            |         |        |        |                       |
-| Node readline             | TS/JS    | Yes             | No         | Yes        | No      | No     | Yes    | Built-in, basic       |
-| Google zx                 | TS/JS    | Yes             | No         | Yes        | No      | No     | Yes    | Readline wrapper      |
-| terminal-kit              | TS/JS    | Partial         | No         | Yes        | No      | No     | Yes    | Has inline mode       |
-| @inquirer/input           | TS/JS    | Yes             | No         | Yes        | No      | No     | Yes    | Basic input only      |
-| prompts                   | TS/JS    | No              | No         | Partial    | No      | No     | Slow   | Dropdown menus        |
-| **TUI Frameworks**        |          |                 |            |            |         |        |        |                       |
-| Ink                       | TS/JS    | No              | N/A        | N/A        | N/A     | N/A    | Yes    | Full TUI (React)      |
-| Blessed                   | JS       | No              | N/A        | N/A        | N/A     | N/A    | No     | Legacy, unmaintained  |
-| **Rust (needs bindings)** |          |                 |            |            |         |        |        |                       |
-| Rustyline                 | Rust     | Yes             | Yes        | Yes        | Yes     | Yes    | Yes    | Mature, hints support |
-| Reedline                  | Rust     | Yes             | Yes        | Yes        | Yes     | Yes    | Yes    | Powers Nushell        |
-| Crossterm                 | Rust     | N/A             | N/A        | N/A        | N/A     | N/A    | Yes    | Low-level terminal    |
-| **C (needs bindings)**    |          |                 |            |            |         |        |        |                       |
-| Linenoise                 | C        | Yes             | Yes        | Yes        | No      | No     | Yes    | Minimal (~800 LOC)    |
-| **Python (reference)**    |          |                 |            |            |         |        |        |                       |
-| prompt_toolkit            | Python   | Yes             | Yes        | Yes        | Yes     | Yes    | Yes    | Gold standard         |
-| rich                      | Python   | Yes             | N/A        | N/A        | N/A     | N/A    | Yes    | Output formatting     |
-| **Go (hard to bind)**     |          |                 |            |            |         |        |        |                       |
-| Bubbletea                 | Go       | No              | N/A        | N/A        | N/A     | N/A    | Yes    | Full TUI framework    |
-| go-prompt                 | Go       | No              | No         | Partial    | No      | No     | Slow   | Dropdown menus        |
+| Library | Language | Scrollback Safe | Ghost Text | Emacs Keys | Vi Mode | Ctrl+R | Active | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| **Node.js Native** |  |  |  |  |  |  |  |  |
+| Node readline | TS/JS | Yes | No | Yes | No | No | Yes | Built-in, basic |
+| Google zx | TS/JS | Yes | No | Yes | No | No | Yes | Readline wrapper |
+| terminal-kit | TS/JS | Partial | No | Yes | No | No | Yes | Has inline mode |
+| @inquirer/input | TS/JS | Yes | No | Yes | No | No | Yes | Basic input only |
+| prompts | TS/JS | No | No | Partial | No | No | Slow | Dropdown menus |
+| **TUI Frameworks** |  |  |  |  |  |  |  |  |
+| Ink | TS/JS | No | N/A | N/A | N/A | N/A | Yes | Full TUI (React) |
+| Blessed | JS | No | N/A | N/A | N/A | N/A | No | Legacy, unmaintained |
+| **Rust (needs bindings)** |  |  |  |  |  |  |  |  |
+| Rustyline | Rust | Yes | Yes | Yes | Yes | Yes | Yes | Mature, hints support |
+| Reedline | Rust | Yes | Yes | Yes | Yes | Yes | Yes | Powers Nushell |
+| Crossterm | Rust | N/A | N/A | N/A | N/A | N/A | Yes | Low-level terminal |
+| **C (needs bindings)** |  |  |  |  |  |  |  |  |
+| Linenoise | C | Yes | Yes | Yes | No | No | Yes | Minimal (~800 LOC) |
+| **Python (reference)** |  |  |  |  |  |  |  |  |
+| prompt_toolkit | Python | Yes | Yes | Yes | Yes | Yes | Yes | Gold standard |
+| rich | Python | Yes | N/A | N/A | N/A | N/A | Yes | Output formatting |
+| **Go (hard to bind)** |  |  |  |  |  |  |  |  |
+| Bubbletea | Go | No | N/A | N/A | N/A | N/A | Yes | Full TUI framework |
+| go-prompt | Go | No | No | Partial | No | No | Slow | Dropdown menus |
 
----
+* * *
 
 ## Options Considered
 
@@ -689,7 +688,7 @@ Good choice.
 
 **Effort:** Low
 
----
+* * *
 
 ### Option B: terminal-kit Inline Mode
 
@@ -715,7 +714,7 @@ Good choice.
 
 **Effort:** Medium
 
----
+* * *
 
 ### Option C: Rustyline via napi-rs Bindings
 
@@ -741,7 +740,7 @@ Good choice.
 
 **Effort:** High
 
----
+* * *
 
 ### Option C2: Reedline via napi-rs Bindings
 
@@ -772,7 +771,7 @@ rustyline).
 **Note:** If building Rust bindings, reedline is likely the better choice over rustyline
 due to its modern architecture and active Nushell development.
 
----
+* * *
 
 ### Option D: Hybrid Approach (Recommended)
 
@@ -809,7 +808,7 @@ due to its modern architecture and active Nushell development.
 
 **Effort:** Low → Medium over time
 
----
+* * *
 
 ## Recommendations
 
@@ -834,7 +833,7 @@ due to its modern architecture and active Nushell development.
    - If we want native ghost text without Clam
    - Significant investment, consider carefully
 
----
+* * *
 
 ## Implementation Notes for Option D
 
@@ -878,7 +877,7 @@ When user presses Tab and multiple options exist:
 
 readline handles this automatically - it prints options and re-prompts.
 
----
+* * *
 
 ## Next Steps
 
@@ -888,7 +887,7 @@ readline handles this automatically - it prints options and re-prompts.
 - [ ] Spike terminal-kit inline mode for scrollback safety
 - [ ] Document findings for future ghost text implementation
 
----
+* * *
 
 ## References
 

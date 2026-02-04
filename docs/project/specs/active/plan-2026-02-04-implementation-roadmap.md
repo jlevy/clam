@@ -8,7 +8,9 @@
 
 ## Overview
 
-This document consolidates all remaining work for clam v0.1, organized into phases with dependencies and priorities. Work is tracked via tbd beads linked throughout.
+This document consolidates all remaining work for clam v0.1, organized into phases with
+dependencies and priorities.
+Work is tracked via tbd beads linked throughout.
 
 ## Current State
 
@@ -41,7 +43,7 @@ This document consolidates all remaining work for clam v0.1, organized into phas
 
 - npm publishing (`clam-ekdv`)
 
----
+* * *
 
 ## Phase 0: Critical Bug Fixes (P0) ✅ COMPLETE
 
@@ -51,10 +53,10 @@ This document consolidates all remaining work for clam v0.1, organized into phas
 
 ### 0.1 Silent File Operation Errors ✅
 
-**Bead:** `clam-q3p0` (CLOSED)
-**Location:** `packages/clam/src/lib/acp.ts:371-393`
+**Bead:** `clam-q3p0` (CLOSED) **Location:** `packages/clam/src/lib/acp.ts:371-393`
 
-**Problem:** `readTextFile` returns empty string on error, `writeTextFile` returns success on error. Agent thinks operations succeeded.
+**Problem:** `readTextFile` returns empty string on error, `writeTextFile` returns
+success on error. Agent thinks operations succeeded.
 
 **Resolution:** Fixed - now throws errors with descriptive messages.
 
@@ -80,14 +82,15 @@ async writeTextFile(params: acp.WriteTextFileRequest): Promise<acp.WriteTextFile
 
 ### 0.2 Shell Injection in Editor Spawn ✅
 
-**Bead:** `clam-kiod` (CLOSED)
-**Location:** `packages/clam/src/lib/input.ts:224-228`
+**Bead:** `clam-kiod` (CLOSED) **Location:** `packages/clam/src/lib/input.ts:224-228`
 
-**Problem:** `shell: true` with user-controlled EDITOR env var allows arbitrary command execution.
+**Problem:** `shell: true` with user-controlled EDITOR env var allows arbitrary command
+execution.
 
-**Resolution:** Removed /edit command entirely - it was not useful and added complexity/risk.
+**Resolution:** Removed /edit command entirely - it was not useful and added
+complexity/risk.
 
----
+* * *
 
 ## Phase 1: High Priority Bug Fixes (P1) - Mostly Complete
 
@@ -95,8 +98,7 @@ async writeTextFile(params: acp.WriteTextFileRequest): Promise<acp.WriteTextFile
 
 ### 1.1 Async Cleanup Not Awaited ✅
 
-**Bead:** `clam-pz34` (CLOSED)
-**Location:** `packages/clam/src/bin.ts:335-345`
+**Bead:** `clam-pz34` (CLOSED) **Location:** `packages/clam/src/bin.ts:335-345`
 
 **Problem:** SIGINT handler calls `cleanup()` then immediately `process.exit(0)`.
 
@@ -127,8 +129,8 @@ process.on('SIGINT', async () => {
 
 ### 1.2 Infinite Loop on EOF ✅
 
-**Bead:** `clam-oxkg` (CLOSED)
-**Location:** `packages/clam/src/lib/permissions.ts:157-158`
+**Bead:** `clam-oxkg` (CLOSED) **Location:**
+`packages/clam/src/lib/permissions.ts:157-158`
 
 **Problem:** `promptForPermission` loops forever if stdin is closed.
 
@@ -136,17 +138,17 @@ process.on('SIGINT', async () => {
 
 ### 1.3 Temp File Cleanup on Error ✅
 
-**Bead:** `clam-tuef` (CLOSED)
-**Location:** `packages/clam/src/lib/input.ts:253`
+**Bead:** `clam-tuef` (CLOSED) **Location:** `packages/clam/src/lib/input.ts:253`
 
 **Resolution:** No longer applicable - /edit command was removed.
 
 ### 1.4 ACP Command Routing ✅
 
-**Bead:** `clam-76um` (CLOSED)
-**Spec Location:** Main spec, "S.1 Slash Command Framework"
+**Bead:** `clam-76um` (CLOSED) **Spec Location:** Main spec, “S.1 Slash Command
+Framework”
 
-**Task:** Route ACP commands (`/commit`, `/review`, `/model`, etc.) to Claude Code.
+**Task:** Route ACP commands (`/commit`, `/review`, `/model`, etc.)
+to Claude Code.
 
 **Resolution:** Implemented:
 
@@ -167,18 +169,18 @@ process.on('SIGINT', async () => {
 3. Create v0.1.0 tag to trigger release workflow
 4. Verify package available on npm
 
----
+* * *
 
 ## Phase 2: UX Improvements (P2) ✅ COMPLETE
 
 **Goal:** Polish the user experience with commonly expected features.
 
-**All items completed:** Arrow nav (2.1), History (2.2, 2.3), File completion (2.4), TTY checks (2.5), Config validation (2.6), Temp cleanup (2.7), Tests (2.8)
+**All items completed:** Arrow nav (2.1), History (2.2, 2.3), File completion (2.4), TTY
+checks (2.5), Config validation (2.6), Temp cleanup (2.7), Tests (2.8)
 
 ### 2.1 Arrow Key Navigation in Completion Menu ✅
 
-**Bead:** `clam-2vrk` (CLOSED)
-**Location:** `packages/clam/src/lib/input.ts`
+**Bead:** `clam-2vrk` (CLOSED) **Location:** `packages/clam/src/lib/input.ts`
 
 **Resolution:** Implemented Up/Down arrow navigation:
 
@@ -186,12 +188,12 @@ process.on('SIGINT', async () => {
 - Arrow keys navigate through menu items
 - Selected item highlighted with `→` indicator
 - Enter selects the highlighted command
-- Menu shows navigation hint: "↑↓ navigate, Tab complete, Enter select"
+- Menu shows navigation hint: “↑↓ navigate, Tab complete, Enter select”
 
 ### 2.2 Command History Persistence ✅
 
-**Bead:** `clam-gr62` (CLOSED)
-**Spec Location:** Main spec, "Phase 3.5: Unified Command History"
+**Bead:** `clam-gr62` (CLOSED) **Spec Location:** Main spec, “Phase 3.5: Unified Command
+History”
 
 **Resolution:** Implemented:
 
@@ -204,12 +206,12 @@ process.on('SIGINT', async () => {
 
 **Bead:** `clam-julx` (CLOSED)
 
-**Resolution:** Works with readline's built-in history support once history option is passed.
+**Resolution:** Works with readline’s built-in history support once history option is
+passed.
 
 ### 2.4 File Path Tab Completion ✅
 
-**Bead:** `clam-lauj` (CLOSED)
-**Spec Location:** Main spec, "S.2 Autocomplete System"
+**Bead:** `clam-lauj` (CLOSED) **Spec Location:** Main spec, “S.2 Autocomplete System”
 
 **Resolution:** Implemented `completeFilePath()` in input.ts:
 
@@ -223,13 +225,15 @@ process.on('SIGINT', async () => {
 
 **Bead:** `clam-t8sy` (CLOSED)
 
-**Resolution:** Added TTY detection to inputColors in formatting.ts and cursor control in input.ts.
+**Resolution:** Added TTY detection to inputColors in formatting.ts and cursor control
+in input.ts.
 
 ### 2.6 Config Value Validation ✅
 
 **Bead:** `clam-xz1a` (CLOSED)
 
-**Resolution:** Added runtime validation for config values - checks types before assignment.
+**Resolution:** Added runtime validation for config values - checks types before
+assignment.
 
 ### 2.7 Temp Directory Cleanup ✅
 
@@ -241,16 +245,15 @@ process.on('SIGINT', async () => {
 
 **Bead:** `clam-67aa` (CLOSED)
 
-**Tests added:**
-| File | Tests Added |
-|------|-------------|
-| `formatting.test.ts` | 21 tests - colors, symbols, formatToolStatus, truncateLines, formatTimestamp, formatTokenUsage, formatDuration |
-| `config.test.ts` | 13 tests - getConfigDir, getConfigPath, getHistoryPath, loadConfig (defaults, env vars), formatConfig |
-| `input.test.ts` | 4 tests - completer for slash commands, @path completion |
+**Tests added:** | File | Tests Added | |------|-------------| | `formatting.test.ts` |
+21 tests - colors, symbols, formatToolStatus, truncateLines, formatTimestamp,
+formatTokenUsage, formatDuration | | `config.test.ts` | 13 tests - getConfigDir,
+getConfigPath, getHistoryPath, loadConfig (defaults, env vars), formatConfig | |
+`input.test.ts` | 4 tests - completer for slash commands, @path completion |
 
 **Total:** 123 tests across 8 test files (up from 85)
 
----
+* * *
 
 ## Phase 3: Shell Support (P3) ✅ COMPLETE
 
@@ -258,8 +261,7 @@ process.on('SIGINT', async () => {
 
 ### 3.1 Shell Module ✅
 
-**Bead:** `clam-dfmq` (CLOSED)
-**Location:** `src/lib/shell.ts`
+**Bead:** `clam-dfmq` (CLOSED) **Location:** `src/lib/shell.ts`
 
 **Implemented:**
 
@@ -272,8 +274,7 @@ process.on('SIGINT', async () => {
 
 ### 3.2 Mode Detection ✅
 
-**Bead:** `clam-oe1z` (CLOSED)
-**Location:** `src/lib/mode-detection.ts`
+**Bead:** `clam-oe1z` (CLOSED) **Location:** `src/lib/mode-detection.ts`
 
 **Implemented:**
 
@@ -285,8 +286,8 @@ process.on('SIGINT', async () => {
 
 ### 3.3 Input Integration ✅
 
-**Bead:** `clam-qe2g` (CLOSED)
-**Location:** `src/lib/input.ts`, `src/lib/output.ts`, `src/bin.ts`
+**Bead:** `clam-qe2g` (CLOSED) **Location:** `src/lib/input.ts`, `src/lib/output.ts`,
+`src/bin.ts`
 
 **Implemented:**
 
@@ -299,12 +300,14 @@ process.on('SIGINT', async () => {
 
 **Bead:** `clam-5stt` (CLOSED)
 
-**Implemented:** Shows helpful message when single-word input looks like a command but isn't recognized:
+**Implemented:** Shows helpful message when single-word input looks like a command but
+isn’t recognized:
 
-- `"gi" is not a recognized command. Sending to Claude...`
+- `"gi" is not a recognized command.
+  Sending to Claude...`
 - Tip: `Use !command to force shell mode`
 
----
+* * *
 
 ## Phase 4: Code Cleanup (P3) ✅ COMPLETE
 
@@ -332,7 +335,7 @@ process.on('SIGINT', async () => {
 
 **Resolution:** Added explicit null checks with descriptive error messages.
 
----
+* * *
 
 ## Dependency Graph
 
@@ -365,41 +368,43 @@ Phase 3 (Shell)
 └── 3.4 Rejection ─→ depends on 3.2
 ```
 
----
+* * *
 
 ## Open Questions Requiring Decision
 
-From main spec "Critical Implementation Details":
+From main spec “Critical Implementation Details”:
 
-| #   | Topic                 | Question                                  | Recommendation                   |
-| --- | --------------------- | ----------------------------------------- | -------------------------------- |
-| 2   | Working Directory     | Should shell `cd` affect ACP session cwd? | Track in clam, pass to both      |
-| 5   | Mode Toggle Default   | Enabled or disabled by default?           | Disabled, opt-in via `/shell on` |
-| 7   | Prompt Indicator      | How to show current mode?                 | Color only (post-submit)         |
-| 8   | Ambiguous Commands    | Handle `test`, `time`, etc.?              | Needs user testing               |
-| 9   | Long-Running Commands | Capture vs stream output?                 | Capture for v0.1                 |
-| 10  | Shell Builtins        | Handle `history`, `cd`, `export`, etc.?   | Route to clam equivalents        |
+| # | Topic | Question | Recommendation |
+| --- | --- | --- | --- |
+| 2 | Working Directory | Should shell `cd` affect ACP session cwd? | Track in clam, pass to both |
+| 5 | Mode Toggle Default | Enabled or disabled by default? | Disabled, opt-in via `/shell on` |
+| 7 | Prompt Indicator | How to show current mode? | Color only (post-submit) |
+| 8 | Ambiguous Commands | Handle `test`, `time`, etc.? | Needs user testing |
+| 9 | Long-Running Commands | Capture vs stream output? | Capture for v0.1 |
+| 10 | Shell Builtins | Handle `history`, `cd`, `export`, etc.? | Route to clam equivalents |
 
-**Note on #10 (Shell Builtins):** Commands like `history` are shell builtins that don't work in subprocess execution. These should be intercepted and routed to clam equivalents:
+**Note on #10 (Shell Builtins):** Commands like `history` are shell builtins that don’t
+work in subprocess execution.
+These should be intercepted and routed to clam equivalents:
 
 - `history` → `/history` (show clam command history)
-- `cd <dir>` → Change clam's working directory
+- `cd <dir>` → Change clam’s working directory
 - `export VAR=val` → Set environment variable for session
 
----
+* * *
 
 ## Bead Summary
 
 **Total:** 2 open beads (23 closed)
 
-| Priority | Open | Closed | Categories                   |
-| -------- | ---- | ------ | ---------------------------- |
-| P0       | 0    | 2      | Security, data integrity     |
-| P1       | 2    | 5      | Epic, npm publishing         |
-| P2       | 0    | 12     | UX, tests, shell, validation |
-| P3       | 0    | 4      | Cleanup                      |
+| Priority | Open | Closed | Categories |
+| --- | --- | --- | --- |
+| P0 | 0 | 2 | Security, data integrity |
+| P1 | 2 | 5 | Epic, npm publishing |
+| P2 | 0 | 12 | UX, tests, shell, validation |
+| P3 | 0 | 4 | Cleanup |
 
----
+* * *
 
 ## Recommended Next Steps
 
@@ -410,8 +415,8 @@ From main spec "Critical Implementation Details":
 - ✅ Day 3: Phase 3 Shell Support (ahead of schedule)
 - ✅ Day 4: Phase 2 UX improvements, ACP command routing, test coverage
 
-**Ready for Testing:**
-The app is feature complete! Run `pnpm dev` in packages/clam to try it.
+**Ready for Testing:** The app is feature complete!
+Run `pnpm dev` in packages/clam to try it.
 
 **Remaining Work:**
 
@@ -420,7 +425,7 @@ The app is feature complete! Run `pnpm dev` in packages/clam to try it.
    - Manual first publish: `cd packages/clam && npm publish --access public`
    - Create v0.1.0 tag to trigger release workflow
 
----
+* * *
 
 ## References
 

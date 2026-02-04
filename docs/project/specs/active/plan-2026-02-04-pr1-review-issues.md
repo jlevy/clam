@@ -8,7 +8,10 @@
 
 ## Overview
 
-This spec captures all issues identified during the code review of PR #1 (feat: Set up clam shell-like interface for Claude Code). These issues range from critical security/data-integrity problems to test coverage gaps and code quality improvements.
+This spec captures all issues identified during the code review of PR #1 (feat: Set up
+clam shell-like interface for Claude Code).
+These issues range from critical security/data-integrity problems to test coverage gaps
+and code quality improvements.
 
 ## Goals
 
@@ -29,12 +32,13 @@ This spec captures all issues identified during the code review of PR #1 (feat: 
 
 **Location:** `packages/clam/src/lib/acp.ts:371-393`
 
-**Problem:** `readTextFile` returns empty string on error, `writeTextFile` returns success on error. The agent will think:
+**Problem:** `readTextFile` returns empty string on error, `writeTextFile` returns
+success on error. The agent will think:
 
 - Empty files are actually empty (not inaccessible)
 - Writes succeeded when they failed
 
-**Impact:** Potential data loss if agent overwrites files it couldn't read.
+**Impact:** Potential data loss if agent overwrites files it couldn’t read.
 
 **Fix:** Propagate errors to caller instead of swallowing them.
 
@@ -61,7 +65,8 @@ const editorProcess = spawn(editor, [tempFile], {
 
 **Location:** `packages/clam/src/bin.ts:335-345`
 
-**Problem:** SIGINT handler calls `cleanup()` then immediately `process.exit(0)` without awaiting async operations.
+**Problem:** SIGINT handler calls `cleanup()` then immediately `process.exit(0)` without
+awaiting async operations.
 
 **Impact:** May orphan child processes or leave resources in inconsistent state.
 
@@ -71,7 +76,8 @@ const editorProcess = spawn(editor, [tempFile], {
 
 **Location:** `packages/clam/src/lib/permissions.ts:157-158`
 
-**Problem:** `promptForPermission` loops forever if stdin is closed (EOF returns empty string repeatedly).
+**Problem:** `promptForPermission` loops forever if stdin is closed (EOF returns empty
+string repeatedly).
 
 **Impact:** Process hangs on piped/closed input.
 
@@ -93,7 +99,8 @@ const editorProcess = spawn(editor, [tempFile], {
 
 **Location:** `packages/clam/src/lib/config.ts:92,106`
 
-**Problem:** JSON.parse result cast without validation; parseInt on env var can produce NaN.
+**Problem:** JSON.parse result cast without validation; parseInt on env var can produce
+NaN.
 
 **Fix:** Add schema validation or explicit checks.
 
@@ -121,7 +128,7 @@ const editorProcess = spawn(editor, [tempFile], {
 
 **Location:** `packages/clam/src/bin.ts:100-103`
 
-**Problem:** Version is hardcoded as "0.1.0" with TODO comment.
+**Problem:** Version is hardcoded as “0.1.0” with TODO comment.
 
 **Fix:** Read from package.json at build time or runtime.
 
@@ -139,7 +146,7 @@ const editorProcess = spawn(editor, [tempFile], {
 
 **Problem:** Exported function appears unused (permission prompting handled in bin.ts).
 
-**Fix:** Remove function or document why it's kept.
+**Fix:** Remove function or document why it’s kept.
 
 #### 12. Non-null assertions in ACP client
 
@@ -151,13 +158,13 @@ const editorProcess = spawn(editor, [tempFile], {
 
 ## Test Coverage Gaps
 
-| File            | Current Coverage          | Needed                           |
-| --------------- | ------------------------- | -------------------------------- |
-| `bin.ts`        | None                      | Basic CLI argument parsing tests |
-| `config.ts`     | None                      | Config loading, env var handling |
-| `formatting.ts` | None                      | Color functions, truncation      |
-| `acp.ts`        | Basic only                | connect(), prompt(), error cases |
-| `input.ts`      | Command registration only | /edit command, multi-line input  |
+| File | Current Coverage | Needed |
+| --- | --- | --- |
+| `bin.ts` | None | Basic CLI argument parsing tests |
+| `config.ts` | None | Config loading, env var handling |
+| `formatting.ts` | None | Color functions, truncation |
+| `acp.ts` | Basic only | connect(), prompt(), error cases |
+| `input.ts` | Command registration only | /edit command, multi-line input |
 
 ## Implementation Plan
 
@@ -199,9 +206,11 @@ const editorProcess = spawn(editor, [tempFile], {
 
 **Location:** `packages/clam/src/lib/input.ts`
 
-**Problem:** When pressing `/` or Tab to show slash command completions, only Tab cycles through options. Down Arrow should also work to navigate the menu.
+**Problem:** When pressing `/` or Tab to show slash command completions, only Tab cycles
+through options. Down Arrow should also work to navigate the menu.
 
-**Expected:** Down Arrow (and Up Arrow) should navigate through completion options, similar to shell autocomplete behavior.
+**Expected:** Down Arrow (and Up Arrow) should navigate through completion options,
+similar to shell autocomplete behavior.
 
 **Fix:** Add keypress handlers for Up/Down arrows in the completion menu state.
 

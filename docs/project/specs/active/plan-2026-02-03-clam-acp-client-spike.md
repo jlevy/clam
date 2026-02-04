@@ -3,7 +3,6 @@ title: Plan Spec - clam-code Coding Spike
 description: Spike to build a true-scrollback ACP client for Claude Code with usable UX
 author: Joshua Levy with LLM assistance
 ---
-
 # clam-code - True Scrollback ACP Client for Claude Code
 
 **Date:** 2026-02-03 (last updated 2026-02-03)
@@ -12,27 +11,35 @@ author: Joshua Levy with LLM assistance
 
 ### Implementation Progress Summary
 
-| Phase                              | Status         | Notes                                       |
-| ---------------------------------- | -------------- | ------------------------------------------- |
-| **Phase 1: Minimal Viable Client** | ✅ Complete    | All 5 sub-phases done                       |
-| **Phase 2: Usable UX Polish**      | ✅ Complete    | npm publishing pending                      |
-| **Stretch: Slash Commands**        | 🔶 Partial     | Local commands done, ACP routing pending    |
-| **Stretch: Autocomplete**          | 🔶 Partial     | Slash completion done, file/history pending |
-| **Phase 3: Shell Support**         | ❌ Not Started | Design complete, no code yet                |
+| Phase | Status | Notes |
+| --- | --- | --- |
+| **Phase 1: Minimal Viable Client** | ✅ Complete | All 5 sub-phases done |
+| **Phase 2: Usable UX Polish** | ✅ Complete | npm publishing pending |
+| **Stretch: Slash Commands** | 🔶 Partial | Local commands done, ACP routing pending |
+| **Stretch: Autocomplete** | 🔶 Partial | Slash completion done, file/history pending |
+| **Phase 3: Shell Support** | ❌ Not Started | Design complete, no code yet |
 
 ### Remaining Work (Priority Order)
 
 **High Priority - Core Functionality:**
 
-1. **ACP Command Routing** - Route `/commit`, `/review`, `/model`, etc. to Claude Code
+1. **ACP Command Routing** - Route `/commit`, `/review`, `/model`, etc.
+   to Claude Code
    - Parse `available_commands_update` events (already received in acp.ts)
    - Display in `/help` and tab completion
    - Send commands through ACP session
 2. **npm Packaging** - Test and publish to npm registry
 
-**Medium Priority - UX Improvements:** 3. **File Path Completion** - Tab complete `@path/to/file` mentions 4. **Command History Persistence** - Save/load history from `~/.clam/code/history` 5. **History Navigation** - Enable readline's built-in up/down history
+**Medium Priority - UX Improvements:** 3. **File Path Completion** - Tab complete
+`@path/to/file` mentions 4. **Command History Persistence** - Save/load history from
+`~/.clam/code/history` 5. **History Navigation** - Enable readline’s built-in up/down
+history
 
-**Lower Priority - Phase 3 (Shell Support):** 6. **Shell Module** - Create `lib/shell.ts` with `which`, `exec`, `getCompletions` 7. **Mode Detection** - Create `lib/mode-detection.ts` for shell vs NL detection 8. **Input Integration** - Route shell commands directly, add input coloring 9. **Partial Command Rejection** - Reject incomplete single-word inputs
+**Lower Priority - Phase 3 (Shell Support):** 6. **Shell Module** - Create
+`lib/shell.ts` with `which`, `exec`, `getCompletions` 7. **Mode Detection** - Create
+`lib/mode-detection.ts` for shell vs NL detection 8. **Input Integration** - Route shell
+commands directly, add input coloring 9. **Partial Command Rejection** - Reject
+incomplete single-word inputs
 
 **Codename:** `clam-code`
 
@@ -118,18 +125,18 @@ Key event types we need to handle:
 
 ### Reference Implementations
 
-| Project                                                                                  | What to Study                                                                                     | What NOT to Copy                 |
-| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | -------------------------------- |
-| [claude-code-acp](https://github.com/zed-industries/claude-code-acp)                     | ACP adapter for Claude Code                                                                       | -                                |
-| [Toad](https://github.com/batrachianai/toad)                                             | Autocomplete, slash commands, diff logic, permission UX                                           | TUI rendering (alternate screen) |
-| [OpenCode](https://github.com/anomalyco/opencode)                                        | Auto-scroll logic, state management                                                               | Web UI architecture              |
-| [Codex CLI](https://github.com/openai/codex)                                             | Input UX, slash commands, terminal interaction                                                    | ANSI cursor positioning          |
-| [@agentclientprotocol/sdk](https://github.com/agentclientprotocol/agent-client-protocol) | TypeScript SDK for ACP clients                                                                    | -                                |
-| [kash](repos/kash)                                                                       | **Hybrid shell/NL mode, `which`-based detection, partial command rejection, semantic completion** | Python/xonsh (we use TypeScript) |
+| Project | What to Study | What NOT to Copy |
+| --- | --- | --- |
+| [claude-code-acp](https://github.com/zed-industries/claude-code-acp) | ACP adapter for Claude Code | - |
+| [Toad](https://github.com/batrachianai/toad) | Autocomplete, slash commands, diff logic, permission UX | TUI rendering (alternate screen) |
+| [OpenCode](https://github.com/anomalyco/opencode) | Auto-scroll logic, state management | Web UI architecture |
+| [Codex CLI](https://github.com/openai/codex) | Input UX, slash commands, terminal interaction | ANSI cursor positioning |
+| [@agentclientprotocol/sdk](https://github.com/agentclientprotocol/agent-client-protocol) | TypeScript SDK for ACP clients | - |
+| [kash](repos/kash) | **Hybrid shell/NL mode, `which`-based detection, partial command rejection, semantic completion** | Python/xonsh (we use TypeScript) |
 
 **Key learnings from reference implementations:**
 
-- **Toad**: Has excellent autocomplete and slash command UX via Textual's completion
+- **Toad**: Has excellent autocomplete and slash command UX via Textual’s completion
   widgets. Study the completion matching algorithms and UX patterns, but NOT the TUI
   rendering approach.
 - **OpenCode**: Sophisticated auto-scroll handling that distinguishes between user
@@ -137,13 +144,16 @@ Key event types we need to handle:
   Worth studying for overlay anchoring (future work).
 - **Codex CLI**: Clean slash command implementation.
   Study the command parsing and help system.
-- **kash**: Production implementation of hybrid shell/NL mode. Key patterns for Phase 3:
+- **kash**: Production implementation of hybrid shell/NL mode.
+  Key patterns for Phase 3:
   - Automatic mode detection via `which` lookup on first word
   - Space-at-start shortcut for NL mode
-  - Partial command rejection (don't submit invalid single words)
+  - Partial command rejection (don’t submit invalid single words)
   - Two-stage Tab completion (lexical first, semantic second)
   - Prompt visual feedback (different colors for shell vs NL mode)
-  - See [research-2026-02-03-richer-terminal-shell-uis.md](../../research/active/research-2026-02-03-richer-terminal-shell-uis.md) for detailed analysis.
+  - See
+    [research-2026-02-03-richer-terminal-shell-uis.md](../../research/active/research-2026-02-03-richer-terminal-shell-uis.md)
+    for detailed analysis.
 
 ### CLI Best Practices Reference
 
@@ -155,16 +165,16 @@ TypeScript CLI that demonstrates modern patterns for standalone CLI tools.
 
 **Key patterns to follow** (from `tbd guidelines typescript-cli-tool-rules`):
 
-| Pattern                | Implementation                                                              |
-| ---------------------- | --------------------------------------------------------------------------- |
-| **Colors**             | Use `picocolors` (aliased as `pc`) - NEVER hardcoded ANSI codes             |
-| **Shared formatting**  | Create `lib/formatting.ts` with `colors.success()`, `colors.error()`, etc.  |
-| **TTY detection**      | Let picocolors handle it automatically (respects `NO_COLOR`, `FORCE_COLOR`) |
-| **Error handling**     | Catch at top level, clear messages, proper exit codes (0/1)                 |
-| **Environment vars**   | Support `.env` and `.env.local` via `dotenv`, fail fast on missing vars     |
-| **Testing with pipes** | Verify `clam-code                                                           |
-| **Global options**     | `--verbose`, `--quiet`, `--dry-run` (future: `--format json`)               |
-| **Stdout/stderr**      | Data to stdout, errors to stderr for pipeline compatibility                 |
+| Pattern | Implementation |
+| --- | --- |
+| **Colors** | Use `picocolors` (aliased as `pc`) - NEVER hardcoded ANSI codes |
+| **Shared formatting** | Create `lib/formatting.ts` with `colors.success()`, `colors.error()`, etc. |
+| **TTY detection** | Let picocolors handle it automatically (respects `NO_COLOR`, `FORCE_COLOR`) |
+| **Error handling** | Catch at top level, clear messages, proper exit codes (0/1) |
+| **Environment vars** | Support `.env` and `.env.local` via `dotenv`, fail fast on missing vars |
+| **Testing with pipes** | Verify `clam-code |
+| **Global options** | `--verbose`, `--quiet`, `--dry-run` (future: `--format json`) |
+| **Stdout/stderr** | Data to stdout, errors to stderr for pipeline compatibility |
 
 **Package structure** (adapted from tbd patterns):
 
@@ -358,22 +368,22 @@ code integration.
 
 ### Technology Choices
 
-| Component           | Choice                     | Rationale                                             |
-| ------------------- | -------------------------- | ----------------------------------------------------- |
-| **Language**        | TypeScript                 | ACP SDK is TypeScript, team expertise                 |
-| **Runtime**         | Node.js 22+                | Better npm compatibility than Bun for native modules  |
-| **Package Manager** | npm                        | Consistency with clamg monorepo, broad compatibility  |
-| **ACP SDK**         | `@agentclientprotocol/sdk` | Official SDK                                          |
-| **Adapter**         | `claude-code-acp`          | Official Claude Code adapter                          |
-| **CLI Framework**   | None (minimal)             | Avoid framework overhead, direct stdin/stdout         |
-| **Colors**          | `picocolors`               | Fast, dependency-free ANSI colors, auto TTY detection |
-| **Input**           | Custom `InputReader`       | Rich input with autocomplete (see below)              |
-| **Output**          | Custom `OutputWriter`      | Semantic output interface                             |
-| **Env Loading**     | `dotenv`                   | Support `.env` and `.env.local` files                 |
-| **Build**           | `tsdown`                   | Fast ESM/CJS dual output with declarations            |
-| **Testing**         | `Vitest`                   | Fast, TypeScript-native testing                       |
-| **Linting**         | `Biome`                    | Formatting + linting (clamg monorepo standard)        |
-| **Git Hooks**       | `lefthook`                 | Fast pre-commit hooks                                 |
+| Component | Choice | Rationale |
+| --- | --- | --- |
+| **Language** | TypeScript | ACP SDK is TypeScript, team expertise |
+| **Runtime** | Node.js 22+ | Better npm compatibility than Bun for native modules |
+| **Package Manager** | npm | Consistency with clamg monorepo, broad compatibility |
+| **ACP SDK** | `@agentclientprotocol/sdk` | Official SDK |
+| **Adapter** | `claude-code-acp` | Official Claude Code adapter |
+| **CLI Framework** | None (minimal) | Avoid framework overhead, direct stdin/stdout |
+| **Colors** | `picocolors` | Fast, dependency-free ANSI colors, auto TTY detection |
+| **Input** | Custom `InputReader` | Rich input with autocomplete (see below) |
+| **Output** | Custom `OutputWriter` | Semantic output interface |
+| **Env Loading** | `dotenv` | Support `.env` and `.env.local` files |
+| **Build** | `tsdown` | Fast ESM/CJS dual output with declarations |
+| **Testing** | `Vitest` | Fast, TypeScript-native testing |
+| **Linting** | `Biome` | Formatting + linting (clamg monorepo standard) |
+| **Git Hooks** | `lefthook` | Fast pre-commit hooks |
 
 ### Launch Mechanism
 
@@ -500,14 +510,14 @@ interface SlashCommand {
 
 ### Slash Commands (Spike)
 
-| Command            | Description                                             |
-| ------------------ | ------------------------------------------------------- |
-| `/help`            | Show available commands                                 |
-| `/quit` or `/exit` | Exit clam-code                                          |
-| `/clear`           | Clear terminal (if possible without cursor positioning) |
-| `/status`          | Show session status (permissions, token usage)          |
-| `/model`           | Show or switch model                                    |
-| `/config`          | Show current configuration                              |
+| Command | Description |
+| --- | --- |
+| `/help` | Show available commands |
+| `/quit` or `/exit` | Exit clam-code |
+| `/clear` | Clear terminal (if possible without cursor positioning) |
+| `/status` | Show session status (permissions, token usage) |
+| `/model` | Show or switch model |
+| `/config` | Show current configuration |
 
 **Stretch goal**: `/edit` to open `$EDITOR` for multi-line input.
 
@@ -603,7 +613,7 @@ scrollback through semantic output interface.
 - [x] Parse `request_permission` events
 - [x] Render permission prompt via `OutputWriter.permissionPrompt()`
 - [x] Capture user response and send to ACP (letter shortcuts a/A/d/D)
-- [x] Handle "allow always" / "reject always" session state
+- [x] Handle “allow always” / “reject always” session state
 - [x] Save permission decisions to `~/.clam/code/permissions.json`
 
 ### Phase 2: Usable UX Polish
@@ -646,8 +656,8 @@ Codex CLI.
 
 #### S.1 Slash Command Framework 🔶 PARTIAL
 
-- [x] Research Toad's slash command implementation (`toad/slash_command.py`)
-- [x] Research Codex CLI's command system
+- [x] Research Toad’s slash command implementation (`toad/slash_command.py`)
+- [x] Research Codex CLI’s command system
 - [x] Implement slash command registry (local commands)
 - [x] Tab completion for slash commands
 - [x] Help text for each command
@@ -667,25 +677,25 @@ Codex CLI.
 
 Local commands implemented:
 
-| Command          | Description                 | Status |
-| ---------------- | --------------------------- | ------ |
-| `/help`          | Show available commands     | ✅     |
-| `/quit`, `/exit` | Exit clam-code              | ✅     |
-| `/clear`         | Clear screen                | ✅     |
-| `/status`        | Show session status         | ✅     |
-| `/config`        | Show current configuration  | ✅     |
-| `/edit`          | Open $EDITOR for multi-line | ✅     |
+| Command | Description | Status |
+| --- | --- | --- |
+| `/help` | Show available commands | ✅ |
+| `/quit`, `/exit` | Exit clam-code | ✅ |
+| `/clear` | Clear screen | ✅ |
+| `/status` | Show session status | ✅ |
+| `/config` | Show current configuration | ✅ |
+| `/edit` | Open $EDITOR for multi-line | ✅ |
 
 ACP commands (need routing implementation):
 
-| Command         | Description                  | Status        |
-| --------------- | ---------------------------- | ------------- |
-| `/model [name]` | Show or switch model         | ❌ Not routed |
-| `/compact`      | Compact conversation history | ❌ Not routed |
-| `/tokens`       | Show token usage             | ❌ Not routed |
-| `/permissions`  | Show granted permissions     | ❌ Not routed |
-| `/commit`       | Git commit workflow          | ❌ Not routed |
-| `/review`       | Code review                  | ❌ Not routed |
+| Command | Description | Status |
+| --- | --- | --- |
+| `/model [name]` | Show or switch model | ❌ Not routed |
+| `/compact` | Compact conversation history | ❌ Not routed |
+| `/tokens` | Show token usage | ❌ Not routed |
+| `/permissions` | Show granted permissions | ❌ Not routed |
+| `/commit` | Git commit workflow | ❌ Not routed |
+| `/review` | Code review | ❌ Not routed |
 
 ## Testing Strategy
 
@@ -801,7 +811,8 @@ ACP commands (need routing implementation):
 - [Terminal UI Libraries for TypeScript](../../research/active/research-2026-02-03-terminal-ui-libraries-for-typescript.md)
   - Comprehensive survey of readline, TUI frameworks, Rust bindings
   - Comparison table: scrollback compatibility, ghost text, keybindings
-  - Recommendation: Node.js readline for now, Rust bindings (reedline/rustyline) for future
+  - Recommendation: Node.js readline for now, Rust bindings (reedline/rustyline) for
+    future
 - [Richer Terminal Shell UIs](../../research/active/research-2026-02-03-richer-terminal-shell-uis.md)
   - Hybrid shell/NL mode design patterns from kash
   - Mode detection rules, partial command rejection, input coloring
@@ -814,7 +825,7 @@ ACP commands (need routing implementation):
   - `src/kash/shell/completions/shell_completions.py` - Completion scoring
   - `src/kash/help/help_embeddings.py` - Semantic search
 
----
+* * *
 
 ## Detailed Implementation: Main Loop Integration (Bead kg-mfpi)
 
@@ -826,12 +837,12 @@ end-to-end ACP client.
 
 **Existing Modules (All Implemented):**
 
-| Module         | File                | Status      | Key Methods                                                                     |
-| -------------- | ------------------- | ----------- | ------------------------------------------------------------------------------- |
+| Module | File | Status | Key Methods |
+| --- | --- | --- | --- |
 | `OutputWriter` | `src/lib/output.ts` | ✅ Complete | `info()`, `toolHeader()`, `toolOutput()`, `permissionPrompt()`, `streamChunk()` |
-| `InputReader`  | `src/lib/input.ts`  | ✅ Complete | `start()`, `stop()`, `onPrompt` callback, slash commands                        |
-| `AcpClient`    | `src/lib/acp.ts`    | ✅ Complete | `connect()`, `prompt()`, `disconnect()`, `onPermission` callback                |
-| `Config`       | `src/lib/config.ts` | ✅ Complete | `loadConfig()`, `ensureConfigDir()`                                             |
+| `InputReader` | `src/lib/input.ts` | ✅ Complete | `start()`, `stop()`, `onPrompt` callback, slash commands |
+| `AcpClient` | `src/lib/acp.ts` | ✅ Complete | `connect()`, `prompt()`, `disconnect()`, `onPermission` callback |
+| `Config` | `src/lib/config.ts` | ✅ Complete | `loadConfig()`, `ensureConfigDir()` |
 
 **Missing Piece:** The `main()` function in `bin.ts` currently shows a warning message
 instead of wiring these modules together.
@@ -1210,8 +1221,8 @@ After implementation, verify:
 
 ### Files to Modify
 
-| File         | Changes                                                      |
-| ------------ | ------------------------------------------------------------ |
+| File | Changes |
+| --- | --- |
 | `src/bin.ts` | Replace TODO comments with complete main loop implementation |
 
 ### Dependencies Verified
@@ -1222,11 +1233,11 @@ All required dependencies are already in `package.json`:
 - `picocolors` - Terminal colors
 - `dotenv` - Environment loading
 
----
+* * *
 
 ## Spike Learnings
 
-_This section will be updated as the spike progresses._
+*This section will be updated as the spike progresses.*
 
 ### Slash Command Integration (Added 2026-02-03)
 
@@ -1237,15 +1248,15 @@ slash commands and their implementation status/difficulty.
 
 These commands are handled entirely within clam-code, no ACP needed:
 
-| Command   | Description                       | Status         |
-| --------- | --------------------------------- | -------------- |
-| `/help`   | Show available commands           | ✅ Implemented |
-| `/quit`   | Exit clam-code                    | ✅ Implemented |
-| `/exit`   | Alias for /quit                   | ✅ Implemented |
-| `/clear`  | Clear terminal (prints newlines)  | ✅ Implemented |
-| `/status` | Show session status               | ✅ Implemented |
-| `/config` | Show current configuration        | ✅ Implemented |
-| `/edit`   | Open $EDITOR for multi-line input | ✅ Implemented |
+| Command | Description | Status |
+| --- | --- | --- |
+| `/help` | Show available commands | ✅ Implemented |
+| `/quit` | Exit clam-code | ✅ Implemented |
+| `/exit` | Alias for /quit | ✅ Implemented |
+| `/clear` | Clear terminal (prints newlines) | ✅ Implemented |
+| `/status` | Show session status | ✅ Implemented |
+| `/config` | Show current configuration | ✅ Implemented |
+| `/edit` | Open $EDITOR for multi-line input | ✅ Implemented |
 
 #### Claude Code Commands via ACP (MEDIUM Difficulty)
 
@@ -1256,19 +1267,19 @@ event. Implementation requires:
 2. Display available commands in `/help` or via tab completion
 3. Route user input directly to Claude Code via ACP
 
-| Command        | Description                  | Notes                      |
-| -------------- | ---------------------------- | -------------------------- |
-| `/commit`      | Create git commits           | Popular, high value        |
-| `/review`      | Code review of changes       | High value                 |
-| `/compact`     | Compact conversation history | Memory management          |
-| `/clear`       | Clear context/history        | Distinct from local /clear |
-| `/model`       | Show or switch model         | Config                     |
-| `/permissions` | Show granted permissions     | Status                     |
-| `/tokens`      | Show token usage             | Status                     |
-| `/bug`         | Report a bug                 | Support                    |
-| `/init`        | Initialize project config    | Setup                      |
-| `/mcp`         | MCP server management        | Advanced                   |
-| `/vim`         | Toggle vim mode              | Preference                 |
+| Command | Description | Notes |
+| --- | --- | --- |
+| `/commit` | Create git commits | Popular, high value |
+| `/review` | Code review of changes | High value |
+| `/compact` | Compact conversation history | Memory management |
+| `/clear` | Clear context/history | Distinct from local /clear |
+| `/model` | Show or switch model | Config |
+| `/permissions` | Show granted permissions | Status |
+| `/tokens` | Show token usage | Status |
+| `/bug` | Report a bug | Support |
+| `/init` | Initialize project config | Setup |
+| `/mcp` | MCP server management | Advanced |
+| `/vim` | Toggle vim mode | Preference |
 
 **Implementation approach:**
 
@@ -1306,24 +1317,24 @@ Respond with "Hello $1" and nothing else.
 The ACP adapter explicitly filters these as “unsupported” because they require GUI
 features:
 
-| Command             | Why Blocked              | Future Clam Support |
-| ------------------- | ------------------------ | ------------------- |
-| `/cost`             | Requires dashboard UI    | Clam overlay panel  |
-| `/login`            | Auth flow                | Web redirect        |
-| `/logout`           | Auth flow                | Web redirect        |
-| `/output-style:new` | Output rendering options | Clam style system   |
-| `/release-notes`    | Web content              | Clam webview        |
-| `/todos`            | Persistent TODO panel    | Clam overlay panel  |
+| Command | Why Blocked | Future Clam Support |
+| --- | --- | --- |
+| `/cost` | Requires dashboard UI | Clam overlay panel |
+| `/login` | Auth flow | Web redirect |
+| `/logout` | Auth flow | Web redirect |
+| `/output-style:new` | Output rendering options | Clam style system |
+| `/release-notes` | Web content | Clam webview |
+| `/todos` | Persistent TODO panel | Clam overlay panel |
 
 #### Input Color Modes
 
 Different input types now use distinct colors (defined in `formatting.ts`):
 
-| Mode             | Color     | Trigger                                |
-| ---------------- | --------- | -------------------------------------- |
-| Natural language | Magenta   | Default input                          |
-| Slash command    | Bold blue | Input starting with `/`                |
-| Shell command    | White     | Future: Input starting with `!` or `$` |
+| Mode | Color | Trigger |
+| --- | --- | --- |
+| Natural language | Magenta | Default input |
+| Slash command | Bold blue | Input starting with `/` |
+| Shell command | White | Future: Input starting with `!` or `$` |
 
 ### Spec Gaps Found
 
@@ -1341,7 +1352,7 @@ Different input types now use distinct colors (defined in `formatting.ts`):
 
 - (To be filled during implementation)
 
----
+* * *
 
 ## Minimal Shell Support (Phase 3) ❌ NOT STARTED
 
@@ -1526,18 +1537,17 @@ export function createModeDetector(options: ModeDetectorOptions): ModeDetector;
 
 **Detection rules (in order):**
 
-| Input Pattern               | Mode    | Rationale                           |
-| --------------------------- | ------- | ----------------------------------- | -------------------------- | --- | ------ |
-| Empty or whitespace only    | `nl`    | Default to natural language         |
-| Starts with `/`             | `slash` | Explicit slash command              |
-| Starts with `!`             | `shell` | Explicit shell mode (like IPython)  |
-| Starts with space           | `nl`    | Space-at-start shortcut (like kash) |
-| Contains shell operators    | `shell` | `                                   | `, `>`, `>>`, `<`, `&&`, ` |     | `, `;` |
-| Contains `$` (env var)      | `shell` | `$HOME`, `${PATH}`                  |
-| Contains subshell syntax    | `shell` | `$(...)` or backticks               |
-| First word is shell builtin | `shell` | `cd`, `export`, `alias`, etc.       |
-| First word passes `which`   | `shell` | Recognized command                  |
-| First word fails `which`    | `nl`    | Assume natural language             |
+| Input Pattern | Mode | Rationale | | --------------------------- | ------- |
+----------------------------------- | -------------------------- | --- | ------ | |
+Empty or whitespace only | `nl` | Default to natural language | | Starts with `/` |
+`slash` | Explicit slash command | | Starts with `!` | `shell` | Explicit shell mode
+(like IPython) | | Starts with space | `nl` | Space-at-start shortcut (like kash) | |
+Contains shell operators | `shell` | ` |`, `>`, `>>`, `<`, `&&`, `| |`, `;` | | Contains
+`$` (env var) | `shell` | `$HOME`, `${PATH}` | | Contains subshell syntax | `shell` |
+`$(...)` or backticks | | First word is shell builtin | `shell` | `cd`, `export`,
+`alias`, etc.
+| | First word passes `which` | `shell` | Recognized command | | First word
+fails `which` | `nl` | Assume natural language |
 
 **Implementation:**
 
@@ -1624,11 +1634,11 @@ async function detectMode(input: string): Promise<InputMode> {
 
 Update `InputReader` to color input based on detected mode:
 
-| Mode    | Color           | Example                |
-| ------- | --------------- | ---------------------- |
+| Mode | Color | Example |
+| --- | --- | --- |
 | `shell` | White (default) | `ls -la`, `git status` |
-| `nl`    | Magenta         | `how do I list files?` |
-| `slash` | Bold blue       | `/help`, `/commit`     |
+| `nl` | Magenta | `how do I list files?` |
+| `slash` | Bold blue | `/help`, `/commit` |
 
 **Integration with readline:**
 
@@ -1739,11 +1749,11 @@ how are<Enter> → Submitted to NL (has spaces, looks like sentence)
 
 Tab completion behavior depends on current mode:
 
-| Mode    | Tab Behavior                         |
-| ------- | ------------------------------------ |
-| `shell` | Bash completion (commands, files)    |
-| `slash` | Slash command completion             |
-| `nl`    | No completion (future: FAQ snippets) |
+| Mode | Tab Behavior |
+| --- | --- |
+| `shell` | Bash completion (commands, files) |
+| `slash` | Slash command completion |
+| `nl` | No completion (future: FAQ snippets) |
 
 **Integration with readline completer:**
 
@@ -1815,11 +1825,11 @@ const completer = async (line: string): Promise<[string[], string]> => {
 
 **Difficulty Assessment:**
 
-| Feature             | Difficulty      | Notes                                                     |
-| ------------------- | --------------- | --------------------------------------------------------- |
-| Up/down navigation  | **EASY**        | Node.js readline has built-in `history` option            |
-| History persistence | **EASY**        | Read/write JSON or line-delimited file on startup/exit    |
-| Ctrl+R search       | **MEDIUM-HARD** | Readline doesn't support this natively; requires raw mode |
+| Feature | Difficulty | Notes |
+| --- | --- | --- |
+| Up/down navigation | **EASY** | Node.js readline has built-in `history` option |
+| History persistence | **EASY** | Read/write JSON or line-delimited file on startup/exit |
+| Ctrl+R search | **MEDIUM-HARD** | Readline doesn't support this natively; requires raw mode |
 
 **Up/down implementation (built-in):**
 
@@ -1864,32 +1874,32 @@ work and not break them with our custom handling.
 
 **Standard keybindings (should work automatically):**
 
-| Keybinding        | Action                          | Notes                           |
-| ----------------- | ------------------------------- | ------------------------------- |
-| **Navigation**    |                                 |                                 |
-| `Ctrl+A`          | Move to beginning of line       | ✅ Built-in                     |
-| `Ctrl+E`          | Move to end of line             | ✅ Built-in                     |
-| `Ctrl+B`          | Move back one character         | ✅ Built-in                     |
-| `Ctrl+F`          | Move forward one character      | ✅ Built-in                     |
-| `Alt+B`           | Move back one word              | ✅ Built-in                     |
-| `Alt+F`           | Move forward one word           | ✅ Built-in                     |
-| **Editing**       |                                 |                                 |
-| `Ctrl+K`          | Kill (cut) to end of line       | ✅ Built-in                     |
-| `Ctrl+U`          | Kill (cut) to beginning of line | ✅ Built-in                     |
-| `Ctrl+W`          | Kill previous word              | ✅ Built-in                     |
-| `Alt+D`           | Kill next word                  | ✅ Built-in                     |
-| `Ctrl+Y`          | Yank (paste) killed text        | ✅ Built-in                     |
-| `Ctrl+T`          | Transpose characters            | ✅ Built-in                     |
-| `Alt+T`           | Transpose words                 | ✅ Built-in                     |
-| **History**       |                                 |                                 |
-| `Up` / `Ctrl+P`   | Previous history entry          | ✅ Built-in                     |
-| `Down` / `Ctrl+N` | Next history entry              | ✅ Built-in                     |
-| `Ctrl+R`          | Reverse search                  | ❌ Not built-in (see Phase 3.5) |
-| **Other**         |                                 |                                 |
-| `Ctrl+L`          | Clear screen                    | ⚠️ May need custom handling     |
-| `Ctrl+C`          | Interrupt/cancel                | ✅ We handle this               |
-| `Ctrl+D`          | EOF (exit if line empty)        | ⚠️ May need custom handling     |
-| `Tab`             | Completion                      | ✅ We handle this               |
+| Keybinding | Action | Notes |
+| --- | --- | --- |
+| **Navigation** |  |  |
+| `Ctrl+A` | Move to beginning of line | ✅ Built-in |
+| `Ctrl+E` | Move to end of line | ✅ Built-in |
+| `Ctrl+B` | Move back one character | ✅ Built-in |
+| `Ctrl+F` | Move forward one character | ✅ Built-in |
+| `Alt+B` | Move back one word | ✅ Built-in |
+| `Alt+F` | Move forward one word | ✅ Built-in |
+| **Editing** |  |  |
+| `Ctrl+K` | Kill (cut) to end of line | ✅ Built-in |
+| `Ctrl+U` | Kill (cut) to beginning of line | ✅ Built-in |
+| `Ctrl+W` | Kill previous word | ✅ Built-in |
+| `Alt+D` | Kill next word | ✅ Built-in |
+| `Ctrl+Y` | Yank (paste) killed text | ✅ Built-in |
+| `Ctrl+T` | Transpose characters | ✅ Built-in |
+| `Alt+T` | Transpose words | ✅ Built-in |
+| **History** |  |  |
+| `Up` / `Ctrl+P` | Previous history entry | ✅ Built-in |
+| `Down` / `Ctrl+N` | Next history entry | ✅ Built-in |
+| `Ctrl+R` | Reverse search | ❌ Not built-in (see Phase 3.5) |
+| **Other** |  |  |
+| `Ctrl+L` | Clear screen | ⚠️ May need custom handling |
+| `Ctrl+C` | Interrupt/cancel | ✅ We handle this |
+| `Ctrl+D` | EOF (exit if line empty) | ⚠️ May need custom handling |
+| `Tab` | Completion | ✅ We handle this |
 
 **Potential issues to watch for:**
 
@@ -1912,13 +1922,13 @@ handle a few edge cases.
 
 ### Files to Create/Modify
 
-| File                        | Purpose                                  |
-| --------------------------- | ---------------------------------------- |
-| `src/lib/shell.ts`          | **New** - Shell execution and completion |
-| `src/lib/mode-detection.ts` | **New** - Input mode detection           |
-| `src/lib/output.ts`         | Add `shellOutput()` method               |
-| `src/lib/input.ts`          | Add mode detection and routing           |
-| `src/lib/config.ts`         | Add `shellModeEnabled` flag              |
+| File | Purpose |
+| --- | --- |
+| `src/lib/shell.ts` | **New** - Shell execution and completion |
+| `src/lib/mode-detection.ts` | **New** - Input mode detection |
+| `src/lib/output.ts` | Add `shellOutput()` method |
+| `src/lib/input.ts` | Add mode detection and routing |
+| `src/lib/config.ts` | Add `shellModeEnabled` flag |
 
 ### Corner Cases
 
@@ -1936,7 +1946,7 @@ handle a few edge cases.
    - Detect `$(` or backticks → treat as shell
 
 5. **Shell built-ins**: `cd`, `export`, `alias`
-   - These don't show up in `which` but are valid
+   - These don’t show up in `which` but are valid
    - Maintain a list of common built-ins for detection:
      ```typescript
      const SHELL_BUILTINS = new Set([
@@ -1985,7 +1995,7 @@ handle a few edge cases.
 7. **Logical operators**: `cmd1 && cmd2`, `cmd1 || cmd2`
    - Detect `&&`, `||` → treat as shell
 
-8. **Question words in NL mode**: "how", "what", "why", "when", "where", "can"
+8. **Question words in NL mode**: “how”, “what”, “why”, “when”, “where”, “can”
    - Could use these to detect NL even without spaces
    - Future enhancement for better mode detection
 
@@ -2047,21 +2057,24 @@ These details need explicit decisions before implementation.
 
 **Summary of Open Questions:**
 
-| #   | Topic                 | Key Decision Needed                                     |
-| --- | --------------------- | ------------------------------------------------------- |
-| 2   | Working Directory     | Should shell `cd` affect ACP session cwd?               |
-| 5   | Mode Toggle           | Should shell mode be enabled or disabled by default?    |
-| 7   | Prompt Indicator      | How to visually indicate current input mode?            |
-| 8   | Ambiguous Commands    | How to handle words that are both commands and English? |
-| 9   | Long-Running Commands | Capture vs stream output?                               |
+| # | Topic | Key Decision Needed |
+| --- | --- | --- |
+| 2 | Working Directory | Should shell `cd` affect ACP session cwd? |
+| 5 | Mode Toggle | Should shell mode be enabled or disabled by default? |
+| 7 | Prompt Indicator | How to visually indicate current input mode? |
+| 8 | Ambiguous Commands | How to handle words that are both commands and English? |
+| 9 | Long-Running Commands | Capture vs stream output? |
 
 #### 1. Rejection UX Feedback ✅ **DECIDED**
 
 When input is rejected (partial command rejection), the cursor simply stays on the line
-with no additional feedback. This is the simplest approach and acceptable for v0.1.
+with no additional feedback.
+This is the simplest approach and acceptable for v0.1.
 
-**Decision:** Option A - Silent stay. No message, no bell. User can continue typing or
-use space prefix for NL mode. Future versions may add visual feedback.
+**Decision:** Option A - Silent stay.
+No message, no bell.
+User can continue typing or use space prefix for NL mode.
+Future versions may add visual feedback.
 
 **Options considered:**
 
@@ -2074,18 +2087,21 @@ use space prefix for NL mode. Future versions may add visual feedback.
 When user runs `cd /tmp` in shell mode:
 
 - The shell subprocess changes directory
-- **Question:** Should this affect the ACP session's `cwd`?
+- **Question:** Should this affect the ACP session’s `cwd`?
 
 **Options:**
 
 - **A) Independent**: Shell cwd and ACP cwd are separate (confusing)
-- **B) Sync shell→ACP**: After `cd`, update ACP session cwd (complex - ACP may not support)
+- **B) Sync shell→ACP**: After `cd`, update ACP session cwd (complex - ACP may not
+  support)
 - **C) Sync both**: Track cwd in clam, pass to both shell and ACP (preferred)
 
-**Recommendation:** Option C - clam maintains authoritative `cwd`, passes to shell spawns and ACP session. `cd` updates this internal state.
+**Recommendation:** Option C - clam maintains authoritative `cwd`, passes to shell
+spawns and ACP session.
+`cd` updates this internal state.
 
-**⚠️ ACP investigation needed:** Does ACP support changing `cwd` mid-session? If not,
-option A may be the only choice.
+**⚠️ ACP investigation needed:** Does ACP support changing `cwd` mid-session?
+If not, option A may be the only choice.
 
 ```typescript
 // In shell.exec()
@@ -2102,11 +2118,13 @@ async exec(command: string, options?: ExecOptions): Promise<ExecResult> {
 
 #### 3. Interactive Command Handling ✅ **DECIDED**
 
-Commands like `vim`, `less`, `top`, `htop` require full terminal control (alternate screen, raw mode). These conflict with clam's input handling.
+Commands like `vim`, `less`, `top`, `htop` require full terminal control (alternate
+screen, raw mode). These conflict with clam’s input handling.
 
 **Options:**
 
-- **A) Block them**: Detect and show error "Interactive commands not supported" ← **Selected**
+- **A) Block them**: Detect and show error “Interactive commands not supported” ←
+  **Selected**
 - **B) Allow with warning**: Run them but they may behave oddly
 - **C) Temporary handoff**: Give full terminal control, resume clam after exit (complex)
 
@@ -2144,7 +2162,8 @@ const INTERACTIVE_COMMANDS = new Set([
 ]);
 ```
 
-Error message: "Interactive command detected. Use a standard terminal for: vim"
+Error message: “Interactive command detected.
+Use a standard terminal for: vim”
 
 #### 4. Shell Output Display ✅ **DECIDED**
 
@@ -2251,8 +2270,9 @@ $ ls -la                 ← Shell mode (white, dollar)
 - Raw mode input handling (complex)
 - Post-submit color echo (simpler but delayed feedback)
 
-**Recommendation:** Start with Option C (color only, post-submit) for spike. Consider
-Option B (dynamic character) as polish if raw mode is implemented for other features.
+**Recommendation:** Start with Option C (color only, post-submit) for spike.
+Consider Option B (dynamic character) as polish if raw mode is implemented for other
+features.
 
 #### 8. Ambiguous Command Words 🔶 **NEEDS RESEARCH**
 
@@ -2264,13 +2284,15 @@ Words like `test`, `time`, `which`, `date`, `make` are both:
 **Current approach:** If first word passes `which`, treat as shell.
 
 **Problem:** `test something` would run `/usr/bin/test something` instead of asking
-Claude about "test something".
+Claude about “test something”.
 
 **Possible mitigations:**
 
-1. **Require arguments for certain commands**: `test` alone → shell, but `test the API` → NL
+1. **Require arguments for certain commands**: `test` alone → shell, but `test the API`
+   → NL
 2. **Contextual heuristics**: If followed by question words (how, what, why) → NL
-3. **Confirmation for ambiguous**: "Did you mean to run the `test` command? (y/n)"
+3. **Confirmation for ambiguous**: "Did you mean to run the `test` command?
+   (y/n)"
 4. **Explicit shell prefix**: Only `!test` runs as shell, `test` goes to NL
 
 **⚠️ No decision yet** - needs user testing to determine which approach feels natural.
@@ -2281,7 +2303,8 @@ Commands like `npm install`, `docker build`, `make` can run for minutes.
 
 **Questions:**
 
-- Should there be real-time output streaming? (Currently using `captureOutput: true`)
+- Should there be real-time output streaming?
+  (Currently using `captureOutput: true`)
 - How to handle Ctrl+C during long-running commands?
 - Should there be a progress indicator?
 
@@ -2291,50 +2314,54 @@ Commands like `npm install`, `docker build`, `make` can run for minutes.
 - **B) Stream mode**: Inherit stdio, show output in real-time
 - **C) Hybrid**: Stream stderr, capture stdout
 
-**⚠️ Needs decision** - Option B (stream) is more useful but conflicts with clam's
+**⚠️ Needs decision** - Option B (stream) is more useful but conflicts with clam’s
 readline-based input handling during command execution.
 
-**Recommendation:** Start with Option A for spike. Long-running commands are better
-suited for direct terminal use anyway.
+**Recommendation:** Start with Option A for spike.
+Long-running commands are better suited for direct terminal use anyway.
 
----
+* * *
 
 ## Future: Clam Code Integration Points
 
 This section documents where the spike code will upgrade to Clam GUI behaviors.
 These are marked with `// TODO: Clam code upgrade point` comments in the code.
 
-| Spike Behavior                   | Future Clam Behavior                        |
-| -------------------------------- | ------------------------------------------- |
-| Truncated tool output (10 lines) | Expandable overlay block                    |
-| `thinking()` collapsed indicator | Expandable thinking section                 |
-| Permission prompt (text)         | Clickable button overlay                    |
-| Diff summary (text)              | Diff viewer popover                         |
-| Code blocks (ANSI)               | Syntax-highlighted overlay with copy button |
-| Slash command help (text)        | Autocomplete popover menu                   |
+| Spike Behavior | Future Clam Behavior |
+| --- | --- |
+| Truncated tool output (10 lines) | Expandable overlay block |
+| `thinking()` collapsed indicator | Expandable thinking section |
+| Permission prompt (text) | Clickable button overlay |
+| Diff summary (text) | Diff viewer popover |
+| Code blocks (ANSI) | Syntax-highlighted overlay with copy button |
+| Slash command help (text) | Autocomplete popover menu |
 
 The semantic `OutputWriter` interface is designed so that enabling Clam codes requires
 only changing the implementation of each method, not the calling code.
 
----
+* * *
 
 ## Automation and Status Visibility (Phase 4) ❌ NOT STARTED
 
 **Status:** Research/design phase - exploring feasibility.
 
-One of the challenges with Claude Code (and similar agents) is that they often stop working
-before a task is complete - waiting for user input, hitting context limits, or simply
-stopping after a turn. This section explores how to:
+One of the challenges with Claude Code (and similar agents) is that they often stop
+working before a task is complete - waiting for user input, hitting context limits, or
+simply stopping after a turn.
+This section explores how to:
 
-1. **Reliably detect agent state** - Is it working? Idle? Waiting for input? Blocked?
+1. **Reliably detect agent state** - Is it working?
+   Idle? Waiting for input?
+   Blocked?
 2. **Automate continuation** - Hooks to continue work when the agent is idle
 3. **Surface status visibility** - Show real-time status to the user
 
 ### The Problem
 
-When using Claude Code interactively, the agent frequently stops and requires the user to:
+When using Claude Code interactively, the agent frequently stops and requires the user
+to:
 
-- Type "continue" or similar to resume work
+- Type “continue” or similar to resume work
 - Approve permissions
 - Provide additional context
 - Wait out rate limits
@@ -2345,11 +2372,11 @@ This breaks the flow of autonomous work and requires constant monitoring.
 
 1. **Can we detect idle state via ACP?**
    - What events indicate the agent has finished a turn?
-   - Can we distinguish "done with task" vs "stopped mid-task"?
+   - Can we distinguish “done with task” vs “stopped mid-task”?
    - How do we detect rate limiting or errors?
 
 2. **Can we monitor the agent process?**
-   - CPU/memory usage as proxy for "working"
+   - CPU/memory usage as proxy for “working”
    - Stdout/stderr activity
    - Process state (running, sleeping, etc.)
 
@@ -2367,26 +2394,27 @@ This breaks the flow of autonomous work and requires constant monitoring.
 
 #### Relevant Events
 
-| Event                        | What It Tells Us          | Idle Detection Value              |
-| ---------------------------- | ------------------------- | --------------------------------- |
-| `session/prompt response`    | Agent finished responding | **High** - includes `stop_reason` |
-| `session/update`             | Streaming content         | Activity indicator                |
-| `session/request_permission` | Waiting for user          | Blocked, not idle                 |
-| `available_commands_update`  | Commands changed          | Low relevance                     |
+| Event | What It Tells Us | Idle Detection Value |
+| --- | --- | --- |
+| `session/prompt response` | Agent finished responding | **High** - includes `stop_reason` |
+| `session/update` | Streaming content | Activity indicator |
+| `session/request_permission` | Waiting for user | Blocked, not idle |
+| `available_commands_update` | Commands changed | Low relevance |
 
 #### Stop Reasons (from ACP spec)
 
 The `stop_reason` field in prompt responses is key:
 
-| Stop Reason     | Meaning                  | Auto-Continue?                  |
-| --------------- | ------------------------ | ------------------------------- |
-| `end_turn`      | Agent finished its turn  | Maybe - check if task complete  |
-| `max_tokens`    | Hit context/output limit | Yes - likely needs continuation |
-| `tool_use`      | Waiting for tool result  | No - handled by ACP             |
-| `stop_sequence` | Hit stop sequence        | Depends on context              |
+| Stop Reason | Meaning | Auto-Continue? |
+| --- | --- | --- |
+| `end_turn` | Agent finished its turn | Maybe - check if task complete |
+| `max_tokens` | Hit context/output limit | Yes - likely needs continuation |
+| `tool_use` | Waiting for tool result | No - handled by ACP |
+| `stop_sequence` | Hit stop sequence | Depends on context |
 
-**Key insight:** `end_turn` is ambiguous - the agent may be done with the task, or may be
-waiting for acknowledgment to continue. We need heuristics to distinguish.
+**Key insight:** `end_turn` is ambiguous - the agent may be done with the task, or may
+be waiting for acknowledgment to continue.
+We need heuristics to distinguish.
 
 #### Proposed State Machine
 
@@ -2508,7 +2536,7 @@ function isAgentWorking(metrics: ProcessMetrics, state: AgentState): boolean {
 **Pros:**
 
 - Detects process crashes
-- Can detect "stuck" states (high CPU, no output)
+- Can detect “stuck” states (high CPU, no output)
 - Works even if ACP events are missed
 
 **Cons:**
@@ -2546,14 +2574,14 @@ function checkIdle(state: AgentState): boolean {
 
 #### Hook Types
 
-| Hook                  | Trigger                   | Action               | Risk Level |
-| --------------------- | ------------------------- | -------------------- | ---------- |
-| `onTurnEnd`           | Agent finishes turn       | Auto-continue prompt | Low        |
-| `onMaxTokens`         | Hit token limit           | Send "continue"      | Low        |
-| `onPermissionRequest` | Permission needed         | Auto-approve/reject  | **High**   |
-| `onError`             | Agent error               | Retry or abort       | Medium     |
-| `onIdle`              | No activity for N seconds | Nudge or alert       | Low        |
-| `onRateLimit`         | Rate limit hit            | Wait and retry       | Low        |
+| Hook | Trigger | Action | Risk Level |
+| --- | --- | --- | --- |
+| `onTurnEnd` | Agent finishes turn | Auto-continue prompt | Low |
+| `onMaxTokens` | Hit token limit | Send "continue" | Low |
+| `onPermissionRequest` | Permission needed | Auto-approve/reject | **High** |
+| `onError` | Agent error | Retry or abort | Medium |
+| `onIdle` | No activity for N seconds | Nudge or alert | Low |
+| `onRateLimit` | Rate limit hit | Wait and retry | Low |
 
 #### Auto-Continue Design
 
@@ -2617,7 +2645,8 @@ async function maybeAutoContinue(
 
 #### Permission Automation (Careful!)
 
-Auto-approving permissions is risky. Consider a tiered approach:
+Auto-approving permissions is risky.
+Consider a tiered approach:
 
 ```typescript
 interface PermissionAutomationConfig {
@@ -2743,21 +2772,21 @@ Last activity: ${formatTimeAgo(info.state.lastActivity)}
 
 ### Research Questions
 
-1. **What patterns reliably indicate "task complete"?**
+1. **What patterns reliably indicate “task complete”?**
    - Need to analyze Claude Code responses to find reliable signals
-   - May need LLM-based classification of "done" vs "needs continuation"
+   - May need LLM-based classification of “done” vs “needs continuation”
 
 2. **How do other tools handle this?**
    - Does Cursor have auto-continue?
    - Does Copilot Workspace?
    - What about aider, continue.dev?
 
-3. **What's the failure mode of aggressive auto-continue?**
+3. **What’s the failure mode of aggressive auto-continue?**
    - Infinite loops?
    - Wasted tokens?
    - Unintended side effects?
 
-4. **Can we use the agent's own judgment?**
+4. **Can we use the agent’s own judgment?**
    - Add system prompt asking agent to signal completion
    - Use structured output (JSON) for status
    - Ask agent to rate its confidence that task is complete
@@ -2797,7 +2826,8 @@ Last activity: ${formatTimeAgo(info.state.lastActivity)}
 
 ### References
 
-- [ACP Protocol Spec](https://agentclientprotocol.com/protocol/overview) - Stop reasons, events
+- [ACP Protocol Spec](https://agentclientprotocol.com/protocol/overview) - Stop reasons,
+  events
 - [pidusage](https://www.npmjs.com/package/pidusage) - Cross-platform process monitoring
 - [aider](https://aider.chat) - Has similar continuation challenges
 - [continue.dev](https://continue.dev) - IDE agent with automation features

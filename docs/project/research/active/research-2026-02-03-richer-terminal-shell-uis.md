@@ -43,7 +43,7 @@ This research explores how to create a seamless hybrid experience that:
 - Specific Claude Code implementation details
 - Voice input or other modalities
 
----
+* * *
 
 ## Findings
 
@@ -125,7 +125,7 @@ is_assist_request_str() ---> YES: shell_context_assistance() -> LLM
 default_custom() -> xonsh command execution
 ```
 
----
+* * *
 
 ### 2. Multi-Line Input Patterns
 
@@ -136,9 +136,9 @@ multi-line input. Traditional shells submit immediately on Enter.
 
 #### Proposed Solution: Mode-Aware Enter Behavior
 
-| Mode                  | Enter Behavior       | Rationale                           |
-| --------------------- | -------------------- | ----------------------------------- |
-| Command mode          | Single Enter submits | Commands are typically one-line     |
+| Mode | Enter Behavior | Rationale |
+| --- | --- | --- |
+| Command mode | Single Enter submits | Commands are typically one-line |
 | Natural language mode | Double Enter submits | Allows multi-line questions/prompts |
 
 **Implementation considerations:**
@@ -152,7 +152,7 @@ multi-line input. Traditional shells submit immediately on Enter.
 Shift+Enter is the standard “newline without submit” in many chat interfaces.
 However, terminal support is complicated (see Section 4).
 
----
+* * *
 
 ### 3. Slash Command Completion
 
@@ -187,7 +187,7 @@ For natural language mode, maintain a curated set of 100-500 common questions:
 Match semantically via embeddings, display as completions.
 Kash already implements this pattern.
 
----
+* * *
 
 ### 4. Terminal Modifier Key Detection
 
@@ -253,30 +253,30 @@ For maximum compatibility:
 2. **Enhanced**: Detect Kitty protocol support at runtime, use Shift+Enter if available
 3. **IDE integration**: Document keybinding configuration for VS Code/terminals
 
----
+* * *
 
 ### 5. Design Patterns Summary
 
 #### Mode Indication
 
-| Pattern          | Description                  | Example                        |
-| ---------------- | ---------------------------- | ------------------------------ |
-| Prompt character | Different char for each mode | `>` vs `?`                     |
-| Prompt color     | Semantic coloring            | Blue for command, green for NL |
-| Background       | Subtle background change     | Slight tint difference         |
-| Cursor style     | Block vs underline           | Block for command, bar for NL  |
+| Pattern | Description | Example |
+| --- | --- | --- |
+| Prompt character | Different char for each mode | `>` vs `?` |
+| Prompt color | Semantic coloring | Blue for command, green for NL |
+| Background | Subtle background change | Slight tint difference |
+| Cursor style | Block vs underline | Block for command, bar for NL |
 
 #### Mode Switching
 
-| Trigger                   | Behavior                           |
-| ------------------------- | ---------------------------------- |
-| Space at start            | Switch to NL mode immediately      |
-| `?` prefix                | Explicit NL mode                   |
-| `/` prefix                | Slash command mode                 |
-| First word passes `which` | Stay in command mode (white text)  |
-| First word fails `which`  | Auto-switch to NL mode (pink text) |
+| Trigger | Behavior |
+| --- | --- |
+| Space at start | Switch to NL mode immediately |
+| `?` prefix | Explicit NL mode |
+| `/` prefix | Slash command mode |
+| First word passes `which` | Stay in command mode (white text) |
+| First word fails `which` | Auto-switch to NL mode (pink text) |
 
-**Corner case:** Some English words are also commands (e.g., "which", "time", "test").
+**Corner case:** Some English words are also commands (e.g., “which”, “time”, “test”).
 Initial implementation accepts this ambiguity.
 Future: add heuristics like checking for sentence structure, question words, or multiple
 spaces to disambiguate.
@@ -290,13 +290,13 @@ or treating as NL.**
 
 - User types `l` and presses Enter
 - `l` is not a valid command (will error)
-- But it's also not clearly natural language (too short, no spaces, no question words)
-- Traditional shells would execute and show "command not found"
+- But it’s also not clearly natural language (too short, no spaces, no question words)
+- Traditional shells would execute and show “command not found”
 - Our NL mode would send it to Claude, which is also wrong
 
 **The solution:**
 
-- If input looks like a partial command (short, no spaces, alphanumeric), don't submit
+- If input looks like a partial command (short, no spaces, alphanumeric), don’t submit
 - Instead, keep the cursor on the line and let user continue typing
 - This prevents accidental submissions and guides user toward valid input
 
@@ -352,19 +352,19 @@ function shouldRejectSubmission(input: string): boolean {
 }
 ```
 
-This creates a "gentle guardrail" that prevents accidental submissions while still
+This creates a “gentle guardrail” that prevents accidental submissions while still
 allowing intentional short inputs.
 
 #### Completion Sources by Mode
 
-| Mode             | Sources                                   |
-| ---------------- | ----------------------------------------- |
-| Command          | Executables, builtins, aliases, files     |
-| Slash commands   | Command list with descriptions            |
+| Mode | Sources |
+| --- | --- |
+| Command | Executables, builtins, aliases, files |
+| Slash commands | Command list with descriptions |
 | Natural language | FAQ snippets, semantic matches, help docs |
-| File paths       | Directory contents, glob patterns         |
+| File paths | Directory contents, glob patterns |
 
----
+* * *
 
 ## Options Considered
 
@@ -420,7 +420,7 @@ completion.
 - More complex UX to explain
 - Two-stage Tab behavior may confuse users
 
----
+* * *
 
 ## Recommendations
 
@@ -466,7 +466,7 @@ completion.
    - Detect mode on first space after first word (when using raw input)
    - Or detect on submission and re-color the line (simpler with readline)
 
----
+* * *
 
 ## Next Steps
 
@@ -489,7 +489,7 @@ completion.
 - [ ] Investigate Kitty protocol detection and Shift+Enter support
 - [ ] Add semantic search via embeddings (optional)
 
----
+* * *
 
 ## References
 
