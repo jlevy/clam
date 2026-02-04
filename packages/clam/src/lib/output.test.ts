@@ -13,6 +13,15 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { createOutputWriter } from './output.js';
 
 /**
+ * Strip ANSI escape codes from a string.
+ * Useful for testing content without color formatting.
+ */
+function stripAnsi(str: string): string {
+  // eslint-disable-next-line no-control-regex
+  return str.replace(/\x1b\[[0-9;]*m/g, '');
+}
+
+/**
  * Create a mock stream that captures output.
  */
 function createMockStream(): { stream: Writable; getOutput: () => string } {
@@ -150,7 +159,8 @@ describe('OutputWriter', () => {
       output.streamChunk('World');
       output.streamEnd();
 
-      const result = mock.getOutput();
+      // Strip ANSI codes since pc.reset() wraps each chunk
+      const result = stripAnsi(mock.getOutput());
       expect(result).toContain('Hello World');
     });
   });
