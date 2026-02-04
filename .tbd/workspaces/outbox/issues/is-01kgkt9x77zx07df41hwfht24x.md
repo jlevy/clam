@@ -1,4 +1,6 @@
 ---
+close_reason: Implemented shell module with which, isCommand, exec, getCompletions. 16 tests passing.
+closed_at: 2026-02-04T09:41:46.065Z
 created_at: 2026-02-04T07:54:07.975Z
 dependencies:
   - target: is-01kgkta1ett1ct9j3t991jxghv
@@ -9,10 +11,10 @@ id: is-01kgkt9x77zx07df41hwfht24x
 kind: task
 labels: []
 parent_id: is-01kgkt8qb54reaa9pxcp344msn
-priority: 3
-status: open
+priority: 2
+status: closed
 title: Create shell module (lib/shell.ts) with which, exec, getCompletions
 type: is
-updated_at: 2026-02-04T07:54:38.303Z
-version: 3
+updated_at: 2026-02-04T09:41:46.066Z
+version: 6
 ---
