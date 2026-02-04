@@ -40,3 +40,6 @@ export {
   getScopeFromKind,
   PermissionManager,
 } from './lib/permissions.js';
+export type { ExecOptions, ExecResult, ShellModule, ShellModuleOptions } from './lib/shell.js';
+// Shell utilities
+export { createShellModule, isShellBuiltin } from './lib/shell.js';
