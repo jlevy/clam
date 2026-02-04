@@ -48,7 +48,9 @@
     "dev": "tsx watch src/bin.ts",
     "start": "tsx src/bin.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run",
+    "test": "vitest run && tryscript run 'tests/**/*.tryscript.md'",
+    "test:unit": "vitest run",
+    "test:golden": "tryscript run 'tests/**/*.tryscript.md'",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "publint": "publint",
@@ -66,6 +68,7 @@
     "@types/node": "^22.19.7",
     "@vitest/coverage-v8": "^2.1.9",
     "publint": "^0.3.17",
+    "tryscript": "^0.1.6",
     "tsdown": "^0.20.1",
     "tsx": "^4.21.0",
     "vitest": "^2.1.9"

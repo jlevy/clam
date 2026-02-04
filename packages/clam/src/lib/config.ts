@@ -36,7 +36,7 @@ const DEFAULT_CONFIG: ClamCodeConfig = {
   truncateAfter: 10,
   showTimestamps: false,
   verbose: false,
-  agentCommand: 'claude-code-acp',
+  // agentCommand is undefined by default - uses embedded adapter
 };
 
 /**

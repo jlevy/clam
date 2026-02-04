@@ -1,5 +1,3 @@
-#!/usr/bin/env tsx
-
 /**
  * clam CLI - True terminal scrollback ACP client for Claude Code.
  *
