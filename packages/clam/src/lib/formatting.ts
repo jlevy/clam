@@ -144,16 +144,18 @@ export const promptChars = {
 /**
  * Raw ANSI color codes for dynamic input coloring.
  * Used when we need to change text color mid-input (not wrapping strings).
+ * Returns empty strings when stdout is not a TTY to avoid garbage output.
  */
+const isTTY = process.stdout.isTTY ?? false;
 export const inputColors = {
   /** Natural language input - magenta */
-  naturalLanguage: '\x1b[35m',
+  naturalLanguage: isTTY ? '\x1b[35m' : '',
   /** Slash command input - bold blue */
-  slashCommand: '\x1b[1;34m',
+  slashCommand: isTTY ? '\x1b[1;34m' : '',
   /** Shell command input - white (future) */
-  shell: '\x1b[37m',
+  shell: isTTY ? '\x1b[37m' : '',
   /** Reset to default */
-  reset: '\x1b[0m',
+  reset: isTTY ? '\x1b[0m' : '',
 };
 
 /**

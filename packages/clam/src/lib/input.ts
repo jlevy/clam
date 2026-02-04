@@ -16,6 +16,9 @@ import { formatConfig, type ClamCodeConfig } from './config.js';
 import { colors, inputColors, promptChars } from './formatting.js';
 import type { OutputWriter } from './output.js';
 
+/** Check if stdout is a TTY for cursor control sequences */
+const isTTY = process.stdout.isTTY ?? false;
+
 /**
  * Slash command definition.
  */
@@ -196,6 +199,9 @@ export class InputReader {
    * Show command menu below current line (ephemeral - will be cleared on next keypress).
    */
   private showCommandMenu(): void {
+    // Skip cursor control if not TTY
+    if (!isTTY) return;
+
     const commands = Array.from(this.commands.entries());
     const menuLines = commands.map(
       ([name, cmd]) =>
@@ -219,6 +225,9 @@ export class InputReader {
    * Clear the ephemeral menu if shown.
    */
   private clearCommandMenu(): void {
+    // Skip cursor control if not TTY
+    if (!isTTY) return;
+
     if (this.menuLinesShown > 0) {
       // Save cursor, move down, clear all menu lines, restore cursor
       process.stdout.write('\x1b[s'); // Save cursor
@@ -394,45 +403,51 @@ export class InputReader {
         // Slash commands submit immediately on first Enter
         if (isFirstLine && line.startsWith('/')) {
           // Reprint with slash command colors (purple/violet)
-          process.stdout.write('\x1b[1A\x1b[2K'); // Move up, clear line
-          process.stdout.write(
-            `${colors.inputPromptDim(`${promptChars.input} `)}${colors.slashCommand(line)}\n`
-          );
+          if (isTTY) {
+            process.stdout.write('\x1b[1A\x1b[2K'); // Move up, clear line
+            process.stdout.write(
+              `${colors.inputPromptDim(`${promptChars.input} `)}${colors.slashCommand(line)}\n`
+            );
+          }
           return line;
         }
 
         // Blank line submits if we have content
         if (line === '' && lines.length > 0) {
-          // Clear the continuation prompt line for cleaner output
-          // Move cursor up one line, clear it
-          process.stdout.write('\x1b[1A\x1b[2K');
+          if (isTTY) {
+            // Clear the continuation prompt line for cleaner output
+            // Move cursor up one line, clear it
+            process.stdout.write('\x1b[1A\x1b[2K');
 
-          // Reprint all lines with proper colors:
-          // - First line: dim prompt (was bright), pink text
-          // - Other lines: muted prompt, pink text
-          // Move up to first line
-          const linesToFirst = lines.length;
-          process.stdout.write(`\x1b[${linesToFirst}A`);
+            // Reprint all lines with proper colors:
+            // - First line: dim prompt (was bright), pink text
+            // - Other lines: muted prompt, pink text
+            // Move up to first line
+            const linesToFirst = lines.length;
+            process.stdout.write(`\x1b[${linesToFirst}A`);
 
-          // Reprint each line: dim prompt char, bright magenta text
-          for (let i = 0; i < lines.length; i++) {
-            process.stdout.write('\x1b[2K'); // Clear line
-            const prompt =
-              i === 0
-                ? colors.inputPromptDim(`${promptChars.input} `)
-                : colors.inputPromptDim(`${promptChars.continuation} `);
-            process.stdout.write(`${prompt}${colors.userPrompt(lines[i] ?? '')}\n`);
+            // Reprint each line: dim prompt char, bright magenta text
+            for (let i = 0; i < lines.length; i++) {
+              process.stdout.write('\x1b[2K'); // Clear line
+              const prompt =
+                i === 0
+                  ? colors.inputPromptDim(`${promptChars.input} `)
+                  : colors.inputPromptDim(`${promptChars.continuation} `);
+              process.stdout.write(`${prompt}${colors.userPrompt(lines[i] ?? '')}\n`);
+            }
+
+            // Add newline for spacing after output
+            process.stdout.write('\n');
           }
-
-          // Add newline for spacing after output
-          process.stdout.write('\n');
           break;
         }
 
         // Empty first line - keep waiting
         if (line === '' && lines.length === 0) {
           // Clear the empty prompt line
-          process.stdout.write('\x1b[1A\x1b[2K');
+          if (isTTY) {
+            process.stdout.write('\x1b[1A\x1b[2K');
+          }
           continue;
         }
 

@@ -84,12 +84,32 @@ export function loadConfig(cwd?: string): ClamCodeConfig {
   }
 
   // Load config file
-  let fileConfig: Partial<ClamCodeConfig> = {};
+  const fileConfig: Partial<ClamCodeConfig> = {};
   const configPath = getConfigPath('config.json');
   if (existsSync(configPath)) {
     try {
       const content = readFileSync(configPath, 'utf-8');
-      fileConfig = JSON.parse(content) as Partial<ClamCodeConfig>;
+      const parsed = JSON.parse(content) as unknown;
+      // Validate parsed config is an object
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        const obj = parsed as Record<string, unknown>;
+        // Extract and validate known fields
+        if (typeof obj.truncateAfter === 'number' && obj.truncateAfter > 0) {
+          fileConfig.truncateAfter = obj.truncateAfter;
+        }
+        if (typeof obj.showTimestamps === 'boolean') {
+          fileConfig.showTimestamps = obj.showTimestamps;
+        }
+        if (typeof obj.verbose === 'boolean') {
+          fileConfig.verbose = obj.verbose;
+        }
+        if (typeof obj.agentCommand === 'string' && obj.agentCommand.length > 0) {
+          fileConfig.agentCommand = obj.agentCommand;
+        }
+        if (typeof obj.cwd === 'string' && obj.cwd.length > 0) {
+          fileConfig.cwd = obj.cwd;
+        }
+      }
     } catch {
       // Ignore parse errors, use defaults
     }
@@ -103,7 +123,10 @@ export function loadConfig(cwd?: string): ClamCodeConfig {
 
   // Environment variable overrides
   if (process.env.CLAM_CODE_TRUNCATE_AFTER) {
-    config.truncateAfter = Number.parseInt(process.env.CLAM_CODE_TRUNCATE_AFTER, 10);
+    const parsed = Number.parseInt(process.env.CLAM_CODE_TRUNCATE_AFTER, 10);
+    if (!Number.isNaN(parsed) && parsed > 0) {
+      config.truncateAfter = parsed;
+    }
   }
   if (process.env.CLAM_CODE_VERBOSE === '1') {
     config.verbose = true;
