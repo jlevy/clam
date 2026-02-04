@@ -8,7 +8,9 @@
 
 ## Overview
 
-Complete the clam repository setup to match the patterns established in the tbd project. This includes GitHub Actions CI/CD, changesets for version management, git hooks, and developer documentation.
+Complete the clam repository setup to match the patterns established in the tbd project.
+This includes GitHub Actions CI/CD, changesets for version management, git hooks, and
+developer documentation.
 
 ## Goals
 
@@ -21,12 +23,14 @@ Complete the clam repository setup to match the patterns established in the tbd 
 ## Non-Goals
 
 - Publishing the first version to npm (separate task after repo setup)
-- Benchmark workflow (clam doesn't have benchmarks yet)
+- Benchmark workflow (clam doesn’t have benchmarks yet)
 - Coverage reporting in CI (can be added later)
 
 ## Background
 
-The clam project was extracted from the kermg monorepo and restructured as a standalone pnpm monorepo. While the core codebase, TypeScript configuration, ESLint, Prettier, and tests are all working, several important repository infrastructure elements are missing:
+The clam project was extracted from the kermg monorepo and restructured as a standalone
+pnpm monorepo. While the core codebase, TypeScript configuration, ESLint, Prettier, and
+tests are all working, several important repository infrastructure elements are missing:
 
 1. No GitHub Actions workflows
 2. No changeset configuration
@@ -39,12 +43,12 @@ These elements are essential for a production-quality open source project.
 
 ### Approach
 
-Mirror the patterns from the tbd repository, adapted for clam's simpler structure:
+Mirror the patterns from the tbd repository, adapted for clam’s simpler structure:
 
 - Single package monorepo (no coverage reports yet)
 - Similar CI matrix (ubuntu, macos, windows)
 - Same changesets workflow
-- Same lefthook configuration (minus flowmark)
+- Same lefthook configuration (including flowmark for markdown auto-formatting)
 
 ### Components
 
@@ -111,9 +115,11 @@ Mirror the patterns from the tbd repository, adapted for clam's simpler structur
 
 ## Open Questions
 
-- **DECIDED**: No coverage reporting in initial CI (can be added later when there's more test coverage)
-- **DECIDED**: No benchmark job (clam doesn't have benchmarks)
-- **DECIDED**: Skip flowmark in lefthook (markdown formatting not critical for this project)
+- **DECIDED**: No coverage reporting in initial CI (can be added later when there’s more
+  test coverage)
+- **DECIDED**: No benchmark job (clam doesn’t have benchmarks)
+- **DECIDED**: Include flowmark in lefthook for markdown auto-formatting (matches tbd
+  patterns, excludes auto-generated files like .tbd/, .claude/skills/, AGENTS.md)
 
 ## References
 

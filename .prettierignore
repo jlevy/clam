@@ -4,3 +4,4 @@ coverage/
 pnpm-lock.yaml
 attic/
 .tbd/
+*.md
