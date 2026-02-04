@@ -95,19 +95,16 @@ describe('ShellModule', () => {
       expect(result.exitCode).toBe(42);
     });
 
-    it(
-      'should respect timeout',
-      async () => {
-        // Use node instead of sleep for cross-platform compatibility (Windows has no sleep)
-        const result = await shell.exec('node -e "setTimeout(() => {}, 10000)"', {
-          captureOutput: true,
-          timeout: 100,
-        });
-        // Command should be killed
-        expect(result.signal).toBeDefined();
-      },
-      { timeout: 10000 }
-    );
+    // Skip on Windows: SIGTERM doesn't work the same way as on Unix
+    it.skipIf(process.platform === 'win32')('should respect timeout', async () => {
+      // Use node instead of sleep for cross-platform compatibility (Windows has no sleep)
+      const result = await shell.exec('node -e "setTimeout(() => {}, 10000)"', {
+        captureOutput: true,
+        timeout: 100,
+      });
+      // Command should be killed
+      expect(result.signal).toBeDefined();
+    });
   });
 
   describe('getCompletions', () => {
