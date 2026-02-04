@@ -4,7 +4,7 @@
 
 **Author:** Claude (consolidated from specs and PR review)
 
-**Status:** Shell Support Complete - Ready for Testing
+**Status:** Feature Complete - Ready for npm Publishing
 
 ## Overview
 
@@ -16,11 +16,15 @@ This document consolidates all remaining work for clam v0.1, organized into phas
 
 - Phase 0: Critical Bug Fixes ✅
 - Phase 1: Minimal Viable Client ✅
-- Phase 2: Usable UX Polish ✅ (partial - TTY checks, config validation done)
-- Phase 3: Shell Support ✅ (shell module, mode detection, input integration)
-- Phase 4: Code Cleanup ✅
+- Phase 2: Usable UX Polish ✅ COMPLETE
+- Phase 3: Shell Support ✅ COMPLETE
+- Phase 4: Code Cleanup ✅ COMPLETE
 - Local slash commands (/help, /quit, /status, /config, /clear) ✅
-- Slash command tab completion ✅
+- Slash command tab completion with arrow navigation ✅
+- File path tab completion (@path/to/file) ✅
+- ACP command routing (/commit, /review, /model) ✅
+- Command history persistence ✅
+- Test coverage (123 tests across 8 test files) ✅
 - CI/CD, changesets, git hooks, development docs ✅
 
 **Ready for Testing:**
@@ -30,14 +34,12 @@ This document consolidates all remaining work for clam v0.1, organized into phas
 - Shell commands executed directly (bypass ACP)
 - Mode detection with input coloring
 - Permission handling
+- Full slash command menu with arrow navigation
+- History saved to ~/.clam/code/history
 
-**Remaining Work (P1-P2):**
+**Remaining Work (P1):**
 
-- ACP command routing (/commit, /review, /model)
-- npm publishing
-- History persistence
-- Arrow key navigation
-- Test coverage expansion
+- npm publishing (`clam-ekdv`)
 
 ---
 
@@ -139,34 +141,20 @@ process.on('SIGINT', async () => {
 
 **Resolution:** No longer applicable - /edit command was removed.
 
-### 1.4 ACP Command Routing
+### 1.4 ACP Command Routing ✅
 
-**Bead:** `clam-76um`
+**Bead:** `clam-76um` (CLOSED)
 **Spec Location:** Main spec, "S.1 Slash Command Framework"
 
 **Task:** Route ACP commands (`/commit`, `/review`, `/model`, etc.) to Claude Code.
 
-**Implementation:**
+**Resolution:** Implemented:
 
-1. Parse `available_commands_update` events in `acp.ts` (already received)
-2. Store available commands in session state
-3. Display in `/help` output
-4. Add to tab completion
-5. Route commands through ACP session
-
-```typescript
-// In acp.ts - handle available_commands_update
-case 'available_commands_update':
-  this.availableCommands = event.commands;
-  break;
-
-// In input.ts - check for ACP command
-if (acpClient.hasCommand(slashCommand)) {
-  await acpClient.sendCommand(slashCommand, args);
-} else if (localCommands.has(slashCommand)) {
-  localCommands.get(slashCommand).execute(args);
-}
-```
+1. `AcpCommand` interface added to acp.ts
+2. `available_commands_update` handler stores commands
+3. `hasCommand()`, `sendCommand()`, `getAvailableCommands()` methods
+4. `/help` displays both local and Claude Code commands
+5. Slash commands route to ACP when they match available commands
 
 ### 1.5 npm Publishing
 
@@ -181,87 +169,55 @@ if (acpClient.hasCommand(slashCommand)) {
 
 ---
 
-## Phase 2: UX Improvements (P2) - Partially Complete
+## Phase 2: UX Improvements (P2) ✅ COMPLETE
 
 **Goal:** Polish the user experience with commonly expected features.
 
-**Completed:** TTY checks (2.5), Config validation (2.6), Temp cleanup (2.7 - N/A after /edit removal)
-**Remaining:** Arrow nav (2.1), History (2.2, 2.3), File completion (2.4), Tests (2.8)
+**All items completed:** Arrow nav (2.1), History (2.2, 2.3), File completion (2.4), TTY checks (2.5), Config validation (2.6), Temp cleanup (2.7), Tests (2.8)
 
-### 2.1 Arrow Key Navigation in Completion Menu
+### 2.1 Arrow Key Navigation in Completion Menu ✅
 
-**Bead:** `clam-2vrk`
+**Bead:** `clam-2vrk` (CLOSED)
 **Location:** `packages/clam/src/lib/input.ts`
 
-**Task:** Add Up/Down Arrow to navigate slash command completions (currently Tab only).
+**Resolution:** Implemented Up/Down arrow navigation:
 
-**Implementation:** Requires tracking completion state and handling arrow key events:
+- `menuItems[]` and `menuSelectedIndex` track selection state
+- Arrow keys navigate through menu items
+- Selected item highlighted with `→` indicator
+- Enter selects the highlighted command
+- Menu shows navigation hint: "↑↓ navigate, Tab complete, Enter select"
 
-```typescript
-interface CompletionState {
-  options: string[];
-  selectedIndex: number;
-  prefix: string;
-}
+### 2.2 Command History Persistence ✅
 
-// On keypress:
-if (key.name === 'down' && completionState) {
-  completionState.selectedIndex =
-    (completionState.selectedIndex + 1) % completionState.options.length;
-  renderCompletion();
-}
-```
-
-### 2.2 Command History Persistence
-
-**Bead:** `clam-gr62`
+**Bead:** `clam-gr62` (CLOSED)
 **Spec Location:** Main spec, "Phase 3.5: Unified Command History"
 
-**Task:** Save/load history from `~/.clam/code/history`.
+**Resolution:** Implemented:
 
-```typescript
-// On startup
-const historyPath = join(configDir, 'history');
-const history = existsSync(historyPath)
-  ? readFileSync(historyPath, 'utf-8').split('\n').filter(Boolean)
-  : [];
+- `getHistoryPath()` in config.ts returns `~/.clam/code/history`
+- `loadHistory()` reads history file on startup
+- `saveHistory()` writes history on exit (up to 1000 entries)
+- History passed to readline via `history` and `historySize` options
 
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-  history,
-  historySize: 1000,
-});
+### 2.3 Up/Down Arrow History Navigation ✅
 
-// On exit
-process.on('beforeExit', () => {
-  writeFileSync(historyPath, rl.history.join('\n'));
-});
-```
+**Bead:** `clam-julx` (CLOSED)
 
-### 2.3 Up/Down Arrow History Navigation
+**Resolution:** Works with readline's built-in history support once history option is passed.
 
-**Bead:** `clam-julx`
+### 2.4 File Path Tab Completion ✅
 
-**Status:** Should work out of box with readline `history` option - verify and fix if broken.
-
-### 2.4 File Path Tab Completion
-
-**Bead:** `clam-lauj`
+**Bead:** `clam-lauj` (CLOSED)
 **Spec Location:** Main spec, "S.2 Autocomplete System"
 
-**Task:** Tab complete `@path/to/file` mentions.
+**Resolution:** Implemented `completeFilePath()` in input.ts:
 
-**Implementation:**
-
-```typescript
-// Detect @ prefix in completer
-if (currentWord.startsWith('@')) {
-  const pathPart = currentWord.slice(1);
-  const completions = await glob(`${pathPart}*`);
-  return [completions.map((p) => `@${p}`), currentWord];
-}
-```
+- Detects `@` prefix in completer
+- Supports relative paths (`@./src/` or `@src/lib/`)
+- Trailing slash lists directory contents
+- Directories shown with trailing `/`
+- Limited to 20 suggestions per completion
 
 ### 2.5 TTY Checks for Escape Sequences ✅
 
@@ -281,16 +237,18 @@ if (currentWord.startsWith('@')) {
 
 **Resolution:** No longer applicable - /edit command was removed.
 
-### 2.8 Test Coverage Expansion
+### 2.8 Test Coverage Expansion ✅
 
-**Bead:** `clam-67aa`
+**Bead:** `clam-67aa` (CLOSED)
 
-**Files needing tests:**
-| File | Tests to Add |
-|------|--------------|
-| `bin.ts` | Argument parsing, version display |
-| `config.ts` | Config loading, env vars, defaults |
-| `formatting.ts` | Color functions, truncation, timestamps |
+**Tests added:**
+| File | Tests Added |
+|------|-------------|
+| `formatting.test.ts` | 21 tests - colors, symbols, formatToolStatus, truncateLines, formatTimestamp, formatTokenUsage, formatDuration |
+| `config.test.ts` | 13 tests - getConfigDir, getConfigPath, getHistoryPath, loadConfig (defaults, env vars), formatConfig |
+| `input.test.ts` | 4 tests - completer for slash commands, @path completion |
+
+**Total:** 123 tests across 8 test files (up from 85)
 
 ---
 
@@ -425,13 +383,13 @@ From main spec "Critical Implementation Details":
 
 ## Bead Summary
 
-**Total:** 8 open beads (17 closed)
+**Total:** 2 open beads (23 closed)
 
 | Priority | Open | Closed | Categories                   |
 | -------- | ---- | ------ | ---------------------------- |
 | P0       | 0    | 2      | Security, data integrity     |
-| P1       | 3    | 4      | Epic, bugs, core features    |
-| P2       | 5    | 7      | UX, tests, shell, validation |
+| P1       | 2    | 5      | Epic, npm publishing         |
+| P2       | 0    | 12     | UX, tests, shell, validation |
 | P3       | 0    | 4      | Cleanup                      |
 
 ---
@@ -443,18 +401,17 @@ From main spec "Critical Implementation Details":
 - ✅ Day 1: Phase 0 critical fixes (P0 bugs)
 - ✅ Day 2: Phase 1 bugs, Phase 4 cleanup
 - ✅ Day 3: Phase 3 Shell Support (ahead of schedule)
+- ✅ Day 4: Phase 2 UX improvements, ACP command routing, test coverage
 
 **Ready for Testing:**
-The app is now testable! Run `pnpm dev` in packages/clam to try it.
+The app is feature complete! Run `pnpm dev` in packages/clam to try it.
 
 **Remaining Work:**
 
-1. **P1:** ACP command routing (/commit, /review, /model) - `clam-76um`
-2. **P1:** npm publishing - `clam-ekdv`
-3. **P2:** History persistence - `clam-gr62`, `clam-julx`
-4. **P2:** Arrow navigation - `clam-2vrk`
-5. **P2:** File path completion - `clam-lauj`
-6. **P2:** Test coverage - `clam-67aa`
+1. **P1:** npm publishing - `clam-ekdv`
+   - Configure `NPM_TOKEN` secret in GitHub repository
+   - Manual first publish: `cd packages/clam && npm publish --access public`
+   - Create v0.1.0 tag to trigger release workflow
 
 ---
 
