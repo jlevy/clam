@@ -15,7 +15,7 @@ import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from '
 import { dirname, join, resolve } from 'node:path';
 import * as readline from 'node:readline';
 import { formatConfig, type ClamCodeConfig } from './config.js';
-import { colors, inputColors, promptChars } from './formatting.js';
+import { colors, getColorForMode, inputColors, promptChars } from './formatting.js';
 import type { ModeDetector, InputMode } from './mode-detection.js';
 import { isExplicitShell, stripShellTrigger } from './mode-detection.js';
 import type { OutputWriter } from './output.js';
@@ -411,6 +411,39 @@ export class InputReader {
   }
 
   /**
+   * Recolor the current input line based on detected mode.
+   * Uses ANSI escape codes to clear and rewrite the line with color.
+   *
+   * @param line - Current line content
+   * @param mode - Detected input mode
+   */
+  private recolorLine(line: string, mode: InputMode): void {
+    // TTY detection guard - skip if not a TTY
+    if (!isTTY) return;
+
+    // Skip recoloring when menu is visible to avoid flicker
+    if (this.menuLinesShown > 0) return;
+
+    const color = getColorForMode(mode);
+    const cursorPos = (this.rl as readline.Interface & { cursor?: number })?.cursor ?? line.length;
+
+    // Clear current line and rewrite with color
+    // \r = return to start, \x1b[K = clear to end of line
+    process.stdout.write('\r\x1b[K');
+
+    // Write prompt + colored input
+    const prompt = colors.inputPrompt(`${promptChars.input} `);
+    process.stdout.write(prompt);
+    process.stdout.write(color(line));
+
+    // Move cursor back to correct position (if not at end)
+    const charsFromEnd = line.length - cursorPos;
+    if (charsFromEnd > 0) {
+      process.stdout.write(`\x1b[${charsFromEnd}D`); // Move left N chars
+    }
+  }
+
+  /**
    * Start the input loop.
    */
   async start(): Promise<void> {
@@ -496,7 +529,7 @@ export class InputReader {
         this.clearCommandMenu(true);
       }
 
-      // Update mode detection and colors on each keypress
+      // Update mode detection and recolor the line on each keypress
       if (modeDetector && key.name !== 'return') {
         // Get the line after this keypress
         const nextLine =
@@ -505,19 +538,12 @@ export class InputReader {
         const newMode = modeDetector.detectModeSync(nextLine);
         if (newMode !== this.currentInputMode) {
           this.currentInputMode = newMode;
-          // Apply new color
-          switch (newMode) {
-            case 'shell':
-              process.stdout.write(inputColors.shell);
-              break;
-            case 'slash':
-              process.stdout.write(inputColors.slashCommand);
-              break;
-            case 'nl':
-            default:
-              process.stdout.write(inputColors.naturalLanguage);
-              break;
-          }
+          // Defer recoloring until after readline has processed the keystroke
+          // This ensures we work with the actual updated line buffer
+          setImmediate(() => {
+            const actualLine = this.rl?.line ?? '';
+            this.recolorLine(actualLine, newMode);
+          });
         }
       }
 
@@ -530,8 +556,10 @@ export class InputReader {
         this.clearCommandMenu(true);
         menuShownForCurrentInput = false;
         this.currentInputMode = 'nl';
-        // Switch back to natural language color
-        process.stdout.write(inputColors.naturalLanguage);
+        // Recolor with empty line to reset to natural language color
+        setImmediate(() => {
+          this.recolorLine('', 'nl');
+        });
       }
     };
 

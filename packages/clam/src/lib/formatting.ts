@@ -14,6 +14,8 @@
 
 import pc from 'picocolors';
 
+import type { InputMode } from './mode-detection.js';
+
 /**
  * Semantic color functions for consistent terminal output.
  *
@@ -160,6 +162,24 @@ export const inputColors = {
   /** Reset to default */
   reset: isTTY ? '\x1b[0m' : '',
 };
+
+/**
+ * Get the color function for a given input mode.
+ * Used for real-time input coloring based on detected mode.
+ *
+ * @param mode - The detected input mode
+ * @returns A function that colors the input string
+ */
+export function getColorForMode(mode: InputMode): (s: string) => string {
+  switch (mode) {
+    case 'shell':
+      return (s) => s; // Default terminal color (white)
+    case 'nl':
+      return pc.magenta;
+    case 'slash':
+      return pc.blue;
+  }
+}
 
 /**
  * Status symbols with consistent styling.
