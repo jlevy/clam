@@ -395,14 +395,49 @@ These should be intercepted and routed to clam equivalents:
 
 ## Bead Summary
 
-**Total:** 2 open beads (23 closed)
+**Total:** 9 open beads (23 closed)
 
 | Priority | Open | Closed | Categories |
 | --- | --- | --- | --- |
 | P0 | 0 | 2 | Security, data integrity |
 | P1 | 2 | 5 | Epic, npm publishing |
-| P2 | 0 | 12 | UX, tests, shell, validation |
+| P2 | 7 | 12 | UX, tests, shell, validation, input coloring |
 | P3 | 0 | 4 | Cleanup |
+
+* * *
+
+## Phase 5: Real-time Input Coloring (P2) - NEW
+
+**Epic:** `clam-r25h` - Real-time input coloring based on detected mode
+
+**Goal:** Color input text in real-time based on detected mode (shell=white, NL=magenta,
+slash=blue) using readline keypress events.
+
+| Bead | Task | Dependencies | Status |
+| --- | --- | --- | --- |
+| `clam-qldg` | Add `getColorForMode()` helper to formatting.ts | None | Ready |
+| `clam-se22` | Add TTY detection guard to recolorLine() | None | Ready |
+| `clam-y5ni` | Skip input recoloring when completion menu is visible | None | Ready |
+| `clam-6hux` | Implement `recolorLine()` with ANSI codes + cursor handling | `clam-qldg` | Blocked |
+| `clam-23en` | Add keypress event handler to InputReader | `clam-6hux`, `clam-y5ni`, `clam-se22` | Blocked |
+| `clam-f9wq` | Add tests for real-time input coloring | `clam-23en` | Blocked |
+
+**Dependency graph:**
+
+```
+clam-qldg (color helper)
+    ↓
+clam-6hux (recolorLine)  ←── clam-se22 (TTY guard)
+    ↓                    ←── clam-y5ni (menu skip)
+clam-23en (keypress handler)
+    ↓
+clam-f9wq (tests)
+```
+
+**Key insight:** Input field interactivity (cursor repositioning) does NOT violate “true
+scrollback” - that constraint only applies to output.
+See
+[research-2026-02-02-acp-clam-terminal-ui.md](../../research/active/research-2026-02-02-acp-clam-terminal-ui.md#key-design-principles).
 
 * * *
 
@@ -415,8 +450,8 @@ These should be intercepted and routed to clam equivalents:
 - ✅ Day 3: Phase 3 Shell Support (ahead of schedule)
 - ✅ Day 4: Phase 2 UX improvements, ACP command routing, test coverage
 
-**Ready for Testing:** The app is feature complete!
-Run `pnpm dev` in packages/clam to try it.
+**Ready for Testing:** The app is feature complete for v0.1! Run `pnpm dev` in
+packages/clam to try it.
 
 **Remaining Work:**
 
@@ -424,6 +459,11 @@ Run `pnpm dev` in packages/clam to try it.
    - Configure `NPM_TOKEN` secret in GitHub repository
    - Manual first publish: `cd packages/clam && npm publish --access public`
    - Create v0.1.0 tag to trigger release workflow
+
+2. **P2:** Real-time input coloring - `clam-r25h` (epic)
+   - Start with `clam-qldg` (color helper)
+   - Then `clam-6hux` (recolorLine method)
+   - Finally `clam-23en` (keypress integration)
 
 * * *
 

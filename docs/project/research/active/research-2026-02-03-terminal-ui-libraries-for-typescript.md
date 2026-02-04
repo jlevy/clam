@@ -24,6 +24,16 @@ Special focus on:
 
 This research informs the clam-code project’s input handling strategy.
 
+> **Note: “Scrollback Compatible” = Output Behavior, Not Input**
+> 
+> When we say a library is “scrollback compatible,” we mean its **output** doesn’t
+> corrupt the terminal’s native scrollback buffer.
+> The **input field** (where user types) CAN use cursor repositioning for syntax
+> highlighting, completions, etc.—this is standard shell behavior.
+> Once input is submitted (Enter pressed), it becomes part of the permanent scrollback.
+> Libraries like readline are “scrollback compatible” precisely because they follow this
+> model: interactive input editing, but output just flows sequentially.
+
 ## Questions to Answer
 
 1. What TypeScript/Node.js terminal libraries exist for rich input?

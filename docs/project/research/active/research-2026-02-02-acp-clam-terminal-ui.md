@@ -1452,11 +1452,26 @@ built from scratch with this as a core design principle.
 
 #### Key Design Principles
 
-1. **Never use cursor repositioning** - All output is sequential `print()` to stdout
-2. **Scrollback is the viewport** - User scrolls with terminal’s native mechanisms
-3. **Overlays are additive** - Clam codes add metadata, don’t change the text
-4. **Graceful degradation** - In plain terminals, just shows text without overlays
-5. **SSH-first** - Works identically over SSH (just bytes flowing through pipe)
+1. **Output uses sequential print** - Agent responses, tool output, and history flow
+   sequentially to stdout (no cursor repositioning for output)
+2. **Input field CAN be interactive** - The input line (where user types) CAN use cursor
+   repositioning for syntax highlighting, completions, and editing—this is standard
+   shell behavior (fish, zsh, bash all do this)
+3. **Submitted input becomes scrollback** - Once user presses Enter, the input line
+   becomes part of the permanent scrollback (no longer editable, scrolls normally)
+4. **Scrollback is the viewport** - User scrolls with terminal’s native mechanisms
+5. **Overlays are additive** - Clam codes add metadata, don’t change the text
+6. **Graceful degradation** - In plain terminals, just shows text without overlays
+7. **SSH-first** - Works identically over SSH (just bytes flowing through pipe)
+
+> **Clarification: “True Scrollback” Does NOT Ban Interactive Input**
+> 
+> “True scrollback” refers to **output/history** only.
+> The input field is ephemeral and can use any TUI techniques (cursor repositioning,
+> inline syntax highlighting, completion menus) without violating the scrollback model.
+> This matches how modern shells work: fish has sophisticated input editing with
+> real-time syntax highlighting, but command output just flows into the terminal’s
+> native scrollback buffer.
 
 #### Phase 1: Minimal True-Scrollback Client
 

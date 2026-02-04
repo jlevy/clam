@@ -1640,21 +1640,120 @@ Update `InputReader` to color input based on detected mode:
 | `nl` | Magenta | `how do I list files?` |
 | `slash` | Bold blue | `/help`, `/commit` |
 
-**Integration with readline:**
+> **Important: Input Field Interactivity is Allowed**
+> 
+> “True scrollback” applies to **output only**. The input field (where user types) CAN
+> use cursor repositioning for syntax highlighting, completions, and editing - this is
+> standard shell behavior (fish, zsh, bash all do this).
+> Once input is submitted, it becomes part of the permanent scrollback.
+> See
+> [research-2026-02-02-acp-clam-terminal-ui.md](../../research/active/research-2026-02-02-acp-clam-terminal-ui.md#key-design-principles)
+> for details.
 
-Since Node.js readline doesn’t support real-time input coloring natively, we have two
-options:
+**Real-time Input Coloring via Keypress Events:**
 
-1. **Post-submission coloring** (simpler): Color the echoed input after Enter
-2. **Raw mode coloring** (complex): Use raw stdin mode with manual echo
-
-For the spike, use **post-submission coloring**:
+Node.js readline emits `keypress` events before updating the line buffer.
+We can use this to re-render the input line with the correct color on each keystroke:
 
 ```typescript
-// In InputReader.onLine handler
-const mode = await modeDetector.detectMode(line);
-const coloredLine = colorForMode(line, mode);
-output.info(coloredLine); // Echo with color
+// In InputReader constructor
+this.rl.on('keypress', (char, key) => {
+  // Skip if completing or in menu
+  if (this.isCompleting) return;
+
+  // Get current line content
+  const line = this.rl.line;
+
+  // Detect mode synchronously (fast path)
+  const mode = detectModeSync(line);
+
+  // Re-render the line with color
+  this.recolorLine(line, mode);
+});
+
+private recolorLine(line: string, mode: InputMode): void {
+  // Only if TTY
+  if (!process.stdout.isTTY) return;
+
+  const color = this.getColorForMode(mode);
+
+  // Clear current line and rewrite with color
+  // \r = return to start, \x1b[K = clear to end of line
+  process.stdout.write('\r\x1b[K');
+
+  // Write prompt + colored input
+  process.stdout.write(this.prompt);
+  process.stdout.write(color(line));
+
+  // Cursor is now at end of line (correct position after typing)
+}
+
+private getColorForMode(mode: InputMode): (s: string) => string {
+  switch (mode) {
+    case 'shell': return (s) => s; // Default terminal color (white)
+    case 'nl': return pc.magenta;
+    case 'slash': return pc.blue;
+  }
+}
+```
+
+**Key implementation details:**
+
+1. **Use `detectModeSync()`** - The synchronous detector for real-time use (no `which`
+   lookup, just pattern matching)
+2. **Cursor position** - After rewriting, cursor is at end of line.
+   For mid-line edits, track cursor position from readline and restore it
+3. **Debouncing** - Not needed; keypress events are already throttled by terminal
+4. **Completion menu** - Skip recoloring when menu is visible to avoid flicker
+
+**Cursor position handling for mid-line edits:**
+
+```typescript
+private recolorLine(line: string, mode: InputMode): void {
+  if (!process.stdout.isTTY) return;
+
+  const color = this.getColorForMode(mode);
+  const cursorPos = this.rl.cursor; // Current cursor position in line
+
+  // Clear and rewrite
+  process.stdout.write('\r\x1b[K');
+  process.stdout.write(this.prompt);
+  process.stdout.write(color(line));
+
+  // Move cursor back to correct position (if not at end)
+  const charsFromEnd = line.length - cursorPos;
+  if (charsFromEnd > 0) {
+    process.stdout.write(`\x1b[${charsFromEnd}D`); // Move left N chars
+  }
+}
+```
+
+**Fallback for non-TTY:** When piped or in non-interactive mode, skip coloring entirely.
+The input works normally, just without colors.
+
+#### Implementation Beads
+
+**Epic:** `clam-r25h` - Real-time input coloring based on detected mode (shell/NL/slash)
+
+| Bead | Task | Dependencies |
+| --- | --- | --- |
+| `clam-qldg` | Add `getColorForMode()` helper to formatting.ts | None (start here) |
+| `clam-se22` | Add TTY detection guard to recolorLine() | None |
+| `clam-y5ni` | Skip input recoloring when completion menu is visible | None |
+| `clam-6hux` | Implement `recolorLine()` with ANSI codes + cursor handling | `clam-qldg` |
+| `clam-23en` | Add keypress event handler to InputReader | `clam-6hux`, `clam-y5ni`, `clam-se22` |
+| `clam-f9wq` | Add tests for real-time input coloring | `clam-23en` |
+
+**Dependency graph:**
+
+```
+clam-qldg (color helper)
+    ↓
+clam-6hux (recolorLine)  ←── clam-se22 (TTY guard)
+    ↓                    ←── clam-y5ni (menu skip)
+clam-23en (keypress handler)
+    ↓
+clam-f9wq (tests)
 ```
 
 ### Shell Command Execution Flow
@@ -1803,7 +1902,8 @@ const completer = async (line: string): Promise<[string[], string]> => {
 - [ ] Add `shellOutput()` to OutputWriter
 - [ ] Update InputReader to detect mode on submission
 - [ ] Route shell commands to `shell.exec()` instead of ACP
-- [ ] Add post-submission input coloring
+- [ ] Add real-time input coloring via keypress events (see
+  [Input Coloring](#input-coloring))
 - [ ] Update tab completion to route based on mode
 
 #### Phase 3.4: Polish
@@ -2257,7 +2357,7 @@ $ ls -la                 ← Shell mode (white, dollar)
 / /help                  ← Slash mode (blue, slash)
 ```
 
-**Option C - Color only (no character change):**
+**Option C - Color only (no character change): ✅ RECOMMENDED**
 
 ```
 ▶ how do I list files    ← NL mode (magenta prompt + text)
@@ -2265,14 +2365,21 @@ $ ls -la                 ← Shell mode (white, dollar)
 ▶ /help                  ← Slash mode (blue prompt + text)
 ```
 
-**⚠️ Technical challenge:** Real-time prompt updates require either:
+**Implementation approach:** Use readline’s `keypress` event to detect changes and
+re-render the line with ANSI color codes.
+This is standard shell behavior - fish, zsh, and bash all use cursor repositioning for
+input editing and syntax highlighting.
 
-- Raw mode input handling (complex)
-- Post-submit color echo (simpler but delayed feedback)
+> **Note:** Input field interactivity (cursor repositioning, re-rendering) does NOT
+> violate “true scrollback” - that constraint only applies to output.
+> Once input is submitted (Enter pressed), it becomes permanent scrollback.
+> See [Input Coloring](#input-coloring) section for implementation details.
 
-**Recommendation:** Start with Option C (color only, post-submit) for spike.
-Consider Option B (dynamic character) as polish if raw mode is implemented for other
-features.
+**Recommendation:** Use Option C with **real-time coloring via keypress events**. This
+provides immediate visual feedback as the user types, matching modern shell UX.
+
+Option B (dynamic prompt character) can be added later if desired - the same keypress
+approach works for updating the prompt character too.
 
 #### 8. Ambiguous Command Words 🔶 **NEEDS RESEARCH**
 
