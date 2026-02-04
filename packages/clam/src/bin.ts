@@ -85,13 +85,11 @@ function showHelp(output: ReturnType<typeof createOutputWriter>): void {
   output.writeLine('  /quit    Exit clam');
   output.writeLine('  /status  Show session status');
   output.writeLine('  /config  Show current configuration');
-  output.writeLine('  /edit    Open $EDITOR for multi-line input');
   output.writeLine('  /clear   Clear the terminal');
   output.newline();
   output.writeLine('MULTI-LINE INPUT:');
   output.writeLine('  Type and press Enter to add lines');
   output.writeLine('  Press Enter on empty line to submit (two Enters)');
-  output.writeLine('  Use /edit to compose complex prompts in your editor');
 }
 
 /**

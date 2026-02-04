@@ -8,7 +8,6 @@
  */
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import * as readline from 'node:readline/promises';
 import { ensureConfigDir, getConfigPath } from './config.js';
 import type { PermissionOption } from './output.js';
 
@@ -135,49 +134,6 @@ export class PermissionManager {
     this.sessionPermissions.clear();
     this.persistentPermissions.clear();
     this.savePersistentPermissions();
-  }
-}
-
-/**
- * Prompt user for permission choice.
- *
- * Reads a number from stdin corresponding to the option index.
- * Returns the selected option ID.
- */
-export async function promptForPermission(
-  options: PermissionOption[]
-): Promise<{ optionId: string; kind: PermissionOption['kind'] }> {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-    terminal: process.stdin.isTTY ?? false,
-  });
-
-  try {
-    while (true) {
-      const answer = await rl.question('');
-      const trimmed = answer.trim();
-
-      // Parse number
-      const index = Number.parseInt(trimmed, 10);
-      if (Number.isNaN(index) || index < 1 || index > options.length) {
-        process.stdout.write(`Please enter a number between 1 and ${options.length}: `);
-        continue;
-      }
-
-      const selected = options[index - 1];
-      if (!selected) {
-        process.stdout.write(`Please enter a number between 1 and ${options.length}: `);
-        continue;
-      }
-
-      return {
-        optionId: selected.id,
-        kind: selected.kind,
-      };
-    }
-  } finally {
-    rl.close();
   }
 }
 
