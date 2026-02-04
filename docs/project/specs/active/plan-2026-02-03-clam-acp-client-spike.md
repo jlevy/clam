@@ -2049,35 +2049,25 @@ These details need explicit decisions before implementation.
 
 | #   | Topic                 | Key Decision Needed                                     |
 | --- | --------------------- | ------------------------------------------------------- |
-| 1   | Rejection UX          | How to show feedback when input is rejected?            |
 | 2   | Working Directory     | Should shell `cd` affect ACP session cwd?               |
 | 5   | Mode Toggle           | Should shell mode be enabled or disabled by default?    |
 | 7   | Prompt Indicator      | How to visually indicate current input mode?            |
 | 8   | Ambiguous Commands    | How to handle words that are both commands and English? |
 | 9   | Long-Running Commands | Capture vs stream output?                               |
 
-#### 1. Rejection UX Feedback 🔶 **OPEN QUESTION**
+#### 1. Rejection UX Feedback ✅ **DECIDED**
 
-When input is rejected (partial command rejection), the user needs clear feedback:
+When input is rejected (partial command rejection), the cursor simply stays on the line
+with no additional feedback. This is the simplest approach and acceptable for v0.1.
 
-```
-> l
-  └── (not a valid command - keep typing or press space for NL mode)
-```
+**Decision:** Option A - Silent stay. No message, no bell. User can continue typing or
+use space prefix for NL mode. Future versions may add visual feedback.
 
-**Options:**
+**Options considered:**
 
-- **A) Silent stay**: Cursor stays on line, no message (confusing)
-- **B) Inline hint**: Show subtle hint below input (preferred)
+- **A) Silent stay**: Cursor stays on line, no message ← **Selected for v0.1**
+- **B) Inline hint**: Show subtle hint below input (future enhancement)
 - **C) Bell + message**: Audible bell + status bar message
-
-**Recommendation:** Option B - show a muted inline hint that disappears on next keystroke.
-
-**⚠️ Technical challenge:** Node.js readline doesn't support writing below the current
-line without cursor manipulation. May need to:
-
-- Use raw mode for rejection feedback
-- Or just use option A (silent) for simplicity in spike
 
 #### 2. Working Directory Persistence 🔶 **OPEN QUESTION**
 
