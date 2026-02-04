@@ -567,7 +567,8 @@ export class InputReader {
         output.info('Press Ctrl+C again to exit, or type /quit');
       }
 
-      // Show fresh prompt so user can continue
+      // Show fresh prompt so user can continue (with extra spacing)
+      output.newline();
       output.newline();
       process.stdout.write(
         `${colors.inputPrompt(`${promptChars.input} `)}${inputColors.naturalLanguage}`
@@ -686,8 +687,9 @@ export class InputReader {
 
       while (true) {
         // Include input color at end of prompt so typed text has correct color
+        // Add newline before first prompt for cleaner visual separation
         const promptText = isFirstLine
-          ? `${colors.inputPrompt(`${promptChars.input} `)}${inputColors.naturalLanguage}`
+          ? `\n${colors.inputPrompt(`${promptChars.input} `)}${inputColors.naturalLanguage}`
           : `${colors.muted(`${promptChars.continuation} `)}${inputColors.naturalLanguage}`;
         const line = await this.question(promptText);
         // Reset color after input
