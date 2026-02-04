@@ -57,9 +57,7 @@ function parseArgs(): CliArgs {
  * Show help text.
  */
 function showHelp(output: ReturnType<typeof createOutputWriter>): void {
-  output.writeLine(
-    `${colors.bold('clam')} - True terminal scrollback ACP client for Claude Code`,
-  );
+  output.writeLine(`${colors.bold('clam')} - True terminal scrollback ACP client for Claude Code`);
   output.newline();
   output.writeLine('USAGE:');
   output.writeLine('  clam [options]');

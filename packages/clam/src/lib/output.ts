@@ -232,7 +232,7 @@ export function createOutputWriter(options: OutputWriterOptions = {}): OutputWri
       writeLine(
         box('\u250c\u2500') +
           colors.permissionHeading(' Permission Required ') +
-          box('\u2500'.repeat(40)),
+          box('\u2500'.repeat(40))
       );
       writeLine(box('\u2502'));
       writeLine(box('\u2502  ') + colors.muted('Tool:    ') + colors.permissionTool(tool));
@@ -281,7 +281,7 @@ export function createOutputWriter(options: OutputWriterOptions = {}): OutputWri
               colors.permissionAllow(allowOnce.option.name.padEnd(16)) +
               colors.permissionKey(`[${allowAlways.key}]`) +
               ' ' +
-              colors.permissionAllow(allowAlways.option.name),
+              colors.permissionAllow(allowAlways.option.name)
           );
         }
         if (denyOnce && denyAlways) {
@@ -292,7 +292,7 @@ export function createOutputWriter(options: OutputWriterOptions = {}): OutputWri
               colors.permissionDeny(denyOnce.option.name.padEnd(16)) +
               colors.permissionKey(`[${denyAlways.key}]`) +
               ' ' +
-              colors.permissionDeny(denyAlways.option.name),
+              colors.permissionDeny(denyAlways.option.name)
           );
         }
       } else {
@@ -301,7 +301,7 @@ export function createOutputWriter(options: OutputWriterOptions = {}): OutputWri
           const isAllow = option.kind.startsWith('allow');
           const colorFn = isAllow ? colors.permissionAllow : colors.permissionDeny;
           writeLine(
-            `${box('\u2502  ')}${colors.permissionKey(`[${key}]`)} ${colorFn(option.name)}`,
+            `${box('\u2502  ')}${colors.permissionKey(`[${key}]`)} ${colorFn(option.name)}`
           );
         }
       }
@@ -309,8 +309,8 @@ export function createOutputWriter(options: OutputWriterOptions = {}): OutputWri
       writeLine(box('\u2502'));
       writeLine(
         box(
-          '\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518',
-        ),
+          '\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518'
+        )
       );
       write(colors.bold('Choice (a/A/d/D): '));
     },

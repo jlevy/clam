@@ -37,20 +37,21 @@ clam --cwd /path/to/project # Set working directory
 
 During a session, use slash commands:
 
-| Command | Description |
-|---------|-------------|
-| `/help` | Show available commands |
-| `/quit` or `/exit` | Exit clam |
-| `/status` | Show session status |
-| `/config` | Show current configuration |
-| `/edit` | Open $EDITOR for multi-line input |
-| `/clear` | Clear the terminal |
+| Command            | Description                       |
+| ------------------ | --------------------------------- |
+| `/help`            | Show available commands           |
+| `/quit` or `/exit` | Exit clam                         |
+| `/status`          | Show session status               |
+| `/config`          | Show current configuration        |
+| `/edit`            | Open $EDITOR for multi-line input |
+| `/clear`           | Clear the terminal                |
 
 ## Multi-line Input
 
 Two ways to enter multi-line prompts:
 
 1. **Backslash continuation** - End a line with `\` to continue on the next line:
+
    ```
    > Write a function that \
    ... calculates the factorial \
@@ -79,12 +80,12 @@ Configuration is stored in `~/.clam/`:
 
 ### Environment Variables
 
-| Variable | Description |
-|----------|-------------|
-| `CLAM_VERBOSE=1` | Enable verbose output |
-| `CLAM_SHOW_TIMESTAMPS=1` | Show timestamps |
-| `CLAM_TRUNCATE_AFTER` | Max lines before truncating (default: 10) |
-| `CLAM_AGENT_COMMAND` | Agent command to spawn |
+| Variable                 | Description                               |
+| ------------------------ | ----------------------------------------- |
+| `CLAM_VERBOSE=1`         | Enable verbose output                     |
+| `CLAM_SHOW_TIMESTAMPS=1` | Show timestamps                           |
+| `CLAM_TRUNCATE_AFTER`    | Max lines before truncating (default: 10) |
+| `CLAM_AGENT_COMMAND`     | Agent command to spawn                    |
 
 ## Requirements
 

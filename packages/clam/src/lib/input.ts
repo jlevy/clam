@@ -215,7 +215,7 @@ export class InputReader {
     writeFileSync(
       tempFile,
       '# Enter your prompt below\n# Lines starting with # are comments and will be ignored\n\n',
-      'utf-8',
+      'utf-8'
     );
 
     output.info(colors.muted(`Opening ${editor}...`));
@@ -286,7 +286,7 @@ export class InputReader {
     const commands = Array.from(this.commands.entries());
     const menuLines = commands.map(
       ([name, cmd]) =>
-        `  ${colors.slashCommand(`/${name.padEnd(10)}`)} ${colors.muted(cmd.description)}`,
+        `  ${colors.slashCommand(`/${name.padEnd(10)}`)} ${colors.muted(cmd.description)}`
     );
 
     // Use save/restore cursor to show menu below without disrupting input
@@ -342,7 +342,9 @@ export class InputReader {
         // Switch to slash command color
         process.stdout.write(inputColors.slashCommand);
         // Defer to after the "/" is added to the line
-        setImmediate(() => { this.showCommandMenu(); });
+        setImmediate(() => {
+          this.showCommandMenu();
+        });
         return;
       }
 
@@ -387,7 +389,7 @@ export class InputReader {
       // Newline after message, then redisplay prompt so user can continue
       output.newline();
       process.stdout.write(
-        `${colors.inputPrompt(`${promptChars.input} `)}${inputColors.naturalLanguage}`,
+        `${colors.inputPrompt(`${promptChars.input} `)}${inputColors.naturalLanguage}`
       );
     });
 
@@ -481,7 +483,7 @@ export class InputReader {
           // Reprint with slash command colors (purple/violet)
           process.stdout.write('\x1b[1A\x1b[2K'); // Move up, clear line
           process.stdout.write(
-            `${colors.inputPromptDim(`${promptChars.input} `)}${colors.slashCommand(line)}\n`,
+            `${colors.inputPromptDim(`${promptChars.input} `)}${colors.slashCommand(line)}\n`
           );
           return line;
         }
@@ -558,7 +560,9 @@ export class InputReader {
     // Execute command
     const ctx: InputContext = {
       output,
-      quit: () => { this.options.onQuit(); },
+      quit: () => {
+        this.options.onQuit();
+      },
     };
 
     try {

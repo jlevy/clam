@@ -173,7 +173,7 @@ export const symbols = {
  * Format a tool status indicator.
  */
 export function formatToolStatus(
-  status: 'pending' | 'in_progress' | 'completed' | 'failed',
+  status: 'pending' | 'in_progress' | 'completed' | 'failed'
 ): string {
   switch (status) {
     case 'pending':
@@ -194,7 +194,7 @@ export function formatToolStatus(
  */
 export function truncateLines(
   text: string,
-  maxLines: number,
+  maxLines: number
 ): { text: string; truncated: boolean; hiddenLines: number } {
   const lines = text.split('\n');
   if (lines.length <= maxLines) {
@@ -227,7 +227,7 @@ export function formatTimestamp(date: Date = new Date()): string {
 export function formatTokenUsage(input: number, output: number): string {
   const total = input + output;
   return pc.gray(
-    `[tokens: ${input.toLocaleString()} in + ${output.toLocaleString()} out = ${total.toLocaleString()} total]`,
+    `[tokens: ${input.toLocaleString()} in + ${output.toLocaleString()} out = ${total.toLocaleString()} total]`
   );
 }
 

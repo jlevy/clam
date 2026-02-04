@@ -105,7 +105,7 @@ export class PermissionManager {
   recordDecision(
     tool: string,
     decision: 'allow' | 'reject',
-    scope: 'once' | 'session' | 'persistent',
+    scope: 'once' | 'session' | 'persistent'
   ): void {
     switch (scope) {
       case 'session':
@@ -145,7 +145,7 @@ export class PermissionManager {
  * Returns the selected option ID.
  */
 export async function promptForPermission(
-  options: PermissionOption[],
+  options: PermissionOption[]
 ): Promise<{ optionId: string; kind: PermissionOption['kind'] }> {
   const rl = readline.createInterface({
     input: process.stdin,

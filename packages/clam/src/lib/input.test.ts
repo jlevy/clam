@@ -105,7 +105,9 @@ describe('InputReader', () => {
       });
 
       // Should not throw
-      expect(() => { reader.stop(); }).not.toThrow();
+      expect(() => {
+        reader.stop();
+      }).not.toThrow();
     });
   });
 

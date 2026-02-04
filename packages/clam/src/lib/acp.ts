@@ -24,7 +24,7 @@ import type { OutputWriter, PermissionOption } from './output.js';
 export type PermissionHandler = (
   tool: string,
   command: string,
-  options: PermissionOption[],
+  options: PermissionOption[]
 ) => Promise<string>;
 
 /**
@@ -252,7 +252,7 @@ export class AcpClient {
 
     return {
       async requestPermission(
-        params: acp.RequestPermissionRequest,
+        params: acp.RequestPermissionRequest
       ): Promise<acp.RequestPermissionResponse> {
         const toolCall = params.toolCall;
         const tool = toolCall.title ?? 'Unknown tool';

@@ -30,6 +30,7 @@ This research explores how to create a seamless hybrid experience that:
 ## Scope
 
 **Included:**
+
 - Hybrid input mode design patterns
 - Tab completion for commands, files, slash commands, and natural language
 - Prompt visual feedback for mode indication
@@ -37,11 +38,12 @@ This research explores how to create a seamless hybrid experience that:
 - Semantic/embedding-based completion
 
 **Excluded:**
+
 - Full LLM response generation
 - Specific Claude Code implementation details
 - Voice input or other modalities
 
-* * *
+---
 
 ## Findings
 
@@ -53,6 +55,7 @@ built on xonsh and prompt_toolkit. Key architectural insights:
 #### Mode Detection and Switching
 
 **Automatic mode detection** based on input pattern:
+
 - `is_assist_request_str(text)` - detects `?` prefix or suffix
 - `looks_like_nl(text)` - heuristic check for natural language vs code
   - NL: mostly alphanumeric + basic punctuation, no pipes/operators/URLs
@@ -60,6 +63,7 @@ built on xonsh and prompt_toolkit. Key architectural insights:
 
 **Space-at-beginning shortcut**
 ([xonsh_keybindings.py:172-182](repos/kash/src/kash/xonsh_custom/xonsh_keybindings.py#L172-L182)):
+
 ```python
 @custom_bindings.add(" ", filter=whitespace_only)
 def _(event):
@@ -75,10 +79,12 @@ to signal NL mode.
 #### Prompt Visual Feedback
 
 The prompt changes to indicate mode:
+
 - `>` for command mode (default)
 - `?` prefix visible when in natural language mode
 
 Uses `FormattedText` for rich terminal rendering with:
+
 - Semantic colors
 - Hover tooltips
 - Workspace context
@@ -86,17 +92,20 @@ Uses `FormattedText` for rich terminal rendering with:
 #### Two-Level Completion System
 
 **First Tab**: Fast lexical matching
+
 - Command completions (shell builtins, executables in PATH)
 - File path completions
 - Prefix matching against help docs
 
 **Second Tab**: Semantic search via embeddings
+
 - Query embedded using `text-embedding-3-small`
 - Compared against pre-computed help doc embeddings (cached in `~/.cache/kash/`)
 - Returns top 10 docs above similarity threshold (0.25)
 - Results merged with lexical results
 
 Key files:
+
 - [shell_completions.py](repos/kash/src/kash/shell/completions/shell_completions.py) -
   Scoring/ranking logic
 - [xonsh_completers.py](repos/kash/src/kash/xonsh_custom/xonsh_completers.py) -
@@ -116,7 +125,7 @@ is_assist_request_str() ---> YES: shell_context_assistance() -> LLM
 default_custom() -> xonsh command execution
 ```
 
-* * *
+---
 
 ### 2. Multi-Line Input Patterns
 
@@ -127,12 +136,13 @@ multi-line input. Traditional shells submit immediately on Enter.
 
 #### Proposed Solution: Mode-Aware Enter Behavior
 
-| Mode | Enter Behavior | Rationale |
-| --- | --- | --- |
-| Command mode | Single Enter submits | Commands are typically one-line |
+| Mode                  | Enter Behavior       | Rationale                           |
+| --------------------- | -------------------- | ----------------------------------- |
+| Command mode          | Single Enter submits | Commands are typically one-line     |
 | Natural language mode | Double Enter submits | Allows multi-line questions/prompts |
 
 **Implementation considerations:**
+
 - Track time between Enter presses, or use a continuation character
 - Visual indicator showing “press Enter again to submit”
 - Could show a soft preview of what will be submitted
@@ -142,7 +152,7 @@ multi-line input. Traditional shells submit immediately on Enter.
 Shift+Enter is the standard “newline without submit” in many chat interfaces.
 However, terminal support is complicated (see Section 4).
 
-* * *
+---
 
 ### 3. Slash Command Completion
 
@@ -157,6 +167,7 @@ They bridge commands and conversation.
 4. Should fuzzy-match on both name and description
 
 Example completion display:
+
 ```
 /help        Show available commands and documentation
 /commit      Run pre-commit checks and create a git commit
@@ -167,6 +178,7 @@ Example completion display:
 #### Top Questions/Snippets Auto-Complete
 
 For natural language mode, maintain a curated set of 100-500 common questions:
+
 - “How do I …”
 - “What is …”
 - “Show me …”
@@ -175,7 +187,7 @@ For natural language mode, maintain a curated set of 100-500 common questions:
 Match semantically via embeddings, display as completions.
 Kash already implements this pattern.
 
-* * *
+---
 
 ### 4. Terminal Modifier Key Detection
 
@@ -184,6 +196,7 @@ Kash already implements this pattern.
 **Traditional terminals cannot reliably distinguish Shift+Enter from Enter.**
 
 This is because:
+
 - ANSI terminal interface assumes specific keyboard behavior
 - Modifier key state is often lost
 - `Ctrl+a` produces the same byte as `Ctrl+Shift+a`
@@ -194,6 +207,7 @@ This is because:
 **1. Kitty Keyboard Protocol** (Best modern solution)
 
 A backward-compatible protocol that enables full modifier detection:
+
 ```
 CSI unicode-key-code ; modifiers u
 ```
@@ -201,9 +215,11 @@ CSI unicode-key-code ; modifiers u
 Modifier bits: shift (1), alt (2), ctrl (4), super (8), hyper (16), meta (32)
 
 **Terminal support:**
+
 - Alacritty, Ghostty, Foot, iTerm2, WezTerm, Rio, kitty
 
 **Application opt-in:**
+
 ```
 CSI > 1 u  # Enable protocol
 ```
@@ -213,6 +229,7 @@ Programs with support: Vim, Neovim, Emacs, Helix, Fish shell, Textual, Crossterm
 **2. IDE-Level Workarounds** (VS Code, etc.)
 
 Configure keybindings to send escape sequence:
+
 ```json
 {
   "key": "shift+enter",
@@ -231,32 +248,33 @@ Configure keybindings to send escape sequence:
 #### Recommendation
 
 For maximum compatibility:
+
 1. **Primary**: Use double-Enter for multi-line submit in NL mode
 2. **Enhanced**: Detect Kitty protocol support at runtime, use Shift+Enter if available
 3. **IDE integration**: Document keybinding configuration for VS Code/terminals
 
-* * *
+---
 
 ### 5. Design Patterns Summary
 
 #### Mode Indication
 
-| Pattern | Description | Example |
-| --- | --- | --- |
-| Prompt character | Different char for each mode | `>` vs `?` |
-| Prompt color | Semantic coloring | Blue for command, green for NL |
-| Background | Subtle background change | Slight tint difference |
-| Cursor style | Block vs underline | Block for command, bar for NL |
+| Pattern          | Description                  | Example                        |
+| ---------------- | ---------------------------- | ------------------------------ |
+| Prompt character | Different char for each mode | `>` vs `?`                     |
+| Prompt color     | Semantic coloring            | Blue for command, green for NL |
+| Background       | Subtle background change     | Slight tint difference         |
+| Cursor style     | Block vs underline           | Block for command, bar for NL  |
 
 #### Mode Switching
 
-| Trigger | Behavior |
-| --- | --- |
-| Space at start | Switch to NL mode immediately |
-| `?` prefix | Explicit NL mode |
-| `/` prefix | Slash command mode |
-| First word passes `which` | Stay in command mode (white text) |
-| First word fails `which` | Auto-switch to NL mode (pink text) |
+| Trigger                   | Behavior                           |
+| ------------------------- | ---------------------------------- |
+| Space at start            | Switch to NL mode immediately      |
+| `?` prefix                | Explicit NL mode                   |
+| `/` prefix                | Slash command mode                 |
+| First word passes `which` | Stay in command mode (white text)  |
+| First word fails `which`  | Auto-switch to NL mode (pink text) |
 
 **Corner case:** Some English words are also commands (e.g., "which", "time", "test").
 Initial implementation accepts this ambiguity.
@@ -269,6 +287,7 @@ A nice UX feature from kash: **reject incomplete/invalid commands instead of exe
 or treating as NL.**
 
 **The problem:**
+
 - User types `l` and presses Enter
 - `l` is not a valid command (will error)
 - But it's also not clearly natural language (too short, no spaces, no question words)
@@ -276,17 +295,20 @@ or treating as NL.**
 - Our NL mode would send it to Claude, which is also wrong
 
 **The solution:**
+
 - If input looks like a partial command (short, no spaces, alphanumeric), don't submit
 - Instead, keep the cursor on the line and let user continue typing
 - This prevents accidental submissions and guides user toward valid input
 
 **Detection heuristics:**
+
 - Single word, no spaces
 - Fails `which` lookup (not a valid command)
 - Too short to be meaningful NL (< 3 chars, or no sentence structure)
 - No question marks or NL indicators
 
 **Behavior:**
+
 ```
 User types: l<Enter>
   → "l" is not a command, not NL either
@@ -304,6 +326,7 @@ User types: how<Enter>
 ```
 
 **Implementation:**
+
 ```typescript
 function shouldRejectSubmission(input: string): boolean {
   const trimmed = input.trim();
@@ -321,7 +344,7 @@ function shouldRejectSubmission(input: string): boolean {
     const isCommand = await shell.isCommand(trimmed);
     if (!isCommand && trimmed.length < 10) {
       // Too short to be meaningful NL, not a command
-      return true;  // Reject submission
+      return true; // Reject submission
     }
   }
 
@@ -334,14 +357,14 @@ allowing intentional short inputs.
 
 #### Completion Sources by Mode
 
-| Mode | Sources |
-| --- | --- |
-| Command | Executables, builtins, aliases, files |
-| Slash commands | Command list with descriptions |
+| Mode             | Sources                                   |
+| ---------------- | ----------------------------------------- |
+| Command          | Executables, builtins, aliases, files     |
+| Slash commands   | Command list with descriptions            |
 | Natural language | FAQ snippets, semantic matches, help docs |
-| File paths | Directory contents, glob patterns |
+| File paths       | Directory contents, glob patterns         |
 
-* * *
+---
 
 ## Options Considered
 
@@ -355,11 +378,13 @@ allowing intentional short inputs.
 - Slash command completion
 
 **Pros:**
+
 - Simple to implement
 - No API dependencies
 - Works in all terminals
 
 **Cons:**
+
 - No semantic matching
 - Limited NL completion options
 
@@ -369,11 +394,13 @@ allowing intentional short inputs.
 completion.
 
 **Pros:**
+
 - Rich, intelligent completions
 - Semantic FAQ matching
 - Production-proven in kash
 
 **Cons:**
+
 - Requires embedding API calls
 - More complex caching/state
 - Higher latency for semantic stage
@@ -383,15 +410,17 @@ completion.
 **Description:** Option A baseline with optional semantic completion (second Tab).
 
 **Pros:**
+
 - Fast default experience
 - Semantic available when wanted
 - Graceful degradation without API
 
 **Cons:**
+
 - More complex UX to explain
 - Two-stage Tab behavior may confuse users
 
-* * *
+---
 
 ## Recommendations
 
@@ -437,7 +466,7 @@ completion.
    - Detect mode on first space after first word (when using raw input)
    - Or detect on submission and re-color the line (simpler with readline)
 
-* * *
+---
 
 ## Next Steps
 
@@ -460,7 +489,7 @@ completion.
 - [ ] Investigate Kitty protocol detection and Shift+Enter support
 - [ ] Add semantic search via embeddings (optional)
 
-* * *
+---
 
 ## References
 

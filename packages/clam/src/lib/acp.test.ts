@@ -82,7 +82,9 @@ describe('AcpClient', () => {
       });
 
       // Should not throw
-      expect(() => { client.disconnect(); }).not.toThrow();
+      expect(() => {
+        client.disconnect();
+      }).not.toThrow();
     });
   });
 
