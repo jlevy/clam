@@ -1,0 +1,48 @@
+{
+  "name": "clam-workspace",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.28.2",
+  "engines": {
+    "node": ">=22"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "test:coverage": "pnpm --filter get-clam test:coverage",
+    "publint": "pnpm -r publint",
+    "format": "prettier --write --log-level warn .",
+    "format:check": "prettier --check --log-level warn .",
+    "lint": "eslint . --fix && pnpm typecheck && eslint . --max-warnings 0",
+    "lint:check": "pnpm typecheck && eslint . --max-warnings 0",
+    "precommit": "pnpm format && pnpm lint && pnpm build && pnpm test",
+    "ci": "pnpm format:check && pnpm lint:check && pnpm build && pnpm test",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "pnpm build && pnpm publint && changeset publish",
+    "upgrade:check": "ncu --format group",
+    "upgrade": "ncu --target minor -u && pnpm install && pnpm test",
+    "upgrade:major": "ncu --target latest --interactive --format group",
+    "clam": "tsx packages/clam/src/bin.ts",
+    "clam:dev": "tsx watch packages/clam/src/bin.ts",
+    "test:install": "pnpm --filter get-clam test:install",
+    "test:uninstall": "pnpm --filter get-clam test:uninstall"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.29.8",
+    "@eslint/js": "^9.39.2",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "npm-check-updates": "^17.1.18",
+    "prettier": "^3.8.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.54.0"
+  }
+}
