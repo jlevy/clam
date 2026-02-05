@@ -15,7 +15,13 @@ import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from '
 import { dirname, join, resolve } from 'node:path';
 import * as readline from 'node:readline';
 import { formatConfig, type ClamCodeConfig } from './config.js';
-import { colors, getColorForMode, inputColors, promptChars } from './formatting.js';
+import {
+  colors,
+  getColorForMode,
+  getPromptForMode,
+  inputColors,
+  promptChars,
+} from './formatting.js';
 import type { ModeDetector, InputMode } from './mode-detection.js';
 import { isExplicitShell, stripShellTrigger, suggestCommand } from './mode-detection.js';
 import type { OutputWriter } from './output.js';
@@ -149,15 +155,24 @@ export class InputReader {
    */
   private createCompleter(): Completer {
     return (line: string): CompleterResult => {
+      // Reset terminal color before returning completions
+      // This ensures completion output uses default color, not the current input color
+      const resetColor = isTTY ? inputColors.reset : '';
+
       // Complete slash commands
       if (line.startsWith('/')) {
         const commands = Array.from(this.commands.keys()).map((c) => `/${c}`);
         const hits = commands.filter((c) => c.startsWith(line));
-        // Return all matches, or all commands if no partial match
-        return [hits.length ? hits : commands, line];
+        const matches = hits.length ? hits : commands;
+        // Reset color for completion display if multiple matches
+        if (matches.length > 1 && resetColor) {
+          process.stdout.write(resetColor);
+        }
+        return [matches, line];
       }
 
       // Complete file paths starting with @
+      // The @ is a trigger character that should be removed after completion
       // Find the last @ symbol in the line (could be mid-sentence)
       const atIndex = line.lastIndexOf('@');
       if (atIndex >= 0) {
@@ -167,9 +182,14 @@ export class InputReader {
         if (!pathPart.includes(' ')) {
           const completions = this.completeFilePath(pathPart);
           if (completions.length > 0) {
-            // Return completions with the @ prefix and preserve text before @
+            // Return completions WITHOUT the @ prefix - @ is just a trigger character
+            // This replaces "@path" with just "path" (the completed filename)
             const prefix = line.slice(0, atIndex);
-            const hits = completions.map((c) => `${prefix}@${c}`);
+            const hits = completions.map((c) => `${prefix}${c}`);
+            // Reset color for completion display if multiple matches
+            if (hits.length > 1 && resetColor) {
+              process.stdout.write(resetColor);
+            }
             return [hits, line];
           }
         }
@@ -424,6 +444,10 @@ export class InputReader {
   /**
    * Recolor the current input line based on detected mode.
    * Uses ANSI escape codes to clear and rewrite the line with color.
+   * Also updates the prompt character based on mode:
+   * - NL mode: ▶ (pink)
+   * - Shell mode: $ (bold white)
+   * - Slash mode: ▶ (blue)
    *
    * @param line - Current line content
    * @param mode - Detected input mode
@@ -435,17 +459,18 @@ export class InputReader {
     // Skip recoloring when menu is visible to avoid flicker
     if (this.menuLinesShown > 0) return;
 
-    const color = getColorForMode(mode);
+    const textColor = getColorForMode(mode);
+    const promptInfo = getPromptForMode(mode);
     const cursorPos = (this.rl as readline.Interface & { cursor?: number })?.cursor ?? line.length;
 
     // Clear current line and rewrite with color
     // \r = return to start, \x1b[K = clear to end of line
     process.stdout.write('\r\x1b[K');
 
-    // Write prompt + colored input
-    const prompt = colors.inputPrompt(`${promptChars.input} `);
+    // Write prompt with mode-specific character and color + colored input
+    const prompt = promptInfo.colorFn(`${promptInfo.char} `);
     process.stdout.write(prompt);
-    process.stdout.write(color(line));
+    process.stdout.write(textColor(line));
 
     // Move cursor back to correct position (if not at end)
     const charsFromEnd = line.length - cursorPos;
@@ -455,23 +480,7 @@ export class InputReader {
 
     // Set the terminal color for subsequent input (picocolors resets after each string)
     // This prevents flicker on the next keystroke
-    switch (mode) {
-      case 'shell':
-        process.stdout.write(inputColors.shell);
-        break;
-      case 'slash':
-        process.stdout.write(inputColors.slashCommand);
-        break;
-      case 'nl':
-        process.stdout.write(inputColors.naturalLanguage);
-        break;
-      case 'ambiguous':
-        process.stdout.write(inputColors.ambiguous);
-        break;
-      case 'nothing':
-        process.stdout.write(inputColors.nothing);
-        break;
-    }
+    process.stdout.write(promptInfo.rawColor);
   }
 
   /**
@@ -562,20 +571,18 @@ export class InputReader {
 
       // Update mode detection and recolor the line on each keypress
       if (modeDetector && key.name !== 'return') {
-        // Get the line after this keypress
-        const nextLine =
-          key.name === 'backspace' ? currentLine.slice(0, -1) : currentLine + (key.sequence ?? '');
-
-        const newMode = modeDetector.detectModeSync(nextLine);
-        if (newMode !== this.currentInputMode) {
-          this.currentInputMode = newMode;
-          // Defer recoloring until after readline has processed the keystroke
-          // This ensures we work with the actual updated line buffer
-          setImmediate(() => {
-            const actualLine = this.rl?.line ?? '';
+        // Defer mode detection and recoloring until after readline has processed the keystroke
+        // This ensures we work with the actual updated line buffer
+        // Important: readline processes backspace before this event fires, so we can't
+        // simulate nextLine - we need to wait for the actual buffer state
+        setImmediate(() => {
+          const actualLine = this.rl?.line ?? '';
+          const newMode = modeDetector.detectModeSync(actualLine);
+          if (newMode !== this.currentInputMode) {
+            this.currentInputMode = newMode;
             this.recolorLine(actualLine, newMode);
-          });
-        }
+          }
+        });
       }
 
       // Reset menu flag on Enter or when line is cleared completely
@@ -583,13 +590,16 @@ export class InputReader {
       if (key.name === 'return') {
         this.clearCommandMenu(true);
         menuShownForCurrentInput = false;
-      } else if (key.name === 'backspace' && currentLine.length <= 1) {
-        this.clearCommandMenu(true);
-        menuShownForCurrentInput = false;
-        this.currentInputMode = 'nl';
-        // Recolor with empty line to reset to natural language color
+      } else if (key.name === 'backspace') {
+        // Check if we've backspaced to empty after readline processes the key
         setImmediate(() => {
-          this.recolorLine('', 'nl');
+          const actualLine = this.rl?.line ?? '';
+          if (actualLine === '') {
+            this.clearCommandMenu(true);
+            menuShownForCurrentInput = false;
+            this.currentInputMode = 'nl';
+            this.recolorLine('', 'nl');
+          }
         });
       }
     };
