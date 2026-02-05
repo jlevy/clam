@@ -138,13 +138,65 @@ export const colors = {
  * Prompt characters - easy to customize.
  */
 export const promptChars = {
-  /** User input prompt character */
+  /** Natural language input prompt character */
+  nl: '\u25b6', // ▶
+  /** Shell command input prompt character */
+  shell: '$',
+  /** Slash command input prompt character */
+  slash: '\u25b6', // ▶
+  /** Default/legacy input prompt (alias for nl) */
   input: '\u25b6', // ▶
   /** Tool/action arrow */
   tool: '>',
   /** Continuation prompt */
   continuation: '\u2026', // …
 };
+
+/**
+ * Get the prompt character and color for a given input mode.
+ * Used for dynamic prompt display based on detected mode.
+ *
+ * @param mode - The detected input mode
+ * @returns Object with char, color function, and raw ANSI color
+ */
+export function getPromptForMode(mode: InputMode): {
+  char: string;
+  colorFn: (s: string) => string;
+  rawColor: string;
+} {
+  switch (mode) {
+    case 'shell':
+      return {
+        char: promptChars.shell,
+        colorFn: pc.bold,
+        rawColor: inputColors.shell,
+      };
+    case 'nl':
+      return {
+        char: promptChars.nl,
+        colorFn: pc.magenta,
+        rawColor: inputColors.naturalLanguage,
+      };
+    case 'slash':
+      return {
+        char: promptChars.slash,
+        colorFn: pc.blue,
+        rawColor: inputColors.slashCommand,
+      };
+    case 'ambiguous':
+      return {
+        char: promptChars.nl,
+        colorFn: pc.yellow,
+        rawColor: inputColors.ambiguous,
+      };
+    case 'nothing':
+      return {
+        char: promptChars.nl,
+        colorFn: pc.red,
+        rawColor: inputColors.nothing,
+      };
+  }
+}
 
 /**
  * Raw ANSI color codes for dynamic input coloring.
@@ -177,7 +229,8 @@ export const inputColors = {
 export function getColorForMode(mode: InputMode): (s: string) => string {
   switch (mode) {
     case 'shell':
-      return (s) => s; // Default terminal color (white)
+      // Use pc.white to explicitly set white color (not inherit from previous color)
+      return pc.white;
     case 'nl':
       return pc.magenta;
     case 'slash':
