@@ -107,10 +107,12 @@ export class InputReader {
   private commands = new Map<string, SlashCommand>();
   private running = false;
   private history: string[] = [];
+  private historyModes = new Map<string, InputMode>(); // Store mode for each history entry
   private lastCtrlCTime = 0; // Track last Ctrl+C for double-tap to quit
   private completionIntegration: CompletionIntegration;
   private completionAcceptedText: string | null = null; // Text to re-insert after completion accept
   private suppressPromptNewline = false; // Suppress leading newline after completion accept
+  private entityCompletionCursor: number | null = null; // Cursor position for entity completion insertion
 
   constructor(options: InputReaderOptions) {
     this.options = options;
@@ -553,6 +555,7 @@ export class InputReader {
       const modeDetector = this.options.modeDetector;
 
       // === @ KEY: Immediately trigger entity completions ===
+      // @ stays visible while menu is shown, then replaced with path on accept
       if (key.sequence === '@' && isTTY) {
         // Defer to after readline processes the @
         setImmediate(() => {
@@ -563,9 +566,14 @@ export class InputReader {
           // Only trigger if @ is at a valid position (after whitespace or at start)
           const atIndex = lineWithAt.lastIndexOf('@');
           if (atIndex >= 0 && (atIndex === 0 || /\s/.test(lineWithAt[atIndex - 1] ?? ''))) {
+            // Store the @ position for proper replacement on accept
+            this.entityCompletionCursor = atIndex;
+
             completionMenuTriggered = true;
+            const mode = modeDetector?.detectModeSync(lineWithAt) ?? 'shell';
+            const completionMode = mode === 'ambiguous' || mode === 'nothing' ? 'shell' : mode;
             void this.completionIntegration
-              .updateCompletions(lineWithAt, cursorPos, 'shell')
+              .updateCompletions(lineWithAt, cursorPos, completionMode)
               .then(() => {
                 if (this.completionIntegration.isActive()) {
                   // Save cursor, reset colors, render menu below, restore cursor
@@ -678,14 +686,39 @@ export class InputReader {
             process.stdout.write(`\x1b[${lineCount}A`);
           }
 
-          // After menu clearing, cursor is at N+1. Move up to input line N and clear it.
-          // This removes the old partial input (e.g., "$ b") before readline processes Enter.
-          process.stdout.write('\x1b[1A\x1b[2K');
+          // Note: Readline will process Enter and add a newline.
+          // We'll compensate for this in prompt() when we detect completionAcceptedText.
 
-          // Store the completion text to re-insert after the Enter is processed
-          // The Enter key will submit the current line, but we'll catch it and re-prompt
-          const insertedText = result.insertText + ' ';
-          this.completionAcceptedText = insertedText;
+          // Construct the new line by inserting completion at the correct position
+          // For @ entity triggers: replace @<prefix> with the completion value
+          // For Tab command triggers: replace the command prefix with the completion value
+          const rlInternal = this.rl as readline.Interface & { line: string; cursor: number };
+          const oldLine = rlInternal.line;
+          const cursorPos = rlInternal.cursor;
+
+          let newLine: string;
+
+          if (this.entityCompletionCursor !== null) {
+            // Entity completion: replace from @ to cursor with completion value
+            const atPos = this.entityCompletionCursor;
+            const beforeAt = oldLine.slice(0, atPos);
+            const afterCursor = oldLine.slice(cursorPos);
+            newLine = beforeAt + result.insertText + ' ' + afterCursor;
+            this.entityCompletionCursor = null;
+          } else {
+            // Command/other completion: find start of current token and replace it
+            // Look backwards from cursor to find start of current word
+            let tokenStart = cursorPos;
+            while (tokenStart > 0 && !/\s/.test(oldLine[tokenStart - 1] ?? '')) {
+              tokenStart--;
+            }
+            const beforeToken = oldLine.slice(0, tokenStart);
+            const afterCursor = oldLine.slice(cursorPos);
+            newLine = beforeToken + result.insertText + ' ' + afterCursor;
+          }
+
+          // Store the complete new line to re-insert after the Enter is processed
+          this.completionAcceptedText = newLine;
 
           completionMenuTriggered = false;
           this.completionIntegration.reset();
@@ -789,7 +822,11 @@ export class InputReader {
         // Defer until readline has processed the keystroke
         setImmediate(() => {
           const actualLine = this.rl?.line ?? '';
-          const newMode = modeDetector.detectModeSync(actualLine);
+
+          // Check if this line is from history (use stored mode if available)
+          // This prevents shell commands from history being colored as NL mode
+          const storedMode = this.historyModes.get(actualLine);
+          const newMode = storedMode ?? modeDetector.detectModeSync(actualLine);
 
           // Always update mode and recolor to ensure consistency
           // This handles: mode changes, backspace, and edge cases
@@ -1052,10 +1089,10 @@ export class InputReader {
           const textToInsert = this.completionAcceptedText;
           this.completionAcceptedText = null;
 
-          // The input line was cleared in the keypress handler, but readline added a newline.
-          // Move up one line so the new prompt overwrites the blank line.
+          // Readline processed Enter and added a newline, leaving us below the input line.
+          // Move up one line and clear it to prepare for the new prompt with completion text.
           if (isTTY) {
-            process.stdout.write('\x1b[1A');
+            process.stdout.write('\x1b[1A\x1b[2K');
           }
 
           // Suppress the leading newline so we print the new prompt cleanly.
@@ -1083,6 +1120,8 @@ export class InputReader {
               `${colors.inputPromptDim(`${promptChars.input} `)}${colors.slashCommand(line)}\n`
             );
           }
+          // Store mode for history navigation
+          this.historyModes.set(line, 'slash');
           this.currentInputMode = 'nl'; // Reset for next input
           return line;
         }
@@ -1096,6 +1135,8 @@ export class InputReader {
               `${colors.inputPromptDim(`${promptChars.input} `)}${colors.shellCommand(line)}\n`
             );
           }
+          // Store mode for history navigation
+          this.historyModes.set(line, 'shell');
           this.currentInputMode = 'nl'; // Reset for next input
           return line;
         }
@@ -1150,7 +1191,10 @@ export class InputReader {
         isFirstLine = false;
       }
 
-      return lines.join('\n');
+      // Store mode for history navigation (NL mode for multi-line input)
+      const fullInput = lines.join('\n');
+      this.historyModes.set(fullInput, 'nl');
+      return fullInput;
     } catch {
       // Readline closed
       return null;
