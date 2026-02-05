@@ -10,6 +10,6 @@ priority: 2
 status: closed
 title: Add getColorForMode() helper to formatting.ts
 type: is
-updated_at: 2026-02-04T19:59:40.896Z
-version: 2
+updated_at: 2026-02-05T07:13:06.397Z
+version: 3
 ---
