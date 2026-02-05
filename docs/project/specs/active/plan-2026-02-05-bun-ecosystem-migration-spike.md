@@ -36,8 +36,72 @@ Clam is a CLI tool for Claude Code that prioritizes:
 - Full production release (this is a spike)
 - npm publishing validation (defer to post-spike)
 - `bun --compile` standalone binary (future optimization)
-- Changesets workflow validation (known workarounds exist)
+- Changesets workflow validation (known workarounds exist - see below)
 - Cross-platform CI validation (Linux-first, expand later)
+
+## Deferred: Changesets Workarounds
+
+Changesets does not have native Bun workspace support as of Jan 2026. The core issue is
+that `changeset version` does not resolve `workspace:*` references to actual version
+numbers, which breaks published packages.
+
+**Required workarounds for post-spike implementation:**
+
+### 1. Version Script Workaround
+
+After `changeset version` updates package.json files, run `bun update` to regenerate the
+lockfile with resolved versions:
+
+```json
+{
+  "scripts": {
+    "version-packages": "changeset version && bun update"
+  }
+}
+```
+
+### 2. Custom Publish Script
+
+The standard `changeset publish` uses npm under the hood. Use `bun publish` directly for
+each package:
+
+```json
+{
+  "scripts": {
+    "publish-packages": "for dir in packages/*; do (cd \"$dir\" && bun publish || true); done && changeset tag"
+  }
+}
+```
+
+### 3. Release Workflow Updates
+
+GitHub Actions release workflow must use the custom scripts:
+
+```yaml
+- name: Create Release PR or Publish
+  uses: changesets/action@v1
+  with:
+    version: bun run version-packages    # NOT changeset version
+    publish: bun run release             # Custom publish script
+```
+
+### 4. Full Release Scripts
+
+Add to root `package.json`:
+
+```json
+{
+  "scripts": {
+    "changeset": "changeset",
+    "version-packages": "changeset version && bun update",
+    "release": "bun run build && bunx publint && bun run publish-packages",
+    "publish-packages": "for dir in packages/*; do (cd \"$dir\" && bun publish || true); done && changeset tag"
+  }
+}
+```
+
+**Tracking**: Monitor [changesets#1468](https://github.com/changesets/changesets/issues/1468)
+and [oven-sh/bun#16074](https://github.com/oven-sh/bun/issues/16074) for native support.
 
 ## Background
 
