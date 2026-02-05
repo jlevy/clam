@@ -21,6 +21,7 @@ import {
   symbols,
   truncateLines,
 } from './formatting.js';
+import { createBlockRenderer, type StreamRenderer } from './markdown/index.js';
 import type { ExecResult } from './shell.js';
 
 /**
@@ -105,6 +106,7 @@ export function createOutputWriter(options: OutputWriterOptions = {}): OutputWri
   const truncateAfter = config.truncateAfter ?? 10;
   const verbose = config.verbose ?? false;
   const showTimestamps = config.showTimestamps ?? false;
+  const markdownRendering = config.markdownRendering ?? true;
 
   // Track state for thinking indicator
   let thinkingChars = 0;
@@ -116,6 +118,8 @@ export function createOutputWriter(options: OutputWriterOptions = {}): OutputWri
   let spinnerIndex = 0;
   // Track whether last output ended with a newline (for clean formatting)
   let lastEndedWithNewline = true;
+  // Markdown renderer for streaming output
+  let mdRenderer: StreamRenderer | null = null;
 
   const write = (text: string): void => {
     stream.write(text);
@@ -392,6 +396,10 @@ export function createOutputWriter(options: OutputWriterOptions = {}): OutputWri
       thinkingChars = 0;
       // Reset tool separator state
       _lastToolHeader = false;
+      // Initialize markdown renderer if enabled
+      if (markdownRendering) {
+        mdRenderer = createBlockRenderer();
+      }
     },
 
     streamChunk(text: string): void {
@@ -401,12 +409,34 @@ export function createOutputWriter(options: OutputWriterOptions = {}): OutputWri
         spinnerInterval = null;
         stream.write('\r\x1b[K');
       }
-      // Agent text - default color (distinct from tool output)
-      write(colors.agentText(text));
+
+      // Process through markdown renderer if enabled
+      if (mdRenderer) {
+        const formatted = mdRenderer.processChunk(text);
+        if (formatted) {
+          write(formatted);
+        }
+      } else {
+        // Fallback: plain text with agent color
+        write(colors.agentText(text));
+      }
     },
 
     streamEnd(): void {
-      writeLine(''); // Ensure newline at end
+      // Flush remaining markdown buffer
+      if (mdRenderer) {
+        const remaining = mdRenderer.flush();
+        if (remaining) {
+          write(remaining);
+        }
+        mdRenderer = null;
+      }
+
+      // Ensure we end with a newline
+      if (!lastEndedWithNewline) {
+        writeLine('');
+      }
+
       // Final thinking summary if there was thinking
       if (thinkingChars > 0) {
         writeLine(colors.muted(`[total thinking: ${thinkingChars.toLocaleString()} chars]`));
