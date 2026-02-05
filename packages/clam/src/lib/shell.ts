@@ -36,6 +36,12 @@ export interface ShellModule {
 
   /** Clear the which cache */
   clearCache(): void;
+
+  /** Get the current working directory */
+  getCwd(): string;
+
+  /** Set the current working directory */
+  setCwd(path: string): void;
 }
 
 /**
@@ -120,10 +126,54 @@ function shellEscape(str: string): string {
  */
 export function createShellModule(options: ShellModuleOptions = {}): ShellModule {
   const whichTimeout = options.whichTimeout ?? 500;
-  const defaultCwd = options.cwd ?? process.cwd();
+
+  // Track current working directory - mutable state that persists across commands
+  let currentCwd = options.cwd ?? process.cwd();
 
   // Cache which results to avoid repeated lookups
   const whichCache = new Map<string, string | null>();
+
+  /**
+   * Get the current working directory.
+   */
+  function getCwd(): string {
+    return currentCwd;
+  }
+
+  /**
+   * Set the current working directory.
+   */
+  function setCwd(path: string): void {
+    currentCwd = path;
+  }
+
+  /**
+   * Detect if a command is a cd command and extract the target directory.
+   * Returns the target directory if it's a cd command, null otherwise.
+   */
+  function detectCdCommand(command: string): string | null {
+    const trimmed = command.trim();
+    // Match: cd, cd -, cd ~, cd /path, cd path, cd "path with spaces"
+    const cdMatch = /^cd(?:\s+(.*))?$/.exec(trimmed);
+    if (!cdMatch) return null;
+
+    const target = cdMatch[1]?.trim() ?? '';
+    if (!target || target === '') {
+      // cd with no args goes to home directory
+      return process.env.HOME ?? '/';
+    }
+    if (target === '-') {
+      // cd - goes to previous directory (not tracked here, bash will handle it)
+      return null; // Let bash handle it, we'll query pwd after
+    }
+    if (target === '~') {
+      return process.env.HOME ?? '/';
+    }
+    if (target.startsWith('~/')) {
+      return (process.env.HOME ?? '') + target.slice(1);
+    }
+    return target;
+  }
 
   async function which(command: string): Promise<string | null> {
     // Check cache first
@@ -169,14 +219,26 @@ export function createShellModule(options: ShellModuleOptions = {}): ShellModule
     // to properly save/restore terminal state around subprocess execution
     const isInteractive = !execOptions.captureOutput;
 
+    // Use explicit cwd from options, or fall back to tracked current working directory
+    const effectiveCwd = execOptions.cwd ?? currentCwd;
+
+    // Detect if this is a cd command - we'll need to update our tracked cwd after
+    const isCdCommand = command.trim().startsWith('cd');
+
     const runCommand = (): Promise<ExecResult> => {
       return new Promise((resolve, reject) => {
         // Build environment: start with process.env or color env, then overlay user env
         const baseEnv = execOptions.forceColor ? getColorEnv() : process.env;
         const env = { ...baseEnv, ...execOptions.env };
 
-        const proc = spawn('bash', ['-c', command], {
-          cwd: execOptions.cwd ?? defaultCwd,
+        // For cd commands, we need to capture the new working directory after the command
+        // We append "; pwd" to get the resulting directory, but only if captureOutput is true
+        // For interactive mode, we'll query pwd separately after the command completes
+        const effectiveCommand =
+          isCdCommand && execOptions.captureOutput ? `${command} && pwd` : command;
+
+        const proc = spawn('bash', ['-c', effectiveCommand], {
+          cwd: effectiveCwd,
           env,
           stdio: execOptions.captureOutput ? 'pipe' : 'inherit',
         });
@@ -212,11 +274,53 @@ export function createShellModule(options: ShellModuleOptions = {}): ShellModule
     };
 
     // Wrap interactive commands with TTY management to prevent terminal corruption
+    let result: ExecResult;
     if (isInteractive) {
-      return withTtyManagement(runCommand);
+      result = await withTtyManagement(runCommand);
+    } else {
+      result = await runCommand();
     }
 
-    return runCommand();
+    // Update tracked cwd after successful cd command
+    if (isCdCommand && result.exitCode === 0) {
+      if (execOptions.captureOutput) {
+        // For captured output mode, we appended "&& pwd" - extract the new cwd
+        const lines = result.stdout.trim().split('\n');
+        const newCwd = lines[lines.length - 1];
+        if (newCwd?.startsWith('/')) {
+          currentCwd = newCwd;
+          // Remove the pwd output from stdout to not confuse callers
+          result.stdout = lines.slice(0, -1).join('\n');
+        }
+      } else {
+        // For interactive mode, query the new cwd separately
+        try {
+          const { stdout } = await execPromise('pwd', { cwd: effectiveCwd, timeout: 500 });
+          // Actually, pwd will return the directory where we started, not where cd went
+          // For cd commands in interactive mode, we need a different approach
+          // Use bash -c 'cd <target> && pwd' to get the resulting directory
+          const cdTarget = detectCdCommand(command);
+          if (cdTarget) {
+            const { stdout: newCwdOutput } = await execPromise(
+              `cd ${shellEscape(cdTarget)} && pwd`,
+              { cwd: effectiveCwd, timeout: 500 }
+            );
+            const newCwd = newCwdOutput.trim();
+            if (newCwd?.startsWith('/')) {
+              currentCwd = newCwd;
+            }
+          } else {
+            // cd - or similar - query the bash's OLDPWD isn't reliable here
+            // For now, use the current effective cwd
+            currentCwd = stdout.trim();
+          }
+        } catch {
+          // Ignore errors querying pwd
+        }
+      }
+    }
+
+    return result;
   }
 
   async function getCompletions(partial: string, cursorPos: number): Promise<string[]> {
@@ -256,6 +360,8 @@ export function createShellModule(options: ShellModuleOptions = {}): ShellModule
     exec,
     getCompletions,
     clearCache,
+    getCwd,
+    setCwd,
   };
 }
 

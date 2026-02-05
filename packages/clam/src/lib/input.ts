@@ -933,10 +933,25 @@ export class InputReader {
           continue;
         }
 
-        // Check for slash commands
+        // Check for slash commands - but only if it's a known command
+        // Absolute paths like /usr/bin/ls should go to shell, not be treated as slash commands
         if (trimmed.startsWith('/')) {
-          await this.handleSlashCommand(trimmed);
-          continue;
+          const withoutSlash = trimmed.slice(1);
+          const spaceIndex = withoutSlash.indexOf(' ');
+          const commandName = spaceIndex === -1 ? withoutSlash : withoutSlash.slice(0, spaceIndex);
+
+          // Check if this is a registered slash command or ACP command
+          const { isAcpCommand } = this.options;
+          const isLocalCommand = this.commands.has(commandName);
+          const isAcp = isAcpCommand?.(commandName) ?? false;
+
+          if (isLocalCommand || isAcp) {
+            // It's a known command - handle as slash command
+            await this.handleSlashCommand(trimmed);
+            continue;
+          }
+          // Not a known command - fall through to mode detection
+          // This allows absolute paths like /usr/bin/ls to be executed as shell commands
         }
 
         // Check for shell commands using mode detection
