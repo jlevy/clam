@@ -13,6 +13,7 @@ import { createInputReader } from './lib/input.js';
 import { createModeDetector } from './lib/mode-detection.js';
 import { createOutputWriter, type PermissionOption } from './lib/output.js';
 import { createShellModule } from './lib/shell.js';
+import { detectInstalledTools, formatToolStatus } from './lib/shell/index.js';
 import { installEmergencyCleanup } from './lib/tty/index.js';
 
 interface CliArgs {
@@ -207,6 +208,19 @@ async function main(): Promise<void> {
 
   output.writeLine(colors.status('Type /help for commands, /quit to exit'));
   output.writeLine(colors.status('Shell commands run directly, natural language goes to Claude'));
+
+  // Detect and display modern tools (run in background to not block startup)
+  detectInstalledTools()
+    .then((installedTools) => {
+      const toolStatus = formatToolStatus(installedTools, { showOnlyInstalled: true });
+      if (toolStatus) {
+        output.writeLine(colors.muted(toolStatus));
+      }
+    })
+    .catch(() => {
+      // Ignore errors detecting tools
+    });
+
   output.newline();
 
   // Create shell module and mode detector

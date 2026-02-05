@@ -9,3 +9,11 @@ export {
   addColorFlags,
   shouldForceColor,
 } from './color-commands.js';
+export {
+  MODERN_TOOLS,
+  detectInstalledTools,
+  formatToolStatus,
+  getToolDetails,
+  getModernAlternatives,
+  type ToolInfo,
+} from './modern-tools.js';
