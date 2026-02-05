@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import type { CompletionKeyHandler } from './key-handler.js';
 import { createCompletionKeyHandler, KeyAction } from './key-handler.js';
 import { CompletionMenu } from './menu.js';
-import { CompletionGroup, type Completion } from './types.js';
+import { type Completion, CompletionGroup } from './types.js';
 
 describe('CompletionKeyHandler', () => {
   let handler: CompletionKeyHandler;

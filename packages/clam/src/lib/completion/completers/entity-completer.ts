@@ -8,12 +8,12 @@
  * Format: @filename becomes a reference that can be resolved.
  */
 
-import { readdirSync, statSync } from 'fs';
-import { join, basename } from 'path';
+import { readdirSync, statSync } from 'node:fs';
+import { basename, join } from 'node:path';
 import type { InputState } from '../../input/state.js';
-import type { Completer, Completion } from '../types.js';
-import { CompletionGroup, COMPLETION_ICONS } from '../types.js';
 import { calculatePrefixScore } from '../scoring.js';
+import type { Completer, Completion } from '../types.js';
+import { COMPLETION_ICONS, CompletionGroup } from '../types.js';
 
 /**
  * EntityCompleter implements the Completer interface for @ mentions.

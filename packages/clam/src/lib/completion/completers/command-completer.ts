@@ -9,14 +9,14 @@
  */
 
 import type { InputState } from '../../input/state.js';
-import type { Completer, Completion } from '../types.js';
-import { CompletionGroup, COMPLETION_ICONS } from '../types.js';
 import {
-  RECOMMENDED_COMMANDS,
-  isRecommendedCommand,
   getCommandDescription,
+  isRecommendedCommand,
+  RECOMMENDED_COMMANDS,
 } from '../recommended-commands.js';
 import { calculatePrefixScore } from '../scoring.js';
+import type { Completer, Completion } from '../types.js';
+import { COMPLETION_ICONS, CompletionGroup } from '../types.js';
 
 /**
  * CommandCompleter implements the Completer interface for shell commands.

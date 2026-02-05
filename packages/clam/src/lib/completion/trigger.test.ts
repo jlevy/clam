@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { detectTrigger, TriggerType } from './trigger.js';
+import { describe, expect, it } from 'bun:test';
 import { createInputState as createState, type InputMode } from '../input/state.js';
+import { detectTrigger, TriggerType } from './trigger.js';
 
 /**
  * Helper to create a minimal InputState for testing.

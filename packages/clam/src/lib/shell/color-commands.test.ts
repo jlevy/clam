@@ -2,12 +2,12 @@
  * Tests for command-specific color flag injection.
  */
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import {
   addColorFlags,
-  shouldForceColor,
   COLOR_ALWAYS_COMMANDS,
   GIT_COLOR_SUBCOMMANDS,
+  shouldForceColor,
 } from './color-commands.js';
 
 describe('COLOR_ALWAYS_COMMANDS', () => {

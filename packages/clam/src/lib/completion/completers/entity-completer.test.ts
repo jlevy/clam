@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'bun:test';
+import { updateInputStateWithTokens } from '../../input/parser.js';
+import { createInputState } from '../../input/state.js';
+import { CompletionGroup } from '../types.js';
 import type { EntityCompleter } from './entity-completer.js';
 import { createEntityCompleter } from './entity-completer.js';
-import { CompletionGroup } from '../types.js';
-import { createInputState } from '../../input/state.js';
-import { updateInputStateWithTokens } from '../../input/parser.js';
 
 describe('EntityCompleter', () => {
   let completer: EntityCompleter;

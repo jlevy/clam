@@ -14,6 +14,10 @@
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import * as readline from 'node:readline';
+import {
+  type CompletionIntegration,
+  createCompletionIntegration,
+} from './completion/integration.js';
 import { type ClamCodeConfig, formatConfig } from './config.js';
 import {
   colors,
@@ -26,10 +30,6 @@ import type { InputMode, ModeDetector } from './mode-detection.js';
 import { isExplicitShell, stripShellTrigger, suggestCommand } from './mode-detection.js';
 import type { OutputWriter } from './output.js';
 import type { ShellModule } from './shell.js';
-import {
-  createCompletionIntegration,
-  type CompletionIntegration,
-} from './completion/integration.js';
 
 /** Check if stdout is a TTY for cursor control sequences */
 const isTTY = process.stdout.isTTY ?? false;
@@ -703,7 +703,7 @@ export class InputReader {
             const atPos = this.entityCompletionCursor;
             const beforeAt = oldLine.slice(0, atPos);
             const afterCursor = oldLine.slice(cursorPos);
-            newLine = beforeAt + result.insertText + ' ' + afterCursor;
+            newLine = `${beforeAt + result.insertText} ${afterCursor}`;
             this.entityCompletionCursor = null;
           } else {
             // Command/other completion: find start of current token and replace it
@@ -714,7 +714,7 @@ export class InputReader {
             }
             const beforeToken = oldLine.slice(0, tokenStart);
             const afterCursor = oldLine.slice(cursorPos);
-            newLine = beforeToken + result.insertText + ' ' + afterCursor;
+            newLine = `${beforeToken + result.insertText} ${afterCursor}`;
           }
 
           // Store the complete new line to re-insert after the Enter is processed

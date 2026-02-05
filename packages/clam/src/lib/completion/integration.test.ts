@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import type { CompletionIntegration } from './integration.js';
 import { createCompletionIntegration } from './integration.js';
 

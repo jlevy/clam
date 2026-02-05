@@ -5,7 +5,7 @@
  * and provides an in-memory cache for recent commands during the session.
  */
 
-import { readFile, access } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import type { HistoryEntry } from '../input/state.js';
@@ -98,10 +98,7 @@ export async function loadShellHistory(maxEntries = 500): Promise<HistoryEntry[]
       // Read and parse
       const content = await readFile(filepath, 'utf-8');
       return parseHistoryFile(content, maxEntries);
-    } catch {
-      // File doesn't exist or not readable, try next
-      continue;
-    }
+    } catch {}
   }
 
   // No history file found

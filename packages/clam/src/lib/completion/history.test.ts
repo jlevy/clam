@@ -1,17 +1,11 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import {
-  parseHistoryLine,
-  parseHistoryFile,
-  extractCommand,
   createHistoryProvider,
+  extractCommand,
   type HistoryProviderOptions,
+  parseHistoryFile,
+  parseHistoryLine,
 } from './history.js';
-
-// Mock fs for file reading tests
-vi.mock('node:fs/promises', () => ({
-  readFile: vi.fn(),
-  access: vi.fn(),
-}));
 
 describe('history', () => {
   describe('parseHistoryLine', () => {
