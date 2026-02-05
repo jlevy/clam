@@ -179,13 +179,17 @@ async function main(): Promise<void> {
 
   // Show welcome message
   output.newline();
-  output.writeLine(`${colors.bold('clam')} - Claude Code with true terminal scrollback`);
-  output.writeLine(colors.status('Connecting to Claude Code...'));
+  output.writeLine(`${colors.bold('clam')} \u25aa An unusually intelligent shell`);
+  output.newline();
 
-  // Connect to agent
+  // Connect to agent with spinner
+  output.spinnerStart('Connecting to Claude Code');
   try {
     await acpClient.connect();
+    output.spinnerStop();
+    output.writeLine(`${colors.success('\u2713')} ${colors.status('Connected to Claude Code')}`);
   } catch (error) {
+    output.spinnerStop();
     const message = error instanceof Error ? error.message : String(error);
     output.error(`Failed to connect: ${message}`);
     if (message.includes('ENOENT')) {
@@ -267,6 +271,8 @@ async function main(): Promise<void> {
           resolver(selectedOption.id);
           permissionResolver = null;
           pendingPermissionOptions = null;
+          // Remove permission response from history (it's ephemeral, not a real command)
+          inputReader.removeLastHistoryEntry();
           return;
         }
 
@@ -278,6 +284,8 @@ async function main(): Promise<void> {
             resolver(selectedOption.id);
             permissionResolver = null;
             pendingPermissionOptions = null;
+            // Remove permission response from history (it's ephemeral, not a real command)
+            inputReader.removeLastHistoryEntry();
             return;
           }
         }

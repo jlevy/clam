@@ -201,7 +201,7 @@ export function createOutputWriter(options: OutputWriterOptions = {}): OutputWri
       if (spinnerInterval) {
         clearInterval(spinnerInterval);
         spinnerInterval = null;
-        stream.write('\r                              \r');
+        stream.write('\r\x1b[K');
       }
 
       // Ensure we're on a fresh line before tool header
@@ -399,7 +399,7 @@ export function createOutputWriter(options: OutputWriterOptions = {}): OutputWri
       if (spinnerInterval) {
         clearInterval(spinnerInterval);
         spinnerInterval = null;
-        stream.write('\r                              \r');
+        stream.write('\r\x1b[K');
       }
       // Agent text - default color (distinct from tool output)
       write(colors.agentText(text));
@@ -432,8 +432,9 @@ export function createOutputWriter(options: OutputWriterOptions = {}): OutputWri
       if (spinnerInterval) {
         clearInterval(spinnerInterval);
         spinnerInterval = null;
-        // Clear the spinner line
-        stream.write('\r                              \r');
+        // Clear the spinner line using ANSI escape codes
+        // \r = return to start, \x1b[K = clear from cursor to end of line
+        stream.write('\r\x1b[K');
       }
     },
 

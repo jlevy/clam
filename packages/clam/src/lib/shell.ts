@@ -13,6 +13,8 @@ import { spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { exec as execCallback } from 'node:child_process';
 
+import { getColorEnv } from './shell/color-env.js';
+
 const execPromise = promisify(execCallback);
 
 /**
@@ -47,6 +49,8 @@ export interface ExecOptions {
   timeout?: number;
   /** Capture output instead of inheriting stdio */
   captureOutput?: boolean;
+  /** Force ANSI color output via FORCE_COLOR and CLICOLOR_FORCE env vars */
+  forceColor?: boolean;
 }
 
 /**
@@ -161,9 +165,13 @@ export function createShellModule(options: ShellModuleOptions = {}): ShellModule
 
   async function exec(command: string, execOptions: ExecOptions = {}): Promise<ExecResult> {
     return new Promise((resolve, reject) => {
+      // Build environment: start with process.env or color env, then overlay user env
+      const baseEnv = execOptions.forceColor ? getColorEnv() : process.env;
+      const env = { ...baseEnv, ...execOptions.env };
+
       const proc = spawn('bash', ['-c', command], {
         cwd: execOptions.cwd ?? defaultCwd,
-        env: { ...process.env, ...execOptions.env },
+        env,
         stdio: execOptions.captureOutput ? 'pipe' : 'inherit',
       });
 

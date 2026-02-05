@@ -141,3 +141,7 @@ attic/
 
 # Generated README (copied from root)
 packages/clam/README.md
+
+# npm lock file (project uses pnpm)
+package-lock.json
+repos/

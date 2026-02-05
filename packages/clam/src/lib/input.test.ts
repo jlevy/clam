@@ -187,4 +187,46 @@ describe('InputReader', () => {
 
   // Note: Testing the actual input loop requires mocking process.stdin
   // which is complex. Integration tests would cover the full flow.
+
+  describe('recolorLine', () => {
+    it('should have recolorLine method', () => {
+      const reader = createInputReader({
+        output,
+        onQuit: vi.fn(),
+        onPrompt: vi.fn(),
+      });
+
+      // Access private recolorLine via type assertion for testing
+      const readerWithRecolor = reader as unknown as {
+        recolorLine: (line: string, mode: 'shell' | 'nl' | 'slash') => void;
+      };
+      expect(typeof readerWithRecolor.recolorLine).toBe('function');
+    });
+
+    it('should not throw when called with different modes', () => {
+      const reader = createInputReader({
+        output,
+        onQuit: vi.fn(),
+        onPrompt: vi.fn(),
+      });
+
+      const readerWithRecolor = reader as unknown as {
+        recolorLine: (line: string, mode: 'shell' | 'nl' | 'slash') => void;
+      };
+
+      // Should not throw for any mode (even without TTY)
+      expect(() => {
+        readerWithRecolor.recolorLine('test', 'shell');
+      }).not.toThrow();
+      expect(() => {
+        readerWithRecolor.recolorLine('test', 'nl');
+      }).not.toThrow();
+      expect(() => {
+        readerWithRecolor.recolorLine('test', 'slash');
+      }).not.toThrow();
+      expect(() => {
+        readerWithRecolor.recolorLine('', 'nl');
+      }).not.toThrow();
+    });
+  });
 });

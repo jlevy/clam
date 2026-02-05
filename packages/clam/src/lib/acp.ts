@@ -178,7 +178,6 @@ export class AcpClient {
 
     this.sessionId = sessionResult.sessionId;
     output.debug(`Session created: ${this.sessionId}`);
-    output.success('Connected to Claude Code');
   }
 
   /**
@@ -318,9 +317,10 @@ export class AcpClient {
         }
 
         // Convert ACP options to our format
+        // Normalize "Reject" to "Deny" for consistency with [d] shortcut
         const options: PermissionOption[] = params.options.map((opt) => ({
           id: opt.optionId,
-          name: opt.name,
+          name: opt.name.replace(/Reject/g, 'Deny'),
           kind: opt.kind,
         }));
 

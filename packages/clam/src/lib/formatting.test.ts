@@ -9,6 +9,7 @@ import {
   formatTimestamp,
   formatTokenUsage,
   formatToolStatus,
+  getColorForMode,
   promptChars,
   symbols,
   truncateLines,
@@ -31,6 +32,43 @@ describe('colors', () => {
     expect(typeof colors.userPrompt('test')).toBe('string');
     expect(typeof colors.success('test')).toBe('string');
     expect(typeof colors.error('test')).toBe('string');
+  });
+});
+
+describe('getColorForMode', () => {
+  it('should return bold white color function for shell mode', () => {
+    const color = getColorForMode('shell');
+    const result = color('test');
+    // Shell mode uses bold white - should contain the text
+    expect(typeof result).toBe('string');
+    expect(result).toContain('test');
+  });
+
+  it('should return magenta color function for nl mode', () => {
+    const color = getColorForMode('nl');
+    const result = color('test');
+    // Should contain magenta ANSI codes or just the text (depending on TTY)
+    expect(typeof result).toBe('string');
+    expect(result).toContain('test');
+  });
+
+  it('should return blue color function for slash mode', () => {
+    const color = getColorForMode('slash');
+    const result = color('test');
+    // Should contain blue ANSI codes or just the text (depending on TTY)
+    expect(typeof result).toBe('string');
+    expect(result).toContain('test');
+  });
+
+  it('should return color functions for all modes', () => {
+    const shellColor = getColorForMode('shell');
+    const nlColor = getColorForMode('nl');
+    const slashColor = getColorForMode('slash');
+
+    // All modes return color functions that contain the text
+    expect(shellColor('test')).toContain('test');
+    expect(nlColor('test')).toContain('test');
+    expect(slashColor('test')).toContain('test');
   });
 });
 

@@ -16,6 +16,7 @@ import {
   isExplicitNL,
   stripShellTrigger,
   stripNLTrigger,
+  suggestCommand,
   type ModeDetector,
 } from './mode-detection.js';
 import type { ShellModule } from './shell.js';
@@ -38,7 +39,7 @@ describe('ModeDetection', () => {
   let mockShell: ShellModule;
 
   beforeEach(() => {
-    mockShell = createMockShell(new Set(['ls', 'git', 'npm', 'node']));
+    mockShell = createMockShell(new Set(['ls', 'git', 'npm', 'node', 'cat', 'grep', 'echo']));
     detector = createModeDetector({ shell: mockShell });
   });
 
@@ -122,6 +123,60 @@ describe('ModeDetection', () => {
       // But "test -f file.txt" looks like shell (no NL words after)
       expect(detector.detectModeSync('test -f file.txt')).toBe('shell');
     });
+
+    it('should return ambiguous for prompt-worthy commands', () => {
+      // Commands that users might actually want to run - prompt them
+      expect(detector.detectModeSync('who')).toBe('ambiguous');
+      expect(detector.detectModeSync('date')).toBe('ambiguous');
+      expect(detector.detectModeSync('time')).toBe('ambiguous');
+      expect(detector.detectModeSync('man')).toBe('ambiguous');
+      // But with NL words after, it's NL
+      expect(detector.detectModeSync('who is this')).toBe('nl');
+      expect(detector.detectModeSync('date of birth')).toBe('nl');
+    });
+
+    it('should detect request patterns as NL', () => {
+      // "can you..." patterns
+      expect(detector.detectModeSync('can you give me an overview')).toBe('nl');
+      expect(detector.detectModeSync('can you help me')).toBe('nl');
+      expect(detector.detectModeSync('could you explain this')).toBe('nl');
+      expect(detector.detectModeSync('would you fix this')).toBe('nl');
+      expect(detector.detectModeSync('will you help')).toBe('nl');
+      // "please..." patterns
+      expect(detector.detectModeSync('please help me')).toBe('nl');
+      expect(detector.detectModeSync('please explain this code')).toBe('nl');
+    });
+
+    it('should handle incremental typing of questions correctly', () => {
+      // Bug 4: "how are you" incremental typing
+      // Pure question words (how, what, why, when) + any text = NL
+      expect(detector.detectModeSync('how a')).toBe('nl');
+      expect(detector.detectModeSync('how ar')).toBe('nl');
+      expect(detector.detectModeSync('how are')).toBe('nl');
+      expect(detector.detectModeSync('how are you')).toBe('nl');
+
+      // Same for other pure question words
+      expect(detector.detectModeSync('what i')).toBe('nl');
+      expect(detector.detectModeSync('what is')).toBe('nl');
+      expect(detector.detectModeSync('what is this')).toBe('nl');
+
+      expect(detector.detectModeSync('why d')).toBe('nl');
+      expect(detector.detectModeSync('why does')).toBe('nl');
+
+      expect(detector.detectModeSync('when w')).toBe('nl');
+      expect(detector.detectModeSync('when will')).toBe('nl');
+    });
+
+    it('should detect single characters as potential shell commands', () => {
+      // Single characters could be the start of commands
+      expect(detector.detectModeSync('l')).toBe('shell');
+      expect(detector.detectModeSync('g')).toBe('shell');
+      expect(detector.detectModeSync('n')).toBe('shell');
+
+      // Command-like words
+      expect(detector.detectModeSync('ls')).toBe('shell');
+      expect(detector.detectModeSync('git')).toBe('shell');
+    });
   });
 
   describe('detectMode (async)', () => {
@@ -143,9 +198,34 @@ describe('ModeDetection', () => {
       expect(await detector.detectMode('!echo hello')).toBe('shell');
     });
 
-    it('should detect shell operators without which lookup', async () => {
+    it('should detect shell operators with valid first command', async () => {
+      // shell operators + valid first command → shell
       expect(await detector.detectMode('cat | grep')).toBe('shell');
-      // which should not be called for operator-based detection
+    });
+
+    it('should return nothing for invalid shell commands with operators', async () => {
+      // Invalid command with shell operators → clearly trying to run shell but command doesn't exist
+      expect(await detector.detectMode('xyzzy | grep foo')).toBe('nothing');
+      expect(await detector.detectMode('asdfas > output.txt')).toBe('nothing');
+      expect(await detector.detectMode('qwerty && echo done')).toBe('nothing');
+    });
+
+    it('should return nothing for typos in commands', async () => {
+      // Typos in common commands - first word not valid, rest doesn't look like NL
+      expect(await detector.detectMode('gti status')).toBe('nothing');
+      expect(await detector.detectMode('nmp install')).toBe('nothing');
+    });
+
+    it('should return nothing for gibberish', async () => {
+      // Random gibberish that looks command-like
+      expect(await detector.detectMode('asdfghjkl')).toBe('nothing');
+      expect(await detector.detectMode('qqqqq')).toBe('nothing');
+    });
+
+    it('should return nl for invalid command with NL-like rest', async () => {
+      // First word not valid, but rest has NL words → probably NL, not typo
+      expect(await detector.detectMode('fix this bug')).toBe('nl');
+      expect(await detector.detectMode('update the code')).toBe('nl');
     });
   });
 
@@ -247,6 +327,39 @@ describe('ModeDetection', () => {
 
     it('should return unchanged if no prefix', () => {
       expect(stripNLTrigger('how do I')).toBe('how do I');
+    });
+  });
+
+  describe('suggestCommand', () => {
+    it('should suggest git for gti', () => {
+      expect(suggestCommand('gti')).toBe('git');
+    });
+
+    it('should suggest ls for sl', () => {
+      expect(suggestCommand('sl')).toBe('ls');
+    });
+
+    it('should suggest npm for nmp', () => {
+      expect(suggestCommand('npm')).toBe(null); // npm is correct, so no suggestion
+      expect(suggestCommand('nmp')).toBe('npm');
+    });
+
+    it('should suggest docker for dockre', () => {
+      expect(suggestCommand('dockre')).toBe('docker');
+    });
+
+    it('should return null for gibberish', () => {
+      expect(suggestCommand('asdfghjkl')).toBe(null);
+      expect(suggestCommand('qqqqq')).toBe(null);
+    });
+
+    it('should return null for very short input', () => {
+      expect(suggestCommand('a')).toBe(null);
+    });
+
+    it('should be case insensitive', () => {
+      expect(suggestCommand('GTI')).toBe('git');
+      expect(suggestCommand('SL')).toBe('ls');
     });
   });
 });
