@@ -1,6 +1,6 @@
 # Feature: Fun Spinner Verbs
 
-**Date:** 2026-02-04 (last updated 2026-02-04)
+**Date:** 2026-02-04 (last updated 2026-02-05)
 
 **Author:** Joshua Levy
 
@@ -34,6 +34,29 @@ Clam should have its own personality - all verbs should have an aquatic/marine/s
 theme to reinforce the product identity.
 
 ## Design
+
+### Spinner Modes
+
+The spinner system should support three distinct modes to avoid confusion about what the
+user is waiting for:
+
+1. **Plain Spinner**: Just the animated wave characters (`─ ~ ≈ ≋ ≈ ~`), no text.
+   Use for generic/brief loading states where no explanation is needed.
+
+2. **Custom Message Spinner**: Animated wave characters + a static custom message (e.g.,
+   `≈ Connecting...`). Use when we want to communicate a specific operation to the user,
+   such as shell delays or network operations.
+
+3. **Fun Verb Spinner**: Animated wave characters + randomly cycling aquatic verbs with
+   typewriter animation.
+   **Only use when waiting on Claude Code itself.** This creates a clear mental model:
+   fun verbs = Claude is thinking.
+
+This distinction is important because overusing the fun verbs could confuse users about
+what’s actually happening.
+If the shell is delayed or a network request is pending, the user should see a plain or
+custom message spinner—not “Bubbling …” or “Clamming …” which implies Claude Code is
+processing.
 
 ### Approach
 
@@ -278,10 +301,13 @@ All verbs should have creative connections to:
 ### Phase 1: Core Spinner Infrastructure
 
 - [ ] Create spinner character set and rotation logic
+- [ ] Implement plain spinner mode (just animated characters)
+- [ ] Implement custom message spinner mode (characters + static message)
 - [ ] Implement verb selection system with random shuffling
-- [ ] Build typewriter animation for verb display
+- [ ] Build typewriter animation for verb display (fun verb mode only)
 - [ ] Add ellipsis animation sequence
-- [ ] Integrate with existing processing state
+- [ ] Expose API to select spinner mode based on context
+- [ ] Integrate fun verb spinner with Claude Code processing state only
 
 ### Phase 2: Polish & Testing
 
@@ -296,6 +322,9 @@ All verbs should have creative connections to:
 - Verify animation timing feels natural and not distracting
 - Check spinner clears properly on completion
 - Test interrupt behavior (Ctrl+C) cleans up spinner state
+- Verify correct spinner mode is used in each context:
+  - Fun verbs only appear when waiting on Claude Code
+  - Shell delays and network operations use plain or custom message spinners
 
 ## Open Questions
 

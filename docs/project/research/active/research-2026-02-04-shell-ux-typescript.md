@@ -49,40 +49,113 @@ performance, Rust-based CLI editors, and the potential benefits of migrating to 
 #### Google zx
 
 [Google zx](https://github.com/google/zx) is the most mature and widely-used solution
-for shell scripting in JavaScript/TypeScript.
+for shell scripting in JavaScript/TypeScript (~1.2M weekly downloads).
 
 **Key Features:**
 
 - `$` tagged template literals for shell commands
 - Cross-platform child process management with proper escaping
-- Built-in utilities: `cd()`, `question()`, access to `chalk`, `minimist`, `fetch`,
-  `fs-extra`
+- Built-in utilities: `cd()`, `question()`, `which()`, access to `chalk`, `minimist`,
+  `fetch`, `fs-extra`, `glob`, `os`, `path`
 - TypeScript definitions included
 - Async/await support throughout
+- Multi-runtime support: Node.js, Bun, Deno, GraalVM
+
+**Example:**
+
+```typescript
+#!/usr/bin/env zx
+await $`cat package.json | grep name`;
+
+const branch = await $`git branch --show-current`;
+await $`deploy --branch=${branch}`; // Auto-escaped
+
+cd('/tmp');
+const pythonPath = await which('python');
+```
 
 **Limitations:**
 
 - Still spawns real shell processes
 - Platform-dependent behavior for some commands
 - Not a shell replacement, just better scripting
+- Heavy dependencies (many npm packages bundled)
+
+**Variant:**
+[zx@lite](https://dev.to/antongolub/zxlite-minimalistic-shell-scripting-with-tsjs-superpowers-1j50)
+offers a minimalistic version with fewer dependencies.
 
 #### Vercel just-bash
 
-[just-bash](https://github.com/vercel-labs/just-bash) is a recent (2026) TypeScript
-reimplementation of bash, primarily for AI agents.
+[just-bash](https://github.com/vercel-labs/just-bash) is a 2026 TypeScript
+reimplementation of bash, primarily designed for AI agents.
+It’s the most complete pure-TypeScript bash implementation available.
 
-**Key Features:**
+**Architecture:** Pure TypeScript with in-memory virtual filesystem.
+No subprocess spawning—runs entirely in JavaScript.
 
-- From-scratch TypeScript implementation of common commands (grep, sed, awk, jq, cat,
-  ls)
-- In-memory virtual filesystem
-- No shell process spawning—runs entirely in JavaScript
-- Secure by default: no network access, protected against infinite loops
-- Optional URL-filtered network access via curl
+**Implemented Commands (comprehensive!):**
 
-**Use Case:** Ideal for sandboxed environments where you need shell-like behavior
-without host system access.
-Could be useful for clam’s shell simulation mode.
+| Category | Commands |
+| --- | --- |
+| **File Operations** | `cat`, `cp`, `file`, `ln`, `ls`, `mkdir`, `mv`, `readlink`, `rm`, `rmdir`, `split`, `stat`, `touch`, `tree` |
+| **Text Processing** | `awk`, `base64`, `column`, `comm`, `cut`, `diff`, `expand`, `fold`, `grep`/`egrep`/`fgrep`, `head`, `join`, `md5sum`, `nl`, `od`, `paste`, `printf`, `rev`, `rg`, `sed`, `sha1sum`, `sha256sum`, `sort`, `strings`, `tac`, `tail`, `tr`, `unexpand`, `uniq`, `wc`, `xargs` |
+| **Data Tools** | `jq` (JSON), `sqlite3`, `xan` (CSV), `yq` (YAML/XML/TOML), optional `python3` |
+| **Compression** | `gzip`, `gunzip`, `zcat`, `tar` |
+| **Navigation** | `basename`, `cd`, `dirname`, `du`, `echo`, `env`, `export`, `find`, `hostname`, `printenv`, `pwd`, `tee` |
+| **Utilities** | `alias`, `bash`, `chmod`, `clear`, `date`, `expr`, `false`, `help`, `history`, `seq`, `sh`, `sleep`, `time`, `timeout`, `true`, `unalias`, `which`, `whoami` |
+| **Network** | `curl` (when enabled), `html-to-markdown` |
+
+**Shell Features Supported:**
+
+- Pipes (`|`), redirections (`>`, `>>`, `2>`, `2>&1`, `<`)
+- Command chaining (`&&`, `||`, `;`)
+- Variable expansion (`$VAR`, `${VAR:-default}`)
+- Positional parameters (`$1`, `$@`, `$#`)
+- Glob patterns (`*`, `?`, `[...]`)
+- Conditionals (`if`/`then`/`else`)
+- Functions and local variables
+- Loops (`for`, `while`, `until`)
+- Symbolic and hard links
+
+**Security Model:**
+
+- Filesystem access restricted to virtual filesystem only
+- No binary execution or WASM support
+- Network disabled by default
+- Configurable execution limits (DOS protection):
+  - `maxCallDepth`, `maxCommandCount`, `maxLoopIterations`
+
+**API Example:**
+
+```typescript
+import { Bash } from "just-bash";
+
+const env = new Bash({
+  files: { "/data/config.json": '{"key": "value"}' },
+  executionLimits: { maxCommandCount: 10000 },
+});
+
+const result = await env.exec('cat /data/config.json | jq ".key"');
+console.log(result.stdout); // "value"
+console.log(result.exitCode); // 0
+```
+
+**Filesystem Options:**
+
+- `InMemoryFs` (default): Pure in-memory, no disk access
+- `OverlayFs`: Copy-on-write over real directories
+- `ReadWriteFs`: Direct disk access
+- `MountableFs`: Multi-filesystem mounting
+
+**Limitations:**
+
+- No `compgen` for bash completion
+- Each `exec()` call is isolated (env vars don’t persist between calls, but FS does)
+- Python/SQLite unavailable in browser environments
+
+**Use Case:** Ideal for AI agent sandboxing where you need shell-like behavior without
+host system access. Ideal for applications that need to sandbox agent tool execution.
 
 #### Bun Shell
 
@@ -108,6 +181,151 @@ await $`ls *.js`;
 **Compelling Advantage:** Eliminates the need for cross-platform polyfills like rimraf
 (60M downloads/week).
 
+**Limitations:**
+
+- Missing `grep`, `sed`, `awk`, `find`, `compgen`
+- Bun-only (can’t use in Node.js projects)
+- Newer, less battle-tested than alternatives
+
+#### Execa
+
+[Execa](https://github.com/sindresorhus/execa) is the most popular subprocess library
+for Node.js (~105M weekly downloads), built on `child_process` but optimized for
+programmatic use.
+
+**Key Features:**
+
+- Promise-based API with template string syntax (like zx)
+- No escaping or quoting needed—auto-escapes by default
+- Execute locally installed binaries without `npx`
+- Enhanced Windows support (shebangs, `PATHEXT`, graceful termination)
+- Advanced piping with intermediate result retrieval
+- IPC message exchange between processes
+- Stream conversion (readable/writable/duplex)
+- Best TypeScript support of any shell library
+
+**Example:**
+
+```typescript
+import { execa, $ } from 'execa';
+
+// Template string syntax
+const { stdout } = await $`npm run build`;
+
+// Piping with intermediate access
+const { stdout, pipedFrom } = await execa`npm run build`
+  .pipe`sort`
+  .pipe`head -n 2`;
+console.log(pipedFrom[0].stdout); // sort output
+
+// Transform output with generators
+const transform = function*(line) {
+  if (!line.includes('secret')) yield line;
+};
+await execa({ stdout: transform })`npm run build`;
+
+// IPC between processes
+const subprocess = execaNode`child.js`;
+await subprocess.sendMessage({ type: 'start' });
+```
+
+**Error Handling:**
+
+```typescript
+try {
+  await execa`unknown command`;
+} catch (error) {
+  if (error instanceof ExecaError) {
+    console.log(error.shortMessage, error.exitCode);
+    console.log(error.stdout, error.stderr);
+  }
+}
+```
+
+**Limitations:**
+
+- Still spawns subprocesses (not sandboxed)
+- Depends on system shell availability
+- No built-in command implementations
+
+**Use Case:** Best choice for programmatic subprocess control with excellent TypeScript
+support. Ideal for user-facing shell mode where full bash compatibility is needed.
+
+#### dax (Deno/Node)
+
+[dax](https://github.com/dsherret/dax) is a cross-platform shell library that “makes
+more code work on Windows” with native command implementations.
+
+**Key Features:**
+
+- Cross-platform shell with built-in Windows compatibility
+- Native implementations: `cp`, `mv`, `rm`, `mkdir`, `touch`, `cat`, `cd`, `pwd`,
+  `echo`, `sleep`, `which`, `export`, `printenv`
+- Environment export capability (shell changes can affect parent process)
+- Shell options: `pipefail`, `nullglob`, `globstar`
+- Clean builder pattern API
+
+**Example:**
+
+```typescript
+import $ from "@david/dax";
+
+await $`mkdir -p ./nested/dir`; // Works on Windows!
+await $`cp source.txt dest.txt`;
+
+// Output handling
+const text = await $`echo hello`.text();
+const json = await $`echo '{"x": 1}'`.json();
+const lines = await $`echo -e "a\nb"`.lines();
+
+// Error handling
+const result = await $`exit 1`.noThrow();
+console.log(result.code); // 1
+```
+
+**Limitations:**
+
+- Primarily Deno-focused (Node.js support secondary)
+- No grep, sed, awk implementations
+- Smaller community than execa/zx
+
+**Use Case:** Best for cross-platform scripts that need to work reliably on Windows.
+
+#### ShellJS
+
+[ShellJS](https://www.npmjs.com/package/shelljs) is a synchronous JavaScript
+implementation of Unix commands (~10M weekly downloads).
+
+**Key Features:**
+
+- Synchronous API (simple control flow)
+- Built-in: `cat`, `chmod`, `echo`, `find`, `grep`, `head`, `ln`, `ls`, `mkdir`, `mv`,
+  `pwd`, `rm`, `sed`, `sort`, `tail`, `touch`, `uniq`, `which`
+- Familiar shell-like API
+
+**Example:**
+
+```javascript
+const shell = require('shelljs');
+
+shell.cd('/tmp');
+shell.mkdir('-p', 'output');
+shell.cp('-R', 'src/*', 'output/');
+
+const result = shell.grep('TODO', 'src/**/*.js');
+const files = shell.find('src').filter(f => f.match(/\.ts$/));
+```
+
+**Limitations:**
+
+- **Synchronous only**—blocks event loop
+- Older syntax (pre-async/await)
+- Slower than alternatives in benchmarks
+- Less actively maintained
+
+**Use Case:** Legacy codebases or simple synchronous scripts.
+Not recommended for new projects.
+
 #### Other Options
 
 | Project | Description | Status |
@@ -115,6 +333,41 @@ await $`ls *.js`;
 | [tish](https://github.com/shqld/tish) | Emulates shell script in TypeScript | Experimental |
 | [vl (Violet)](https://github.com/japiirainen/vl) | Deno-based shell scripting | Active |
 | [bashscript](https://github.com/niieani/bashscript) | TypeScript to bash transpiler | Niche use case |
+
+#### Comprehensive Comparison Table
+
+| Feature | just-bash | Execa | zx | Bun Shell | dax | ShellJS |
+| --- | --- | --- | --- | --- | --- | --- |
+| **Architecture** | Pure TS reimpl | child_process | child_process | Zig reimpl | child_process | JS reimpl |
+| **Weekly Downloads** | New | 105M | 1.2M | Built-in | Smaller | 10M |
+| **No subprocess** | ✅ | ❌ | ❌ | ✅ | ❌ | ✅ |
+| **Auto-escape** | ✅ | ✅ | ✅ | ✅ | ✅ | N/A |
+| **grep** | ✅ | ❌* | ❌* | ❌ | ❌ | ✅ |
+| **sed** | ✅ | ❌* | ❌* | ❌ | ❌ | ✅ |
+| **awk** | ✅ | ❌* | ❌* | ❌ | ❌ | ❌ |
+| **jq** | ✅ | ❌* | ❌* | ❌ | ❌ | ❌ |
+| **find** | ✅ | ❌* | ❌* | ❌ | ❌ | ✅ |
+| **which** | ✅ | ❌* | ✅ | ✅ | ✅ | ✅ |
+| **compgen** | ❌ | ❌* | ❌ | ❌ | ❌ | ❌ |
+| **Pipes** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Redirects** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Loops/conditionals** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Functions** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Virtual FS** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Sandboxed** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Cross-platform** | ✅ | ✅ | ✅ | ✅ | ✅✅ | ✅ |
+| **TypeScript** | ✅ | ✅✅ | ✅ | ✅ | ✅ | ⚠️ |
+| **Node.js** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
+| **Bun** | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ |
+| **Performance** | Fast | Fast | Fast | Fastest | Fast | Slow |
+
+*\* = delegates to system command via subprocess*
+
+**Key Takeaway:** No single library is perfect.
+just-bash has the most built-in commands but lacks `compgen`. Execa has the best
+TypeScript support but spawns subprocesses.
+Bun Shell is fastest but Bun-only.
+The choice depends on your use case—see Options D-G for guidance.
 
 ### 2. Modern Shell Alternatives
 
@@ -130,8 +383,8 @@ await $`ls *.js`;
 - Cross-platform (Linux, macOS, Windows, BSD)
 - Inspiration from PowerShell and functional programming
 
-**Relevance to clam:** Nushell’s approach of treating output as structured data could
-inspire how clam presents command output to users and agents.
+**Relevance:** Nushell’s approach of treating output as structured data could inspire
+how shell applications present command output to users and agents.
 
 **Drawback:** Interactive completions lag behind fish shell.
 
@@ -146,7 +399,7 @@ inspire how clam presents command output to users and agents.
 - Recently rewritten in Rust (improved performance)
 - Widely regarded as having the best interactive experience
 
-**Relevance to clam:** Fish’s completion and autosuggestion UX is the gold standard for
+**Relevance:** Fish’s completion and autosuggestion UX is the gold standard for
 interactive shells.
 
 #### Key Insight
@@ -306,10 +559,276 @@ Rust can be 3-10x faster for CPU-bound operations, but readline is largely I/O b
 
 **Used by:** Gatsby, Parcel, Yarn, Terraform, Prisma, Shopify, NYT
 
-**Relevance:** Could provide a more declarative approach to clam’s UI rendering, though
-may add overhead for simple input/output loops.
+**Relevance:** Could provide a more declarative approach to terminal UI rendering,
+though may add overhead for simple input/output loops.
 
-### 7. Python prompt_toolkit Reference
+### 7. Completion Without Bash
+
+A key insight: **we don’t need `compgen`** if we implement completion ourselves.
+This provides better control, customization, and removes the bash dependency entirely.
+
+#### 7.1 Command Completion
+
+**Option A: Static Command List with Metadata**
+
+Rather than using `compgen -c`, maintain a curated list of common commands with
+docstrings:
+
+```typescript
+const COMMANDS = [
+  { name: 'ls', desc: 'List directory contents', priority: 10 },
+  { name: 'cd', desc: 'Change directory', priority: 10 },
+  { name: 'git', desc: 'Version control', priority: 9 },
+  { name: 'npm', desc: 'Node package manager', priority: 8 },
+  // ... ~200 common commands
+];
+```
+
+**Benefits:**
+
+- Prioritize well-known commands (ls, cd, git) over obscure ones
+- Add helpful docstrings shown during completion
+- Consistent cross-platform behavior
+- No subprocess for completion
+
+**Option B: tldr-pages Integration**
+
+[tldr-pages](https://github.com/tldr-pages/tldr) provides community-maintained,
+simplified help for 2000+ commands.
+
+```bash
+npm install tldr
+```
+
+```typescript
+import { list } from 'tldr';
+
+// Get all known commands with descriptions
+const commands = await list({ platform: 'common' });
+// Returns: [{ name: 'tar', desc: 'Archive utility' }, ...]
+```
+
+**Benefits:**
+
+- 2000+ commands with practical descriptions
+- Community-maintained and updated
+- Cross-platform aware (linux, osx, windows, common)
+
+#### 7.2 Fuzzy Search Libraries
+
+For matching user input to commands/files:
+
+| Library | Size | Speed | Best For |
+| --- | --- | --- | --- |
+| [Fuse.js](https://www.fusejs.io/) | 20KB | Fast | Feature-rich fuzzy search |
+| [microfuzz](https://github.com/Nozbe/microfuzz) | 2KB | Very Fast | Simple lists < 10K items |
+| [simple-fuzzy](https://www.npmjs.com/package/simple-fuzzy) | <1KB | Fastest | Lists < 1K items |
+| [fuzzysort](https://github.com/farzher/fuzzysort) | 6KB | Very Fast | File paths specifically |
+
+**Fuse.js Example:**
+
+```typescript
+import Fuse from 'fuse.js';
+
+const fuse = new Fuse(commands, {
+  keys: ['name', 'desc'],
+  threshold: 0.4,
+  includeScore: true,
+});
+
+const results = fuse.search('gti'); // Matches 'git'
+```
+
+**microfuzz Example (2KB, no deps):**
+
+```typescript
+import { createFuzzySearch } from 'microfuzz';
+
+const search = createFuzzySearch(commands, { key: 'name' });
+const results = search('gti'); // [{ item: { name: 'git', ... }, score: 0.8 }]
+```
+
+**Recommendation:** Use **microfuzz** for command completion (small, fast) and
+**fuzzysort** for file paths (optimized for paths).
+
+#### 7.3 File Path Completion
+
+For file/directory completion without bash:
+
+| Library | Speed | Notes |
+| --- | --- | --- |
+| [fast-glob](https://github.com/mrmlnc/fast-glob) | Fast | Most popular, micromatch-based |
+| [tiny-glob](https://github.com/terkelg/tiny-glob) | Fastest | 4x faster than fast-glob |
+| [glob](https://github.com/isaacs/node-glob) | Moderate | Most bash-compatible |
+| Bun's `Glob` | Native | Built-in, fastest on Bun |
+
+**fast-glob Example:**
+
+```typescript
+import fg from 'fast-glob';
+
+async function completeFilePath(partial: string): Promise<string[]> {
+  // Handle partial path: "src/lib/in" → "src/lib/in*"
+  const pattern = partial.endsWith('/')
+    ? `${partial}*`
+    : `${partial}*`;
+
+  return fg(pattern, {
+    onlyFiles: false, // Include directories
+    dot: true,        // Include hidden files
+    limit: 20,        // Limit results
+  });
+}
+```
+
+**tiny-glob Example (fastest):**
+
+```typescript
+import glob from 'tiny-glob';
+
+const files = await glob(`${partial}*`, { filesOnly: false });
+```
+
+#### 7.4 Implementation Strategy
+
+**Recommended Architecture:**
+
+```typescript
+// lib/completion.ts
+
+import { createFuzzySearch } from 'microfuzz';
+import fg from 'fast-glob';
+import { COMMANDS } from './command-database.js';
+
+const commandSearch = createFuzzySearch(COMMANDS, {
+  key: 'name',
+  strategy: 'smart', // Prefix matching first
+});
+
+export async function getCompletions(
+  input: string,
+  cursorPos: number
+): Promise<Completion[]> {
+  const beforeCursor = input.slice(0, cursorPos);
+  const words = beforeCursor.split(/\s+/);
+  const currentWord = words[words.length - 1] ?? '';
+  const isFirstWord = words.length === 1;
+
+  if (isFirstWord) {
+    // Command completion with fuzzy matching
+    const matches = commandSearch(currentWord);
+    return matches.slice(0, 20).map(m => ({
+      value: m.item.name,
+      description: m.item.desc,
+    }));
+  } else {
+    // File path completion
+    const files = await fg(`${currentWord}*`, {
+      onlyFiles: false,
+      limit: 20
+    });
+    return files.map(f => ({ value: f }));
+  }
+}
+```
+
+**Command Database Format:**
+
+```typescript
+// lib/command-database.ts
+
+export interface Command {
+  name: string;
+  desc: string;
+  priority: number; // Higher = shown first
+  category?: 'file' | 'git' | 'npm' | 'system' | 'network';
+}
+
+export const COMMANDS: Command[] = [
+  // File operations (priority 10)
+  { name: 'ls', desc: 'List directory contents', priority: 10, category: 'file' },
+  { name: 'cd', desc: 'Change directory', priority: 10, category: 'file' },
+  { name: 'cat', desc: 'Concatenate and print files', priority: 9, category: 'file' },
+  { name: 'cp', desc: 'Copy files', priority: 9, category: 'file' },
+  { name: 'mv', desc: 'Move/rename files', priority: 9, category: 'file' },
+  { name: 'rm', desc: 'Remove files', priority: 9, category: 'file' },
+  { name: 'mkdir', desc: 'Create directory', priority: 9, category: 'file' },
+  { name: 'touch', desc: 'Create empty file', priority: 8, category: 'file' },
+
+  // Git (priority 9)
+  { name: 'git', desc: 'Version control system', priority: 9, category: 'git' },
+
+  // Node/npm (priority 8)
+  { name: 'npm', desc: 'Node package manager', priority: 8, category: 'npm' },
+  { name: 'node', desc: 'JavaScript runtime', priority: 8, category: 'npm' },
+  { name: 'npx', desc: 'Execute npm packages', priority: 8, category: 'npm' },
+  { name: 'pnpm', desc: 'Fast package manager', priority: 7, category: 'npm' },
+  { name: 'bun', desc: 'Fast JS runtime', priority: 7, category: 'npm' },
+
+  // Text processing (priority 7)
+  { name: 'grep', desc: 'Search text patterns', priority: 7, category: 'file' },
+  { name: 'sed', desc: 'Stream editor', priority: 6, category: 'file' },
+  { name: 'awk', desc: 'Text processing', priority: 6, category: 'file' },
+  { name: 'head', desc: 'Output first lines', priority: 7, category: 'file' },
+  { name: 'tail', desc: 'Output last lines', priority: 7, category: 'file' },
+  { name: 'wc', desc: 'Word/line count', priority: 6, category: 'file' },
+
+  // ... expand to ~200 common commands
+];
+```
+
+**Benefits of This Approach:**
+
+1. **No bash dependency** - Pure TypeScript
+2. **Customizable priorities** - Show common commands first
+3. **Rich docstrings** - Help users discover commands
+4. **Fuzzy matching** - Typo tolerance ("gti" → “git”)
+5. **Cross-platform** - Same behavior everywhere
+6. **Fast** - No subprocess overhead
+7. **Extensible** - Easy to add categories, aliases, examples
+
+#### 7.5 Advanced: Subcommand Completion
+
+For commands like `git`, `npm`, `docker`, provide subcommand completion:
+
+```typescript
+const SUBCOMMANDS: Record<string, Command[]> = {
+  git: [
+    { name: 'status', desc: 'Show working tree status', priority: 10 },
+    { name: 'add', desc: 'Add files to staging', priority: 10 },
+    { name: 'commit', desc: 'Record changes', priority: 10 },
+    { name: 'push', desc: 'Update remote refs', priority: 9 },
+    { name: 'pull', desc: 'Fetch and merge', priority: 9 },
+    { name: 'checkout', desc: 'Switch branches', priority: 8 },
+    { name: 'branch', desc: 'List/create branches', priority: 8 },
+    // ...
+  ],
+  npm: [
+    { name: 'install', desc: 'Install packages', priority: 10 },
+    { name: 'run', desc: 'Run package script', priority: 10 },
+    { name: 'test', desc: 'Run tests', priority: 9 },
+    // ...
+  ],
+};
+
+function getCompletions(input: string, cursorPos: number): Completion[] {
+  const words = input.slice(0, cursorPos).split(/\s+/);
+
+  if (words.length === 1) {
+    // Complete commands
+    return commandSearch(words[0]);
+  } else if (words.length === 2 && SUBCOMMANDS[words[0]]) {
+    // Complete subcommands
+    const subSearch = createFuzzySearch(SUBCOMMANDS[words[0]], { key: 'name' });
+    return subSearch(words[1]);
+  } else {
+    // Complete file paths
+    return filePathCompletion(words[words.length - 1]);
+  }
+}
+```
+
+### 8. Python prompt_toolkit Reference
 
 [prompt_toolkit](https://github.com/prompt-toolkit/python-prompt-toolkit) is considered
 the gold standard for Python CLI input.
@@ -363,7 +882,7 @@ A TypeScript equivalent with similar design philosophy could be valuable.
 
 **Actions:**
 
-- Test clam under Bun for compatibility
+- Test under Bun for compatibility
 - Use Bun Shell for shell command execution
 - Leverage Bun’s faster test runner
 
@@ -408,6 +927,12 @@ A TypeScript equivalent with similar design philosophy could be valuable.
 
 **Description:** Use Vercel’s just-bash for shell command execution within TypeScript.
 
+**When to use:** This option is designed for applications that need to sandbox AI agent
+shell execution themselves.
+However, if you’re building on top of an agent coding tool (like Claude Code, Cursor,
+etc.), that tool likely handles its own sandboxing and permissions—you may not need to
+add another layer.
+
 **Actions:**
 
 - Integrate just-bash for safe shell command parsing
@@ -419,13 +944,194 @@ A TypeScript equivalent with similar design philosophy could be valuable.
 - No shell process spawning
 - Secure by design
 - Consistent cross-platform behavior
-- Perfect for agent sandboxing
+- Good for sandboxing when you control the agent execution
 
 **Cons:**
 
-- Not a complete bash implementation
+- Not a complete bash implementation—reimplementations have subtle incompatibilities
 - May need real shell for complex commands
 - Additional dependency
+- **For full-powered shells**: Users expect real bash behavior; any deviation is a bug
+- **If using agent tools**: Often redundant since they handle their own sandboxing
+
+### Option E: Hybrid just-bash + Execa
+
+**Description:** Use just-bash for AI agent sandboxed execution and Execa for
+user-facing shell mode, combining the best of both worlds.
+
+**When to use:** This hybrid approach only makes sense if your application is directly
+responsible for sandboxing AI agent shell execution.
+If you’re building on top of an agent coding tool that handles its own sandboxing
+(Claude Code, Cursor, Aider, etc.), this adds complexity without benefit—just use Execa
+(see Option G).
+
+**Actions:**
+
+- Use just-bash for AI agent tool execution (sandboxed, no subprocess)
+- Use Execa for user shell mode (full bash compatibility, best types)
+- Fall back to real bash only for `compgen` (completion)
+
+**Architecture:**
+
+```typescript
+// For AI agent tool execution (sandboxed)
+import { Bash } from "just-bash";
+const agentBash = new Bash({
+  executionLimits: { maxCommandCount: 100 }
+});
+const result = await agentBash.exec('grep -r "TODO" src/');
+
+// For user shell mode (full power)
+import { $ } from 'execa';
+const output = await $({ shell: true })`${userCommand}`;
+
+// For completion (fall back to real bash)
+import { exec } from 'node:child_process';
+exec(`compgen -c -- '${partial}' | head -20`, callback);
+```
+
+**Pros:**
+
+- Best security for agent execution (just-bash sandboxing)
+- Full bash compatibility for user shell mode (Execa)
+- Best TypeScript support (Execa)
+- Most built-in commands without subprocess (just-bash grep, sed, awk, jq)
+- Clear separation of concerns
+
+**Cons:**
+
+- Two dependencies instead of one
+- Different APIs for different modes
+- Still need bash fallback for `compgen`
+
+### Option F: Pure TypeScript Completion (No Bash)
+
+**Description:** Implement completion entirely in TypeScript without any bash
+dependency, using fuzzy search and file globbing libraries.
+
+**Actions:**
+
+- Create curated command database with priorities and docstrings (~200 commands)
+- Use microfuzz for fuzzy command matching
+- Use fast-glob or tiny-glob for file path completion
+- Add subcommand completion for git, npm, docker, etc.
+- Optionally integrate tldr-pages for richer command descriptions
+
+**Architecture:**
+
+```typescript
+// Pure TypeScript completion - no bash needed
+import { createFuzzySearch } from 'microfuzz';
+import fg from 'fast-glob';
+import { COMMANDS, SUBCOMMANDS } from './command-database.js';
+
+const commandSearch = createFuzzySearch(COMMANDS, { key: 'name' });
+
+async function getCompletions(input: string, cursorPos: number) {
+  const words = input.slice(0, cursorPos).split(/\s+/);
+  const current = words[words.length - 1] ?? '';
+
+  if (words.length === 1) {
+    // Fuzzy command completion with priorities
+    return commandSearch(current)
+      .sort((a, b) => b.item.priority - a.item.priority)
+      .slice(0, 20);
+  } else if (words.length === 2 && SUBCOMMANDS[words[0]]) {
+    // Subcommand completion (git status, npm install, etc.)
+    const subSearch = createFuzzySearch(SUBCOMMANDS[words[0]], { key: 'name' });
+    return subSearch(current);
+  } else {
+    // File path completion
+    return fg(`${current}*`, { onlyFiles: false, limit: 20 });
+  }
+}
+```
+
+**Pros:**
+
+- **Zero bash dependency** - Pure TypeScript
+- **Customizable** - Prioritize common commands, add docstrings
+- **Fuzzy matching** - Typo tolerance ("gti" → “git”)
+- **Rich UX** - Show descriptions during completion
+- **Cross-platform** - Same behavior on Windows/Linux/macOS
+- **Fast** - No subprocess overhead (~~1-5ms vs ~~50-100ms for compgen)
+- **Extensible** - Easy to add command categories, aliases
+
+**Cons:**
+
+- Requires maintaining command database
+- May miss obscure system commands
+- No dynamic discovery of user-installed commands
+
+**Note:** This option handles completion only.
+Combine with Execa (Option G) for a complete shell solution.
+
+### Option G: Execa + Pure TypeScript Completion (Recommended for Full-Powered Shells)
+
+**Description:** Use Execa for full-powered shell execution and pure TypeScript for
+completion. This is the optimal approach for applications that need a full-powered shell
+where sandboxing is handled elsewhere (or not needed).
+
+**When to use:**
+
+- Building a shell/terminal application where users expect real bash behavior
+- Building on top of agent coding tools that handle their own sandboxing
+- Any case where you want full bash compatibility without maintaining a reimplementation
+- Execa provides the best TypeScript support for subprocess management
+- Pure TypeScript completion removes the `compgen` dependency without sacrificing UX
+
+**Actions:**
+
+- Use Execa for all shell command execution (full bash compatibility)
+- Use pure TypeScript completion (microfuzz + fast-glob)
+- No just-bash—it adds complexity without benefit for this use case
+
+**Architecture:**
+
+```typescript
+// Shell execution with Execa (full power)
+import { execa, $ } from 'execa';
+
+// Template syntax for simple commands
+const { stdout } = await $`git status`;
+
+// Full control when needed
+const result = await execa('bash', ['-c', userCommand], {
+  shell: true,
+  reject: false, // Don't throw on non-zero exit
+});
+
+// Completion with pure TypeScript (no bash dependency)
+import { createFuzzySearch } from 'microfuzz';
+import fg from 'fast-glob';
+import { COMMANDS } from './command-database.js';
+
+const commandSearch = createFuzzySearch(COMMANDS, { key: 'name' });
+
+async function getCompletions(input: string, cursorPos: number) {
+  const words = input.slice(0, cursorPos).split(/\s+/);
+  const current = words[words.length - 1] ?? '';
+
+  if (words.length === 1) {
+    return commandSearch(current).slice(0, 20);
+  }
+  return fg(`${current}*`, { onlyFiles: false, limit: 20 });
+}
+```
+
+**Pros:**
+
+- **Full bash compatibility** - Real bash, no reimplementation quirks
+- **Best TypeScript support** - Execa has excellent types and error handling
+- **No bash dependency for completion** - Pure TypeScript with fuzzy matching
+- **Simple architecture** - One approach for execution, one for completion
+- **Correct responsibility boundary** - Don’t duplicate sandboxing that’s handled
+  elsewhere
+
+**Cons:**
+
+- Spawns subprocesses (but this is expected/correct for a full-powered shell)
+- Requires maintaining command database for completion
 
 * * *
 
@@ -452,10 +1158,29 @@ A TypeScript equivalent with similar design philosophy could be valuable.
 
    This is likely the highest-impact change for perceived performance.
 
-5. **Integrate just-bash for Agent Mode**: When clam is used by AI agents, use just-bash
-   for sandboxed shell execution.
-   This provides security without sacrificing capability for the common commands agents
-   use.
+5. **Implement Execa + Pure TypeScript Completion (Option G)**: This is the recommended
+   approach for full-powered shell applications:
+
+   **Why not just-bash or hybrid?** If you’re building on top of agent coding tools
+   (Claude Code, Cursor, etc.)
+   that handle their own sandboxing, adding just-bash is redundant complexity.
+   For full-powered shells, users expect real bash behavior—any deviation from a
+   reimplementation is a bug, not a feature.
+
+   **Shell Execution with Execa:**
+   - Replace `child_process.spawn('bash', ...)` with Execa
+   - Better error handling and structured results
+   - Auto-escaping (prevent injection)
+   - Best TypeScript types
+   - Full bash compatibility—users get real bash behavior
+
+   **Pure TypeScript Completion (no bash dependency):**
+   - Create command database with ~200 common commands + priorities + docstrings
+   - Use microfuzz (2KB) for fuzzy command matching
+   - Use fast-glob for file path completion
+   - Add subcommand completion for git, npm, docker, etc.
+   - Optional: Integrate tldr-pages for richer descriptions
+   - Removes `compgen` dependency entirely
 
 ### Long-term (v1.0+)
 
@@ -466,22 +1191,568 @@ A TypeScript equivalent with similar design philosophy could be valuable.
    approach. When possible, provide structured output that tools can consume directly
    rather than text that needs parsing.
 
+8. **Evaluate Bun Shell if Migrating to Bun**: If migrating to Bun runtime, evaluate
+   replacing Execa with Bun Shell for even faster execution (no subprocess).
+   Note that Bun Shell lacks grep/sed/awk, but this is acceptable—users have these
+   installed on their systems.
+
 ### Not Recommended
 
 - **Electron-based UI**: Would add 40-100ms latency, opposite of goal
 - **Full shell reimplementation**: just-bash and Bun Shell already exist
 - **Ink/React for input loop**: Overhead not justified for simple input/output
+- **ShellJS**: Synchronous API blocks event loop, slower than alternatives
+- **Spawning bash for completion**: ~~50-100ms latency vs ~~1-5ms for pure TypeScript
+- **readline-completer npm package**: Abandoned (9 years old), use native readline
+
+* * *
+
+## Kash Completion System Analysis
+
+This section documents findings from reviewing the kash codebase (`repos/kash/`) which
+has a mature implementation of command completion with TLDR integration, recommended
+commands, and priority-based ranking.
+
+### 9. Kash Architecture Overview
+
+Kash (a Python/xonsh-based shell) implements a sophisticated completion system with the
+following components:
+
+| Component | File | Purpose |
+| --- | --- | --- |
+| **TLDR Integration** | `help/tldr_help.py` | Extracts descriptions and snippets from tldr-pages |
+| **Recommended Commands** | `help/recommended_commands.py` | Curated list of 135 shell commands |
+| **Completion Types** | `shell/completions/completion_types.py` | Priority groups and data structures |
+| **Scoring Algorithm** | `shell/completions/completion_scoring.py` | Fuzzy matching with `thefuzz` |
+| **Shell Completions** | `shell/completions/shell_completions.py` | Completion orchestration |
+| **Ranking Completer** | `xonsh_custom/xonsh_ranking_completer.py` | Final ranking and deduplication |
+| **Recipe Data** | `docs_base/recipes/tldr_standard_commands.sh` | 109 commands, 2126 lines |
+
+### 9.1 Recommended Commands List
+
+Location: `repos/kash/src/kash/help/recommended_commands.py`
+
+A curated set of **135 standard shell commands** organized by category:
+
+```python
+STANDARD_SHELL_COMMANDS = {
+    # Core navigation and file operations
+    "ls", "cd", "pwd", "cp", "mv", "rm", "mkdir", "rmdir", "touch", "man", "git", "poetry",
+
+    # Modern alternatives to core commands
+    "eza",    # modern ls alternative
+    "z",      # modern cd alternative (zoxide)
+    "fd",     # modern find alternative
+    "bat",    # modern cat alternative
+    "rg",     # modern grep alternative
+    "dust",   # modern du alternative
+    "duf",    # modern df alternative
+    "btm",    # modern top alternative
+    "procs",  # modern ps alternative
+    "delta",  # modern diff alternative
+
+    # Search and filtering
+    "grep", "find", "fzf", "sk",
+
+    # File inspection and manipulation
+    "cat", "less", "head", "tail", "chmod", "chown", "tree",
+
+    # System information
+    "ps", "top", "df", "du", "uptime", "uname", "free",
+
+    # Network tools
+    "ping", "curl", "wget", "ssh", "nc", "traceroute", "dig", "ifconfig", "scp", "sftp",
+
+    # Development tools
+    "vim", "nano", "jq",
+
+    # Documentation and help
+    "tldr", "which",
+
+    # Compression
+    "tar", "gzip", "zip", "unzip", "bzip2", "xz",
+
+    # Python
+    "pip", "pyenv", "virtualenv", "pipenv", "pipx",
+
+    # Rust
+    "cargo",
+
+    # JavaScript
+    "npm", "npx", "yarn", "fnm", "node",
+
+    # Process management
+    "htop", "kill", "killall",
+
+    # Text processing and editing
+    "awk", "sed", "sort", "uniq", "wc",
+
+    # System monitoring and diagnostics
+    "ncdu", "lsof", "strace", "glances", "nmap", "netstat",
+
+    # Container and virtualization
+    "docker", "podman", "kubectl", "vagrant",
+
+    # macOS specific
+    "open", "pbcopy", "pbpaste", "brew",
+
+    # Package management (Linux)
+    "apt", "yum", "dnf", "pacman",
+
+    # System administration
+    "sudo", "su", "zsh", "bash",
+}
+
+DROPPED_TLDR_COMMANDS = {
+    "less",     # has keyboard examples, not command line
+    "license",  # confusing
+    "hello",    # confusing
+}
+
+RECOMMENDED_TLDR_COMMANDS = sorted(STANDARD_SHELL_COMMANDS - DROPPED_TLDR_COMMANDS)
+```
+
+### 9.2 TLDR Integration
+
+Location: `repos/kash/src/kash/help/tldr_help.py`
+
+Uses the Python `tldr` library (wraps tldr-pages cache) with these key functions:
+
+| Function | Purpose |
+| --- | --- |
+| `tldr_refresh_cache()` | Auto-refreshes cache every 14 days |
+| `tldr_page_from_cache(cmd)` | Retrieves cached tldr page for a command |
+| `tldr_description(cmd)` | Extracts just the short description (lines starting with `>`) |
+| `tldr_snippets(cmd)` | Parses examples into `CommentedCommand` objects |
+| `tldr_descriptions(cmds)` | Returns `CommandInfo` objects for all recommended commands |
+| `dump_all_tldr_snippets()` | Generates `tldr_standard_commands.sh` recipe file |
+
+**Description Extraction Logic:**
+
+```python
+def tldr_description(command: str) -> str | None:
+    """Extract description from lines starting with '>' (before 'More information')"""
+    page_str = tldr_help(command)
+    if not page_str:
+        return None
+
+    lines = []
+    for line in page_str.splitlines():
+        line = line.strip()
+        if line.startswith(">"):
+            if "More information:" in line:
+                break
+            lines.append(line[1:].strip())  # Remove '>' prefix
+        elif lines:
+            break
+
+    return _clean_tldr_comment(" ".join(lines))
+```
+
+**Snippet Extraction Logic:**
+
+```python
+def tldr_snippets(command: str) -> list[CommentedCommand]:
+    """Parse TLDR page into comment/command pairs"""
+    # Lines starting with "- " are descriptions
+    # Indented lines following descriptions are commands
+    # Skip headers (#) and description blocks (>)
+```
+
+### 9.3 Priority Groups
+
+Location: `repos/kash/src/kash/shell/completions/completion_types.py`
+
+Nine priority levels from highest to lowest:
+
+```python
+class CompletionGroup(int, Enum):
+    top_suggestion = 0   # Highest priority (e.g., "?" for help)
+    kash = 1             # Internal kash commands/actions
+    standard = 2         # Standard xonsh completions
+    help = 3             # Help/FAQ completions
+    relev_opt = 4        # Relevant options
+    rec_cmd = 5          # Recommended shell commands (with TLDR)
+    reg_cmd = 6          # Regular shell commands
+    python = 7           # Python completions
+    other = 8            # Lowest priority
+```
+
+**Visual Styling (monochrome unicode icons):**
+
+```python
+EMOJI_RECOMMENDED = "•"   # U+2022 Recommended shell commands
+EMOJI_SHELL = "⦊"         # U+298A Other shell commands
+EMOJI_COMMAND = "⧁"       # U+29C1 Internal commands
+EMOJI_ACTION = "⛭"        # U+26ED Actions
+EMOJI_SNIPPET = "❯"       # U+276F Recipe snippets
+EMOJI_HELP = "?"          # U+003F FAQ/help items
+```
+
+### 9.4 Scoring Algorithm
+
+Location: `repos/kash/src/kash/shell/completions/completion_scoring.py`
+
+**Key Constants:**
+
+```python
+MIN_CUTOFF = Score(70)  # Minimum score to show completion
+```
+
+**Scoring Components:**
+
+| Component | Score Range | Description |
+| --- | --- | --- |
+| Exact prefix | 70-100 | Higher for longer/more complete matches |
+| Fuzzy phrase | 0-100 | Blended ratio + token_set_ratio using `thefuzz` |
+| Subphrase | 0-100 | For FAQs/recipes with >4 word queries |
+| Semantic boost | +200% | When embeddings relatedness available |
+| Description boost | +5 | If TLDR description exists |
+| Recency | 0-100 | Exponential decay: 1 hour (100) → 1 year (0) |
+
+**Exact Prefix Scoring:**
+
+```python
+def score_exact_prefix(prefix: str, text: str) -> Score:
+    if not text.startswith(prefix):
+        return Score(0)
+    if len(prefix) < 2:
+        return Score(50)
+
+    completion_ratio = len(prefix) / len(text)
+    long_prefix_bonus = len(prefix) - 2
+    score = 70 + (20 * completion_ratio) + min(10, long_prefix_bonus)
+    return Score(score)
+```
+
+**Fuzzy Phrase Scoring (uses thefuzz):**
+
+```python
+def score_phrase(prefix: str, text: str) -> Score:
+    if len(prefix) > 5:
+        return Score(
+            0.4 * fuzz.ratio(prefix, text)
+            + 0.3 * fuzz.token_set_ratio(prefix, text)
+            + 0.3 * fuzz.partial_ratio(prefix, text)
+        )
+    else:
+        return Score(
+            0.6 * fuzz.ratio(prefix, text)
+            + 0.4 * fuzz.token_set_ratio(prefix, text)
+        )
+```
+
+**Recency Decay:**
+
+```python
+def decaying_recency(age_seconds: float) -> Score:
+    """Exponential decay from 1 hour (100) to 1 year (0)"""
+    if age_seconds <= ONE_HOUR:
+        return Score(100.0)
+    if age_seconds >= ONE_YEAR:
+        return Score(0.0)
+
+    decay_constant = 5.0 / (ONE_YEAR - ONE_HOUR)
+    return Score(100.0 * math.exp(-decay_constant * (age_seconds - ONE_HOUR)))
+```
+
+### 9.5 Recipe Data Files
+
+Location: `repos/kash/src/kash/docs_base/recipes/`
+
+| File | Commands | Lines | Description |
+| --- | --- | --- | --- |
+| `tldr_standard_commands.sh` | 109 | 2126 | Generated from TLDR pages |
+| `general_system_commands.sh` | ~5 | 11 | Additional system snippets |
+| `python_dev_commands.sh` | ~3 | 7 | Python development snippets |
+
+**Format:** Shell script with comment/command pairs:
+
+```bash
+# apt
+
+# Update the list of available packages
+sudo apt update
+
+# Search for a given package
+apt search {{package}}
+```
+
+### 9.6 Ranking Completer
+
+Location: `repos/kash/src/kash/xonsh_custom/xonsh_ranking_completer.py`
+
+The `RankingCompleter` orchestrates the full completion pipeline:
+
+1. **Collect**: Gather completions from all registered completers
+2. **Deduplicate**: Remove duplicates based on normalized values
+3. **Enrich**: Add TLDR descriptions to standard completions
+4. **Score**: Apply scoring algorithm to unscored completions
+5. **Rank**: Sort by group (primary) and score (secondary)
+
+```python
+class RankingCompleter(Completer):
+    def complete_from_context(self, context):
+        completions = list(self._collect_completions(context))
+        self._deduplicate_completions(completions)
+        self._enrich_completions(completions)    # Adds TLDR descriptions
+        self._score_unscored_completions(completions, context)
+        self._rank_completions(completions, context)
+        return tuple(completions), lprefix
+```
+
+### 9.7 Porting Plan to TypeScript
+
+**Phase 1: Data Files (can reuse directly)**
+
+| Kash File | TypeScript Port | Notes |
+| --- | --- | --- |
+| `recommended_commands.py` | `src/data/recommended-commands.ts` | Direct port of 135 commands |
+| `tldr_standard_commands.sh` | `src/data/tldr-snippets.json` | Convert to JSON for TypeScript |
+
+**Phase 2: TypeScript Implementation**
+
+| Kash Module | TypeScript Module | Dependencies |
+| --- | --- | --- |
+| `tldr_help.py` | `src/completion/tldr-help.ts` | `tldr` npm package |
+| `completion_types.py` | `src/completion/types.ts` | None |
+| `completion_scoring.py` | `src/completion/scoring.ts` | `fuzzball` (thefuzz for JS) |
+| `shell_completions.py` | `src/completion/completions.ts` | `fast-glob` |
+
+**Phase 3: Integration**
+
+1. **Command Database**: Create `src/data/commands.ts`:
+
+   ```typescript
+   export interface Command {
+     name: string;
+     description: string;
+     priority: number;        // 0-10, higher = shown first
+     category: CommandCategory;
+     isModernAlternative?: boolean;
+     alternativeTo?: string;  // e.g., eza is alternative to ls
+   }
+   ```
+
+2. **Priority Groups**: Port to TypeScript enum:
+
+   ```typescript
+   export enum CompletionGroup {
+     TopSuggestion = 0,
+     InternalCommand = 1,
+     Standard = 2,
+     Help = 3,
+     RecommendedCmd = 5,
+     RegularCmd = 6,
+     Other = 8,
+   }
+   ```
+
+3. **Fuzzy Matching**: Use `fuzzball` (JavaScript port of thefuzz):
+
+   ```typescript
+   import fuzz from 'fuzzball';
+   
+   function scorePhrase(prefix: string, text: string): number {
+     if (prefix.length > 5) {
+       return 0.4 * fuzz.ratio(prefix, text)
+            + 0.3 * fuzz.token_set_ratio(prefix, text)
+            + 0.3 * fuzz.partial_ratio(prefix, text);
+     }
+     return 0.6 * fuzz.ratio(prefix, text)
+          + 0.4 * fuzz.token_set_ratio(prefix, text);
+   }
+   ```
+
+4. **TLDR Integration**: Use `tldr` npm package:
+
+   ```typescript
+   import { getPage } from 'tldr';
+   
+   async function getTldrDescription(command: string): Promise<string | null> {
+     const page = await getPage(command);
+     if (!page) return null;
+   
+     // Extract lines starting with '>'
+     const descLines = page.split('\n')
+       .filter(line => line.startsWith('>'))
+       .map(line => line.slice(1).trim())
+       .filter(line => !line.includes('More information:'));
+   
+     return descLines.join(' ') || null;
+   }
+   ```
+
+**Benefits of Porting:**
+
+1. **Curated command list** - 135 vetted commands vs.
+   discovering from system
+2. **Clean descriptions** - Extracted TLDR descriptions are concise
+3. **Modern alternatives** - Highlights eza, fd, bat, rg over legacy commands
+4. **Category organization** - Commands grouped by purpose
+5. **Proven scoring** - Battle-tested fuzzy matching algorithm
+6. **No bash dependency** - Pure TypeScript completion
+
+### 9.8 Styled Completion Rendering
+
+Xonsh uses prompt-toolkit’s `RichCompletion` class to render completions with distinct
+styling for the command name vs.
+description. This creates a polished UX where:
+
+- **Command name**: Bold with category emoji prefix
+- **Description**: Dimmer text alongside the command
+
+**RichCompletion Parameters:**
+
+| Parameter | Purpose | Example |
+| --- | --- | --- |
+| `value` | Actual completion text inserted | `"git"` |
+| `display` | Styled text shown in menu | `"⧁ git"` (with style) |
+| `description` | Dim help text alongside | `"Version control system"` |
+| `style` | PTK style string | `"bold black"` |
+| `append_space` | Add space after completion | `True` |
+| `prefix_len` | Characters to replace | `3` |
+
+**Kash Style Definitions:**
+
+```python
+# From kash/config/text_styles.py
+STYLE_KASH_COMMAND = "bold black"      # Internal commands
+STYLE_HELP_QUESTION = "italic bold black"  # FAQ questions
+STYLE_HINT = "italic dim"              # Descriptions
+
+# Unicode icons for command types (all monochrome)
+EMOJI_RECOMMENDED = "•"   # U+2022 Recommended shell commands
+EMOJI_SHELL = "⦊"         # U+298A Other shell commands
+EMOJI_COMMAND = "⧁"       # U+29C1 Internal commands (alternatives: ⦿⧀⦾⟐⟡)
+EMOJI_ACTION = "⛭"        # U+26ED Actions
+EMOJI_SNIPPET = "❯"       # U+276F Recipe snippets
+EMOJI_HELP = "?"          # U+003F FAQ/help items
+```
+
+**Completion Display Format:**
+
+```
+┌────────────────────────────────────────────────────────────┐
+│ • git         Version control system                       │
+│ • npm         Node package manager                         │
+│ ⧁ help        Show help for internal commands              │
+│ ⦊ awk         Text processing                              │
+│ ❯ git status  Show working tree status                     │
+│ ? How do I... FAQ question                                 │
+└────────────────────────────────────────────────────────────┘
+  ^emoji ^cmd    ^description (dimmer)
+  └──────────┘
+   bold style
+```
+
+**TypeScript Implementation for Clam:**
+
+Node.js readline doesn’t support rich completions natively.
+Options:
+
+1. **Custom rendering with ANSI codes**: Render styled text manually
+
+   ```typescript
+   import pc from 'picocolors';
+   
+   interface StyledCompletion {
+     value: string;
+     display: string;      // Command with emoji
+     description: string;  // Help text
+     style: 'recommended' | 'shell' | 'internal';
+   }
+   
+   function formatCompletion(c: StyledCompletion): string {
+     const emoji = c.style === 'recommended' ? '•' :
+                   c.style === 'internal' ? '⧁' : '⦊';
+     const cmd = pc.bold(`${emoji} ${c.value}`);
+     const desc = pc.dim(c.description);
+     return `${cmd.padEnd(20)} ${desc}`;
+   }
+   ```
+
+2. **Use Ink for React-based terminal UI**: Declarative rendering
+
+   ```typescript
+   import { Text, Box } from 'ink';
+   
+   const Completion = ({ cmd, desc, type }) => (
+     <Box>
+       <Text bold>{getEmoji(type)} {cmd}</Text>
+       <Text dimColor> {desc}</Text>
+     </Box>
+   );
+   ```
+
+3. **Use @clack/prompts**: Modern prompts with built-in styling
+
+   ```typescript
+   import { select } from '@clack/prompts';
+   
+   const result = await select({
+     message: 'Complete:',
+     options: completions.map(c => ({
+       value: c.value,
+       label: `${c.emoji} ${c.value}`,
+       hint: c.description,  // Shown dimmer
+     })),
+   });
+   ```
+
+**Recommendation for Clam:**
+
+Use ANSI escape codes via `picocolors` for inline completion rendering:
+
+- Bold + emoji for command name
+- Dim for description
+- Consistent column alignment using `padEnd()`
+
+This matches Node.js CLI conventions while achieving similar UX to xonsh/prompt-toolkit.
+
+**References:**
+
+- [xonsh RichCompletion](https://xon.sh/api/_autosummary/cmd/xonsh.completers.tools.html)
+- [xonsh Completers Tutorial](https://xon.sh/tutorial_completers.html)
+- [prompt-toolkit Completion Styles](https://github.com/xonsh/xonsh/issues/2840)
 
 * * *
 
 ## Next Steps
 
-- [ ] Profile current clam input loop with timestamps at each stage
+### Performance Investigation
+
+- [ ] Profile current input loop with timestamps at each stage
 - [ ] Create Bun compatibility branch and run full test suite
 - [ ] Benchmark startup time: Node.js vs Bun
 - [ ] Benchmark interactive input latency: Node.js readline vs Bun
 - [ ] Evaluate just-bash for sandboxed shell mode
 - [ ] Document findings and make migration decision
+
+### Kash Completion System Porting
+
+- [ ] Port `recommended_commands.py` → `src/data/recommended-commands.ts` (135 commands)
+- [ ] Convert `tldr_standard_commands.sh` → `src/data/tldr-snippets.json` (109 commands)
+- [ ] Implement `CompletionGroup` enum and priority system
+- [ ] Port scoring algorithm using `fuzzball` (thefuzz for JavaScript)
+- [ ] Implement TLDR description extraction using `tldr` npm package
+- [ ] Create completion orchestration pipeline (collect → dedupe → enrich → score →
+  rank)
+- [ ] Add subcommand completion for git, npm, docker (from kash’s subcommand data)
+
+### Styled Completion Rendering
+
+- [ ] Implement `StyledCompletion` interface with value, display, description, style
+- [ ] Add emoji prefixes by command type (• recommended, ⧁ internal, ⦊ shell)
+- [ ] Render completions with picocolors: bold command + dim description
+- [ ] Implement column alignment for consistent completion menu appearance
+- [ ] Consider @clack/prompts or Ink for more sophisticated completion UX
+
+### Alternative Pure TypeScript Approach
+
+- [ ] Benchmark microfuzz vs fuzzball vs fuse.js for command completion
+- [ ] Evaluate tiny-glob vs fast-glob for file path completion
+- [ ] Consider hybrid: kash data files + microfuzz for simpler implementation
 
 * * *
 
@@ -490,11 +1761,35 @@ A TypeScript equivalent with similar design philosophy could be valuable.
 ### TypeScript Shell Frameworks
 
 - [Google zx](https://github.com/google/zx) - A tool for writing better scripts
+- [zx@lite](https://dev.to/antongolub/zxlite-minimalistic-shell-scripting-with-tsjs-superpowers-1j50)
+  \- Minimalistic variant of zx
+- [Execa](https://github.com/sindresorhus/execa) - Process execution for humans (105M
+  weekly downloads)
+- [Execa 9 Release Notes](https://medium.com/@ehmicky/execa-9-release-d0d5daaa097f) -
+  Detailed feature overview
 - [Vercel just-bash](https://github.com/vercel-labs/just-bash) - Bash for Agents
+- [just-bash Documentation](https://justbash.dev/) - Official docs
+- [Vercel bash-tool](https://github.com/vercel-labs/bash-tool) - AI SDK integration
 - [Bun Shell](https://bun.com/blog/the-bun-shell) - Cross-platform shell scripting
+- [Bun Shell Documentation](https://bun.sh/docs/runtime/shell) - Official docs
+- [dax](https://github.com/dsherret/dax) - Cross-platform shell for Deno and Node.js
+- [ShellJS](https://www.npmjs.com/package/shelljs) - Unix shell commands for Node.js
 - [tish](https://github.com/shqld/tish) - Shell script emulation in TypeScript
 - [vl (Violet)](https://github.com/japiirainen/vl) - Shell scripting in TypeScript for
   Deno
+
+### Comparisons & Guides
+
+- [npm-compare: execa vs shelljs vs zx](https://npm-compare.com/child_process,execa,shelljs,shx)
+  \- Feature comparison
+- [npm trends: execa vs shelljs vs zx](https://npmtrends.com/execa-vs-shelljs-vs-zx) -
+  Download trends
+- [Writing Shell Scripts with TypeScript](https://scott.willeke.com/writing-shell-scripts-with-typescript-instead-of-bash/)
+  \- Tutorial
+- [Shell scripting with Node.js](https://exploringjs.com/nodejs-shell-scripting/) -
+  Comprehensive book
+- [Vercel: Bash for Agents](https://vercel.com/blog/how-to-build-agents-with-filesystems-and-bash)
+  \- AI agent use case
 
 ### Modern Shells
 
@@ -536,3 +1831,26 @@ A TypeScript equivalent with similar design philosophy could be valuable.
   model
 - [just-bash Security](https://github.com/vercel-labs/just-bash#security) - Sandboxed
   execution
+
+### Fuzzy Search & Completion
+
+- [Fuse.js](https://www.fusejs.io/) - Lightweight fuzzy-search library
+- [microfuzz](https://github.com/Nozbe/microfuzz) - Tiny (2KB) fuzzy search
+- [simple-fuzzy](https://www.npmjs.com/package/simple-fuzzy) - Ultra-lightweight fuzzy
+- [fuzzysort](https://github.com/farzher/fuzzysort) - Fast fuzzy search for file paths
+- [node-fzf](https://github.com/talmobi/node-fzf) - fzf-inspired CLI selection
+
+### File System Globbing
+
+- [fast-glob](https://github.com/mrmlnc/fast-glob) - Fast and efficient glob library
+- [tiny-glob](https://github.com/terkelg/tiny-glob) - Fastest glob (4x faster than
+  fast-glob)
+- [glob](https://github.com/isaacs/node-glob) - Most bash-compatible glob
+- [Bun Glob](https://bun.com/docs/runtime/glob) - Bun’s built-in glob
+
+### Command Documentation
+
+- [tldr-pages](https://github.com/tldr-pages/tldr) - Simplified man pages (2000+
+  commands)
+- [tldr-node-client](https://github.com/tldr-pages/tldr-node-client) - Node.js client
+- [cheat.sh](https://github.com/chubin/cheat.sh) - Unified cheat sheet access
