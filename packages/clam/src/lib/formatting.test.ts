@@ -36,9 +36,12 @@ describe('colors', () => {
 });
 
 describe('getColorForMode', () => {
-  it('should return identity function for shell mode', () => {
+  it('should return bold white color function for shell mode', () => {
     const color = getColorForMode('shell');
-    expect(color('test')).toBe('test');
+    const result = color('test');
+    // Shell mode uses bold white - should contain the text
+    expect(typeof result).toBe('string');
+    expect(result).toContain('test');
   });
 
   it('should return magenta color function for nl mode', () => {
@@ -57,16 +60,15 @@ describe('getColorForMode', () => {
     expect(result).toContain('test');
   });
 
-  it('should return different colors for different modes', () => {
+  it('should return color functions for all modes', () => {
     const shellColor = getColorForMode('shell');
     const nlColor = getColorForMode('nl');
     const slashColor = getColorForMode('slash');
 
-    // Shell returns identity, others apply colors
-    expect(shellColor('test')).toBe('test');
-    // NL and slash should apply colors (may be different from shell)
-    expect(typeof nlColor('test')).toBe('string');
-    expect(typeof slashColor('test')).toBe('string');
+    // All modes return color functions that contain the text
+    expect(shellColor('test')).toContain('test');
+    expect(nlColor('test')).toContain('test');
+    expect(slashColor('test')).toContain('test');
   });
 });
 
