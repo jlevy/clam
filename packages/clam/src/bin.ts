@@ -267,6 +267,8 @@ async function main(): Promise<void> {
           resolver(selectedOption.id);
           permissionResolver = null;
           pendingPermissionOptions = null;
+          // Remove permission response from history (it's ephemeral, not a real command)
+          inputReader.removeLastHistoryEntry();
           return;
         }
 
@@ -278,6 +280,8 @@ async function main(): Promise<void> {
             resolver(selectedOption.id);
             permissionResolver = null;
             pendingPermissionOptions = null;
+            // Remove permission response from history (it's ephemeral, not a real command)
+            inputReader.removeLastHistoryEntry();
             return;
           }
         }

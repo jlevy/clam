@@ -148,6 +148,19 @@ export class InputReader {
   }
 
   /**
+   * Remove the most recent entry from readline history.
+   * Useful for removing ephemeral inputs like permission responses (A/a/d/D)
+   * that shouldn't pollute command history.
+   */
+  removeLastHistoryEntry(): void {
+    if (!this.rl) return;
+    const rlHistory = (this.rl as readline.Interface & { history?: string[] }).history;
+    if (rlHistory && rlHistory.length > 0) {
+      rlHistory.shift(); // Remove the first entry (most recent, since history is in reverse order)
+    }
+  }
+
+  /**
    * Create a completer function for Tab completion.
    * Supports:
    * - Slash commands: /quit, /help, etc.
