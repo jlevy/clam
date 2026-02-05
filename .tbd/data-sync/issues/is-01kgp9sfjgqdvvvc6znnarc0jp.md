@@ -1,4 +1,6 @@
 ---
+close_reason: Implemented InputState types and createInputState with tests
+closed_at: 2026-02-05T07:08:42.913Z
 created_at: 2026-02-05T07:03:15.792Z
 dependencies:
   - target: is-01kgp9sfta2663hfnazeyezy1x
@@ -9,9 +11,9 @@ labels: []
 parent_id: is-01kgp9s4730cf2cxhxa7p0eafy
 priority: 1
 spec_path: docs/project/specs/active/plan-2026-02-05-better-shell-completions.md
-status: open
+status: closed
 title: Implement InputState types and updateInputState() in input/state.ts
 type: is
-updated_at: 2026-02-05T07:03:56.443Z
-version: 2
+updated_at: 2026-02-05T07:08:42.914Z
+version: 4
 ---

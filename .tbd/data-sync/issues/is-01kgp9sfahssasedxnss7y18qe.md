@@ -1,4 +1,6 @@
 ---
+close_reason: Created input/ and completion/ directory structure
+closed_at: 2026-02-05T07:07:50.558Z
 created_at: 2026-02-05T07:03:15.536Z
 dependencies:
   - target: is-01kgp9sfjgqdvvvc6znnarc0jp
@@ -15,9 +17,9 @@ labels: []
 parent_id: is-01kgp9s4730cf2cxhxa7p0eafy
 priority: 1
 spec_path: docs/project/specs/active/plan-2026-02-05-better-shell-completions.md
-status: open
+status: closed
 title: Create input/ and completion/ directory structure
 type: is
-updated_at: 2026-02-05T07:04:14.343Z
-version: 5
+updated_at: 2026-02-05T07:07:50.559Z
+version: 7
 ---

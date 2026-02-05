@@ -11,9 +11,9 @@ labels: []
 parent_id: is-01kgp9s4730cf2cxhxa7p0eafy
 priority: 1
 spec_path: docs/project/specs/active/plan-2026-02-05-better-shell-completions.md
-status: open
+status: in_progress
 title: Implement Completion and Completer types in completion/types.ts
 type: is
-updated_at: 2026-02-05T07:04:01.704Z
-version: 3
+updated_at: 2026-02-05T07:08:52.409Z
+version: 4
 ---
