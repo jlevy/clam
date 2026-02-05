@@ -26,6 +26,7 @@ import type { ModeDetector, InputMode } from './mode-detection.js';
 import { isExplicitShell, stripShellTrigger, suggestCommand } from './mode-detection.js';
 import type { OutputWriter } from './output.js';
 import type { ShellModule } from './shell.js';
+import { isDirectoryPath, formatExitCode, createCommandTimer } from './shell/index.js';
 import {
   createCompletionIntegration,
   type CompletionIntegration,
@@ -963,10 +964,30 @@ export class InputReader {
 
           if (mode === 'shell') {
             // Route shell command directly - use stdio inherit for real TTY (colors work)
-            const command = isExplicitShell(trimmed) ? stripShellTrigger(trimmed) : trimmed;
+            let command = isExplicitShell(trimmed) ? stripShellTrigger(trimmed) : trimmed;
+
+            // Auto-cd: If input is just a directory path, convert to "cd <path>"
+            if (isDirectoryPath(command)) {
+              command = `cd ${command}`;
+            }
+
+            // Time command execution
+            const timer = createCommandTimer();
+            timer.start();
+
             try {
-              await shell.exec(command, { captureOutput: false });
+              const result = await shell.exec(command, { captureOutput: false });
+              timer.stop();
+
+              // Display exit code and timing for non-zero exits or long commands
+              const exitInfo = formatExitCode(result.exitCode);
+              const timeInfo = timer.format();
+              if (exitInfo || timeInfo) {
+                const parts = [exitInfo, timeInfo].filter(Boolean);
+                output.info(colors.muted(parts.join(' ')));
+              }
             } catch (error) {
+              timer.stop();
               if (error instanceof Error) {
                 output.error(`Shell error: ${error.message}`);
               }
@@ -979,9 +1000,22 @@ export class InputReader {
             const confirmed = await this.confirmShellCommand(trimmed);
             if (confirmed) {
               // User confirmed - execute as shell command with real TTY (colors work)
+              const timer = createCommandTimer();
+              timer.start();
+
               try {
-                await shell.exec(trimmed, { captureOutput: false });
+                const result = await shell.exec(trimmed, { captureOutput: false });
+                timer.stop();
+
+                // Display exit code and timing for non-zero exits or long commands
+                const exitInfo = formatExitCode(result.exitCode);
+                const timeInfo = timer.format();
+                if (exitInfo || timeInfo) {
+                  const parts = [exitInfo, timeInfo].filter(Boolean);
+                  output.info(colors.muted(parts.join(' ')));
+                }
               } catch (error) {
+                timer.stop();
                 if (error instanceof Error) {
                   output.error(`Shell error: ${error.message}`);
                 }

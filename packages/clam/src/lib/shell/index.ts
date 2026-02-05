@@ -17,3 +17,25 @@ export {
   getModernAlternatives,
   type ToolInfo,
 } from './modern-tools.js';
+export {
+  COMMAND_ALIASES,
+  rewriteCommand,
+  getAlias,
+  getActiveAliases,
+  formatAlias,
+  type CommandAlias,
+} from './command-aliases.js';
+export {
+  isZoxideInstalled,
+  zoxideQuery,
+  zoxideAdd,
+  detectZoxideCommand,
+  rewriteZoxideCommand,
+} from './zoxide.js';
+export {
+  isDirectoryPath,
+  formatExitCode,
+  formatDuration,
+  createCommandTimer,
+  type CommandTimer,
+} from './conveniences.js';

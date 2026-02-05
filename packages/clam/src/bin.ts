@@ -209,9 +209,18 @@ async function main(): Promise<void> {
   output.writeLine(colors.status('Type /help for commands, /quit to exit'));
   output.writeLine(colors.status('Shell commands run directly, natural language goes to Claude'));
 
+  // Create shell module and mode detector
+  const shell = createShellModule({ cwd });
+  const modeDetector = createModeDetector({ shell });
+
   // Detect and display modern tools (run in background to not block startup)
+  // Also enables command aliasing when tools are detected
   detectInstalledTools()
     .then((installedTools) => {
+      // Enable command aliasing with detected tools
+      shell.setInstalledTools(installedTools);
+
+      // Display installed tools
       const toolStatus = formatToolStatus(installedTools, { showOnlyInstalled: true });
       if (toolStatus) {
         output.writeLine(colors.muted(toolStatus));
@@ -222,10 +231,6 @@ async function main(): Promise<void> {
     });
 
   output.newline();
-
-  // Create shell module and mode detector
-  const shell = createShellModule({ cwd });
-  const modeDetector = createModeDetector({ shell });
 
   // Create input reader
   const inputReader = createInputReader({

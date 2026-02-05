@@ -14,6 +14,8 @@ import { promisify } from 'node:util';
 import { exec as execCallback } from 'node:child_process';
 
 import { getColorEnv } from './shell/color-env.js';
+import { rewriteCommand } from './shell/command-aliases.js';
+import { detectZoxideCommand, rewriteZoxideCommand, zoxideAdd } from './shell/zoxide.js';
 import { withTtyManagement } from './tty/index.js';
 
 const execPromise = promisify(execCallback);
@@ -42,6 +44,12 @@ export interface ShellModule {
 
   /** Set the current working directory */
   setCwd(path: string): void;
+
+  /** Set installed tools for command aliasing */
+  setInstalledTools(tools: Map<string, boolean>): void;
+
+  /** Enable or disable command aliasing */
+  setAliasingEnabled(enabled: boolean): void;
 }
 
 /**
@@ -130,6 +138,10 @@ export function createShellModule(options: ShellModuleOptions = {}): ShellModule
   // Track current working directory - mutable state that persists across commands
   let currentCwd = options.cwd ?? process.cwd();
 
+  // Command aliasing state
+  let installedTools = new Map<string, boolean>();
+  let aliasingEnabled = true;
+
   // Cache which results to avoid repeated lookups
   const whichCache = new Map<string, string | null>();
 
@@ -145,6 +157,20 @@ export function createShellModule(options: ShellModuleOptions = {}): ShellModule
    */
   function setCwd(path: string): void {
     currentCwd = path;
+  }
+
+  /**
+   * Set installed tools for command aliasing.
+   */
+  function setInstalledTools(tools: Map<string, boolean>): void {
+    installedTools = tools;
+  }
+
+  /**
+   * Enable or disable command aliasing.
+   */
+  function setAliasingEnabled(enabled: boolean): void {
+    aliasingEnabled = enabled;
   }
 
   /**
@@ -215,15 +241,28 @@ export function createShellModule(options: ShellModuleOptions = {}): ShellModule
   }
 
   async function exec(command: string, execOptions: ExecOptions = {}): Promise<ExecResult> {
+    // Use explicit cwd from options, or fall back to tracked current working directory
+    const effectiveCwd = execOptions.cwd ?? currentCwd;
+
+    // Check for zoxide commands (z, zi) and rewrite them
+    const zoxideType = detectZoxideCommand(command);
+    let workingCommand = command;
+
+    if (zoxideType && installedTools.get('zoxide')) {
+      // Rewrite z/zi to actual zoxide commands
+      workingCommand = rewriteZoxideCommand(command, effectiveCwd);
+    }
+
+    // Apply command aliasing (e.g., ls -> eza)
+    const aliasedCommand = rewriteCommand(workingCommand, installedTools, aliasingEnabled);
+
     // For interactive commands (captureOutput: false), use TTY management
     // to properly save/restore terminal state around subprocess execution
     const isInteractive = !execOptions.captureOutput;
 
-    // Use explicit cwd from options, or fall back to tracked current working directory
-    const effectiveCwd = execOptions.cwd ?? currentCwd;
-
-    // Detect if this is a cd command - we'll need to update our tracked cwd after
-    const isCdCommand = command.trim().startsWith('cd');
+    // Detect if this is a cd command (or z command that becomes cd)
+    // We'll need to update our tracked cwd after and call zoxide add
+    const isCdCommand = workingCommand.trim().startsWith('cd') || zoxideType !== null;
 
     const runCommand = (): Promise<ExecResult> => {
       return new Promise((resolve, reject) => {
@@ -234,10 +273,10 @@ export function createShellModule(options: ShellModuleOptions = {}): ShellModule
         // For cd commands, we need to capture the new working directory after the command
         // We append "; pwd" to get the resulting directory, but only if captureOutput is true
         // For interactive mode, we'll query pwd separately after the command completes
-        const effectiveCommand =
-          isCdCommand && execOptions.captureOutput ? `${command} && pwd` : command;
+        const finalCommand =
+          isCdCommand && execOptions.captureOutput ? `${aliasedCommand} && pwd` : aliasedCommand;
 
-        const proc = spawn('bash', ['-c', effectiveCommand], {
+        const proc = spawn('bash', ['-c', finalCommand], {
           cwd: effectiveCwd,
           env,
           stdio: execOptions.captureOutput ? 'pipe' : 'inherit',
@@ -318,6 +357,15 @@ export function createShellModule(options: ShellModuleOptions = {}): ShellModule
           // Ignore errors querying pwd
         }
       }
+
+      // If zoxide is installed, add the new directory to zoxide's database
+      // This enables zoxide to learn frequently visited directories
+      if (installedTools.get('zoxide')) {
+        // Run in background, don't wait for it
+        zoxideAdd(currentCwd).catch(() => {
+          // Ignore errors
+        });
+      }
     }
 
     return result;
@@ -362,6 +410,8 @@ export function createShellModule(options: ShellModuleOptions = {}): ShellModule
     clearCache,
     getCwd,
     setCwd,
+    setInstalledTools,
+    setAliasingEnabled,
   };
 }
 

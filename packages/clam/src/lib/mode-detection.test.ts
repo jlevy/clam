@@ -36,6 +36,8 @@ function createMockShell(commands: Set<string>): ShellModule {
     setCwd: vi.fn((path: string) => {
       cwd = path;
     }),
+    setInstalledTools: vi.fn(),
+    setAliasingEnabled: vi.fn(),
   };
 }
 
