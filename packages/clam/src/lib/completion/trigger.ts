@@ -199,12 +199,73 @@ function detectCommandTrigger(state: InputState): TriggerResult | null {
 }
 
 /**
+ * Check if cursor is in argument position (after first token).
+ * In this position, Tab should trigger file/entity completion.
+ * Only triggers when cursor is at the end of a word (not in the middle).
+ */
+function detectArgumentTrigger(state: InputState): TriggerResult | null {
+  const { rawText, cursorPos, mode } = state;
+
+  // Argument completion only in shell mode
+  if (mode !== 'shell') {
+    return null;
+  }
+
+  // Need at least some content
+  if (rawText.length === 0) {
+    return null;
+  }
+
+  // Find first non-whitespace character
+  let firstNonWhitespace = 0;
+  while (firstNonWhitespace < rawText.length && /\s/.test(rawText[firstNonWhitespace] ?? '')) {
+    firstNonWhitespace++;
+  }
+
+  // Find end of first token (the command)
+  let endOfFirstToken = firstNonWhitespace;
+  while (endOfFirstToken < rawText.length && !/\s/.test(rawText[endOfFirstToken] ?? '')) {
+    endOfFirstToken++;
+  }
+
+  // Cursor must be AFTER the first token (in argument position)
+  if (cursorPos <= endOfFirstToken) {
+    return null;
+  }
+
+  // Cursor must be at the end of a word or in whitespace (not in the middle of a word)
+  // This prevents triggering when cursor is inside "hello" in "echo hello @"
+  const charAfterCursor = rawText[cursorPos];
+  if (charAfterCursor && !/\s/.test(charAfterCursor)) {
+    // There's a non-whitespace char after cursor, meaning cursor is in middle of a word
+    return null;
+  }
+
+  // Find the start of the current argument (word being typed)
+  let argStart = cursorPos;
+  while (argStart > endOfFirstToken && !/\s/.test(rawText[argStart - 1] ?? '')) {
+    argStart--;
+  }
+
+  // Extract the prefix being typed
+  const prefix = rawText.slice(argStart, cursorPos);
+
+  return {
+    triggered: true,
+    type: TriggerType.Entity,
+    position: argStart,
+    prefix,
+  };
+}
+
+/**
  * Detect if input should trigger completion.
  *
  * Priority:
  * 1. @ entity trigger (anywhere valid)
  * 2. / slash command (at start)
  * 3. Command completion (first token in shell mode)
+ * 4. Argument/file completion (after first token in shell mode)
  */
 export function detectTrigger(state: InputState): TriggerResult {
   const { rawText, cursorPos } = state;
@@ -226,10 +287,16 @@ export function detectTrigger(state: InputState): TriggerResult {
     return slashResult;
   }
 
-  // 3. Check for command trigger
+  // 3. Check for command trigger (first token)
   const commandResult = detectCommandTrigger(state);
   if (commandResult) {
     return commandResult;
+  }
+
+  // 4. Check for argument trigger (after command, for file completion)
+  const argumentResult = detectArgumentTrigger(state);
+  if (argumentResult) {
+    return argumentResult;
   }
 
   // No trigger

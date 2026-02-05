@@ -163,4 +163,74 @@ describe('CompletionIntegration', () => {
       expect(integration.getState().completions).toHaveLength(0);
     });
   });
+
+  describe('completion descriptions', () => {
+    it('should include descriptions for command completions', async () => {
+      await integration.updateCompletions('gi', 2, 'shell');
+
+      const state = integration.getState();
+      const gitCompletion = state.completions.find((c) => c.value === 'git');
+
+      expect(gitCompletion).toBeDefined();
+      expect(gitCompletion?.description).toBeDefined();
+      expect(gitCompletion?.description).toContain('version control');
+    });
+
+    it('should include descriptions for ls command', async () => {
+      await integration.updateCompletions('l', 1, 'shell');
+
+      const state = integration.getState();
+      const lsCompletion = state.completions.find((c) => c.value === 'ls');
+
+      expect(lsCompletion).toBeDefined();
+      expect(lsCompletion?.description).toBeDefined();
+      expect(lsCompletion?.description?.length).toBeGreaterThan(0);
+    });
+
+    it('should include descriptions for slash commands', async () => {
+      await integration.updateCompletions('/he', 3, 'slash');
+
+      const state = integration.getState();
+      const helpCompletion = state.completions.find((c) => c.value === '/help');
+
+      expect(helpCompletion).toBeDefined();
+      expect(helpCompletion?.description).toBeDefined();
+    });
+
+    it('should preserve descriptions during Tab navigation', async () => {
+      await integration.updateCompletions('g', 1, 'shell');
+
+      // Get initial selection with description
+      const initialState = integration.getState();
+
+      // Navigate to next
+      integration.handleKeypress('Tab');
+
+      // Get new selection
+      const newState = integration.getState();
+
+      // New selection should also have a description
+      expect(newState.selected?.description).toBeDefined();
+      // Should be a different completion
+      expect(newState.selected?.value).not.toBe(initialState.selected?.value);
+    });
+
+    it('should return completion data structure with all fields', async () => {
+      await integration.updateCompletions('git', 3, 'shell');
+
+      const state = integration.getState();
+      const gitCompletion = state.completions.find((c) => c.value === 'git');
+
+      // Verify completion structure
+      expect(gitCompletion).toMatchObject({
+        value: 'git',
+        source: 'command',
+        group: expect.any(Number),
+        score: expect.any(Number),
+      });
+
+      // Description should be present
+      expect(gitCompletion?.description).toBeTruthy();
+    });
+  });
 });
