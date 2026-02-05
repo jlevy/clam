@@ -1,4 +1,6 @@
 ---
+close_reason: "Fixed: Removed redundant cursor movement, cleaned up newline handling"
+closed_at: 2026-02-05T10:40:10.876Z
 created_at: 2026-02-05T10:04:21.163Z
 dependencies:
   - target: is-01kgpm4v2fkf09snym8xg8mp2q
@@ -7,9 +9,9 @@ id: is-01kgpm529ckegvymxbwmcbyshw
 kind: bug
 labels: []
 priority: 2
-status: open
+status: closed
 title: Extra newline appears before prompt after accepting completion
 type: is
-updated_at: 2026-02-05T10:04:26.455Z
-version: 2
+updated_at: 2026-02-05T10:40:10.877Z
+version: 3
 ---
