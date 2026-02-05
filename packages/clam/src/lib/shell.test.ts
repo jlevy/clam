@@ -84,6 +84,25 @@ describe('ShellModule', () => {
       expect(result.stdout.trim()).toBe('hello');
     });
 
+    it('should set color forcing env vars when forceColor is true', async () => {
+      // Use node to echo the FORCE_COLOR environment variable
+      const result = await shell.exec('echo $FORCE_COLOR', {
+        captureOutput: true,
+        forceColor: true,
+      });
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout.trim()).toBe('1');
+    });
+
+    it('should set CLICOLOR_FORCE when forceColor is true', async () => {
+      const result = await shell.exec('echo $CLICOLOR_FORCE', {
+        captureOutput: true,
+        forceColor: true,
+      });
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout.trim()).toBe('1');
+    });
+
     it('should capture stderr', async () => {
       const result = await shell.exec('echo error >&2', { captureOutput: true });
       expect(result.exitCode).toBe(0);
