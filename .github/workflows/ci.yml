@@ -19,18 +19,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 22
-          cache: pnpm
+          bun-version: latest
 
-      - run: pnpm install --frozen-lockfile
+      - run: bun install --frozen-lockfile
 
-      - run: pnpm build
+      - run: bun run build
 
-      - run: pnpm --filter get-clam test
+      - run: bun run --filter get-clam test
 
   lint:
     name: Lint & Typecheck
@@ -38,19 +35,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 22
-          cache: pnpm
+          bun-version: latest
 
-      - run: pnpm install --frozen-lockfile
+      - run: bun install --frozen-lockfile
 
-      - run: pnpm format:check
+      - run: bun run format:check
 
-      - run: pnpm lint:check
+      - run: bun run lint:check
 
-      - run: pnpm build
+      - run: bun run build
 
-      - run: pnpm publint
+      - run: bun run publint
