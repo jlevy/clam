@@ -13,6 +13,7 @@ import { createInputReader } from './lib/input.js';
 import { createModeDetector } from './lib/mode-detection.js';
 import { createOutputWriter, type PermissionOption } from './lib/output.js';
 import { createShellModule } from './lib/shell.js';
+import { installEmergencyCleanup } from './lib/tty/index.js';
 
 interface CliArgs {
   help: boolean;
@@ -118,6 +119,10 @@ function showVersion(output: ReturnType<typeof createOutputWriter>): void {
  * Main entry point.
  */
 async function main(): Promise<void> {
+  // Install emergency terminal cleanup handlers first
+  // This ensures terminal is restored even if clam crashes
+  installEmergencyCleanup();
+
   const args = parseArgs();
   const config = loadConfig(args.cwd);
 

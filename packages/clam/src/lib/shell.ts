@@ -14,6 +14,7 @@ import { promisify } from 'node:util';
 import { exec as execCallback } from 'node:child_process';
 
 import { getColorEnv } from './shell/color-env.js';
+import { withTtyManagement } from './tty/index.js';
 
 const execPromise = promisify(execCallback);
 
@@ -164,45 +165,58 @@ export function createShellModule(options: ShellModuleOptions = {}): ShellModule
   }
 
   async function exec(command: string, execOptions: ExecOptions = {}): Promise<ExecResult> {
-    return new Promise((resolve, reject) => {
-      // Build environment: start with process.env or color env, then overlay user env
-      const baseEnv = execOptions.forceColor ? getColorEnv() : process.env;
-      const env = { ...baseEnv, ...execOptions.env };
+    // For interactive commands (captureOutput: false), use TTY management
+    // to properly save/restore terminal state around subprocess execution
+    const isInteractive = !execOptions.captureOutput;
 
-      const proc = spawn('bash', ['-c', command], {
-        cwd: execOptions.cwd ?? defaultCwd,
-        env,
-        stdio: execOptions.captureOutput ? 'pipe' : 'inherit',
+    const runCommand = (): Promise<ExecResult> => {
+      return new Promise((resolve, reject) => {
+        // Build environment: start with process.env or color env, then overlay user env
+        const baseEnv = execOptions.forceColor ? getColorEnv() : process.env;
+        const env = { ...baseEnv, ...execOptions.env };
+
+        const proc = spawn('bash', ['-c', command], {
+          cwd: execOptions.cwd ?? defaultCwd,
+          env,
+          stdio: execOptions.captureOutput ? 'pipe' : 'inherit',
+        });
+
+        let stdout = '';
+        let stderr = '';
+
+        if (execOptions.captureOutput) {
+          proc.stdout?.on('data', (data: Buffer) => {
+            stdout += data.toString();
+          });
+          proc.stderr?.on('data', (data: Buffer) => {
+            stderr += data.toString();
+          });
+        }
+
+        const timeout = execOptions.timeout
+          ? setTimeout(() => proc.kill('SIGTERM'), execOptions.timeout)
+          : null;
+
+        proc.on('close', (code, signal) => {
+          if (timeout) clearTimeout(timeout);
+          resolve({
+            stdout,
+            stderr,
+            exitCode: code ?? 0,
+            signal: signal ?? undefined,
+          });
+        });
+
+        proc.on('error', reject);
       });
+    };
 
-      let stdout = '';
-      let stderr = '';
+    // Wrap interactive commands with TTY management to prevent terminal corruption
+    if (isInteractive) {
+      return withTtyManagement(runCommand);
+    }
 
-      if (execOptions.captureOutput) {
-        proc.stdout?.on('data', (data: Buffer) => {
-          stdout += data.toString();
-        });
-        proc.stderr?.on('data', (data: Buffer) => {
-          stderr += data.toString();
-        });
-      }
-
-      const timeout = execOptions.timeout
-        ? setTimeout(() => proc.kill('SIGTERM'), execOptions.timeout)
-        : null;
-
-      proc.on('close', (code, signal) => {
-        if (timeout) clearTimeout(timeout);
-        resolve({
-          stdout,
-          stderr,
-          exitCode: code ?? 0,
-          signal: signal ?? undefined,
-        });
-      });
-
-      proc.on('error', reject);
-    });
+    return runCommand();
   }
 
   async function getCompletions(partial: string, cursorPos: number): Promise<string[]> {
