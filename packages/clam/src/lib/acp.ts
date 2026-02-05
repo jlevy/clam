@@ -178,7 +178,6 @@ export class AcpClient {
 
     this.sessionId = sessionResult.sessionId;
     output.debug(`Session created: ${this.sessionId}`);
-    output.success('Connected to Claude Code');
   }
 
   /**
