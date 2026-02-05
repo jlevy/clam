@@ -15,6 +15,6 @@ spec_path: docs/project/specs/active/plan-2026-02-04-streaming-markdown-renderin
 status: closed
 title: "Spec: Streaming Markdown Rendering"
 type: is
-updated_at: 2026-02-05T11:11:02.873Z
-version: 10
+updated_at: 2026-02-05T11:26:22.010Z
+version: 11
 ---

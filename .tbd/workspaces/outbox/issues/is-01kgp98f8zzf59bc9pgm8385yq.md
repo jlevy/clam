@@ -12,6 +12,6 @@ spec_path: docs/project/specs/active/plan-2026-02-05-fun-spinner-verbs.md
 status: open
 title: Expose unified spinner API with mode selection
 type: is
-updated_at: 2026-02-05T11:11:02.657Z
-version: 7
+updated_at: 2026-02-05T11:26:21.812Z
+version: 8
 ---

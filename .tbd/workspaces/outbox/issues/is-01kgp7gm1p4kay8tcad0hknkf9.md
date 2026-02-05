@@ -8,6 +8,6 @@ priority: 2
 status: open
 title: Implement styled completion rendering with bold commands, dim descriptions, and emoji prefixes
 type: is
-updated_at: 2026-02-05T11:11:02.563Z
-version: 6
+updated_at: 2026-02-05T11:26:21.732Z
+version: 7
 ---

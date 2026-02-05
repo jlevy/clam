@@ -10,6 +10,6 @@ priority: 1
 status: open
 title: Completion system bugs and polish
 type: is
-updated_at: 2026-02-05T11:11:03.216Z
-version: 7
+updated_at: 2026-02-05T11:26:22.308Z
+version: 8
 ---

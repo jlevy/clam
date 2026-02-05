@@ -8,6 +8,6 @@ priority: 2
 status: open
 title: Port kash TLDR integration to clam - extract command descriptions via tldr library
 type: is
-updated_at: 2026-02-05T11:11:02.526Z
-version: 6
+updated_at: 2026-02-05T11:26:21.701Z
+version: 7
 ---

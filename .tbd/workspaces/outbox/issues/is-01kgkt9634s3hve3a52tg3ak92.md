@@ -9,6 +9,6 @@ priority: 1
 status: open
 title: Test and publish get-clam to npm registry
 type: is
-updated_at: 2026-02-05T11:11:02.056Z
-version: 6
+updated_at: 2026-02-05T11:26:21.322Z
+version: 7
 ---

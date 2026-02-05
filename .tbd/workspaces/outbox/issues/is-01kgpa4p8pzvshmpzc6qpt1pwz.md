@@ -16,6 +16,6 @@ spec_path: docs/project/specs/active/plan-2026-02-04-streaming-markdown-renderin
 status: closed
 title: Implement BlockDetector class with paragraph/header/code fence detection
 type: is
-updated_at: 2026-02-05T11:11:02.892Z
-version: 9
+updated_at: 2026-02-05T11:26:22.025Z
+version: 10
 ---

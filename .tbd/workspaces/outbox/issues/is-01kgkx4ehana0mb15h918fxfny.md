@@ -11,6 +11,6 @@ priority: 3
 status: closed
 title: Fix non-null assertions in acp.ts:128-129
 type: is
-updated_at: 2026-02-05T11:11:02.262Z
-version: 8
+updated_at: 2026-02-05T11:26:21.488Z
+version: 9
 ---

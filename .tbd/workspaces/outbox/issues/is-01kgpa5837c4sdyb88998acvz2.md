@@ -12,6 +12,6 @@ spec_path: docs/project/specs/active/plan-2026-02-04-streaming-markdown-renderin
 status: closed
 title: Test syntax highlighting with common languages (typescript, python, bash, json)
 type: is
-updated_at: 2026-02-05T11:11:02.980Z
-version: 7
+updated_at: 2026-02-05T11:26:22.097Z
+version: 8
 ---

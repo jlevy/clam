@@ -10,6 +10,6 @@ priority: 2
 status: closed
 title: Ctrl+D on empty prompt should quit like shell
 type: is
-updated_at: 2026-02-05T11:11:02.410Z
-version: 7
+updated_at: 2026-02-05T11:26:21.599Z
+version: 8
 ---

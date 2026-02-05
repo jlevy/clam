@@ -11,7 +11,7 @@ priority: 2
 status: closed
 title: Mode detection fails for request patterns like 'can you...'
 type: is
-updated_at: 2026-02-05T11:11:02.436Z
-version: 7
+updated_at: 2026-02-05T11:26:21.623Z
+version: 8
 ---
 Phrases like 'can you give me an overview' turn white because 'overview' isn't in NL_ONLY_WORDS. Need to recognize request patterns (can you, could you, would you, etc.) as NL.

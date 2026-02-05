@@ -16,6 +16,6 @@ spec_path: docs/project/specs/active/plan-2026-02-05-better-shell-completions.md
 status: closed
 title: Implement Completion and Completer types in completion/types.ts
 type: is
-updated_at: 2026-02-05T11:11:02.729Z
-version: 10
+updated_at: 2026-02-05T11:26:21.876Z
+version: 11
 ---

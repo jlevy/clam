@@ -24,6 +24,6 @@ spec_path: docs/project/specs/active/plan-2026-02-04-streaming-markdown-renderin
 status: closed
 title: Implement core BlockAwareStreamRenderer with block detection and inline formatting
 type: is
-updated_at: 2026-02-05T11:11:02.580Z
-version: 17
+updated_at: 2026-02-05T11:26:21.748Z
+version: 18
 ---

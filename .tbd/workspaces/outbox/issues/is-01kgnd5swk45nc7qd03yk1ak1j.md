@@ -11,7 +11,7 @@ priority: 2
 status: open
 title: Update detection rules to return 'ambiguous' for conflict words
 type: is
-updated_at: 2026-02-05T11:11:02.470Z
-version: 7
+updated_at: 2026-02-05T11:26:21.657Z
+version: 8
 ---
 Modify DETECTION_RULES to return 'ambiguous' instead of 'nl' for words like 'who', 'date', 'time' when used alone

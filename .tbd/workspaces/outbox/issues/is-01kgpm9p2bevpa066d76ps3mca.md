@@ -12,6 +12,6 @@ priority: 1
 status: closed
 title: Completion acceptance replaces whole line instead of inserting at cursor position
 type: is
-updated_at: 2026-02-05T11:11:03.252Z
-version: 9
+updated_at: 2026-02-05T11:26:22.339Z
+version: 10
 ---

@@ -14,6 +14,6 @@ spec_path: docs/project/specs/active/plan-2026-02-04-streaming-markdown-renderin
 status: closed
 title: Add cli-highlight dependency for terminal syntax highlighting
 type: is
-updated_at: 2026-02-05T11:11:02.947Z
-version: 8
+updated_at: 2026-02-05T11:26:22.074Z
+version: 9
 ---

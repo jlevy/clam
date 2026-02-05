@@ -10,6 +10,6 @@ priority: 2
 status: closed
 title: Add Down Arrow navigation for slash command completion menu
 type: is
-updated_at: 2026-02-05T11:11:02.286Z
-version: 7
+updated_at: 2026-02-05T11:26:21.502Z
+version: 8
 ---

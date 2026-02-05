@@ -18,6 +18,6 @@ spec_path: docs/project/specs/active/plan-2026-02-04-streaming-markdown-renderin
 status: closed
 title: Add list and table formatting support
 type: is
-updated_at: 2026-02-05T11:11:02.597Z
-version: 13
+updated_at: 2026-02-05T11:26:21.763Z
+version: 14
 ---

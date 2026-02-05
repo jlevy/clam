@@ -10,6 +10,6 @@ priority: 1
 status: closed
 title: Ctrl+C should cancel input, not quit immediately - require double Ctrl+C to quit
 type: is
-updated_at: 2026-02-05T11:11:02.418Z
-version: 8
+updated_at: 2026-02-05T11:26:21.607Z
+version: 9
 ---

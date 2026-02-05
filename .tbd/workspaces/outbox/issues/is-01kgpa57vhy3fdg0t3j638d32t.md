@@ -14,6 +14,6 @@ spec_path: docs/project/specs/active/plan-2026-02-04-streaming-markdown-renderin
 status: closed
 title: Integrate CodeHighlighter into BlockAwareStreamRenderer for fenced code blocks
 type: is
-updated_at: 2026-02-05T11:11:02.965Z
-version: 8
+updated_at: 2026-02-05T11:26:22.089Z
+version: 9
 ---

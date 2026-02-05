@@ -8,6 +8,6 @@ priority: 3
 status: open
 title: Implement BashExecutor with command validation for safety
 type: is
-updated_at: 2026-02-05T11:11:03.073Z
-version: 6
+updated_at: 2026-02-05T11:26:22.181Z
+version: 7
 ---

@@ -10,6 +10,6 @@ priority: 2
 status: closed
 title: Real-time input coloring based on detected mode (shell/NL/slash)
 type: is
-updated_at: 2026-02-05T11:11:02.353Z
-version: 8
+updated_at: 2026-02-05T11:26:21.551Z
+version: 9
 ---

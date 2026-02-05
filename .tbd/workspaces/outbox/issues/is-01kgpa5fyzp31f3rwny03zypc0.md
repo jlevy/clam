@@ -14,6 +14,6 @@ spec_path: docs/project/specs/active/plan-2026-02-04-streaming-markdown-renderin
 status: closed
 title: Implement table buffering until complete with column width calculation
 type: is
-updated_at: 2026-02-05T11:11:03.018Z
-version: 8
+updated_at: 2026-02-05T11:26:22.127Z
+version: 9
 ---

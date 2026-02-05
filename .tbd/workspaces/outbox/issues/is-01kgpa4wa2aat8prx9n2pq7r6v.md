@@ -12,6 +12,6 @@ spec_path: docs/project/specs/active/plan-2026-02-04-streaming-markdown-renderin
 status: closed
 title: Add integration tests for streaming markdown rendering
 type: is
-updated_at: 2026-02-05T11:11:02.938Z
-version: 7
+updated_at: 2026-02-05T11:26:22.066Z
+version: 8
 ---

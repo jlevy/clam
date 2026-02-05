@@ -10,6 +10,6 @@ priority: 2
 status: closed
 title: Tab after command should trigger entity completion (e.g., ls <tab>)
 type: is
-updated_at: 2026-02-05T11:11:03.260Z
-version: 7
+updated_at: 2026-02-05T11:26:22.347Z
+version: 8
 ---

@@ -8,6 +8,6 @@ priority: 2
 status: open
 title: Port kash completion scoring algorithm with fuzzy matching and priority groups
 type: is
-updated_at: 2026-02-05T11:11:02.545Z
-version: 6
+updated_at: 2026-02-05T11:26:21.717Z
+version: 7
 ---

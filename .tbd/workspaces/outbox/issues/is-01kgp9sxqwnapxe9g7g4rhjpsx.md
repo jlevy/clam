@@ -14,6 +14,6 @@ spec_path: docs/project/specs/active/plan-2026-02-05-better-shell-completions.md
 status: closed
 title: Port recommended commands list from kash to data/recommended-commands.ts
 type: is
-updated_at: 2026-02-05T11:11:02.771Z
-version: 9
+updated_at: 2026-02-05T11:26:21.918Z
+version: 10
 ---

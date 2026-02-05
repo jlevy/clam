@@ -11,6 +11,6 @@ priority: 2
 status: closed
 title: Add TTY checks before writing ANSI escape sequences
 type: is
-updated_at: 2026-02-05T11:11:02.207Z
-version: 8
+updated_at: 2026-02-05T11:26:21.451Z
+version: 9
 ---

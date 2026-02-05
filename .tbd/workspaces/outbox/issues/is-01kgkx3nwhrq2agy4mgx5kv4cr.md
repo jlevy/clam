@@ -11,6 +11,6 @@ priority: 2
 status: closed
 title: Clean up temp directory in input.ts:211
 type: is
-updated_at: 2026-02-05T11:11:02.221Z
-version: 7
+updated_at: 2026-02-05T11:26:21.458Z
+version: 8
 ---

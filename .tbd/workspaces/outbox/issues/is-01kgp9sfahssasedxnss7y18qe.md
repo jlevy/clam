@@ -20,6 +20,6 @@ spec_path: docs/project/specs/active/plan-2026-02-05-better-shell-completions.md
 status: closed
 title: Create input/ and completion/ directory structure
 type: is
-updated_at: 2026-02-05T11:11:02.691Z
-version: 12
+updated_at: 2026-02-05T11:26:21.842Z
+version: 13
 ---

@@ -11,6 +11,6 @@ priority: 1
 status: closed
 title: Fix async cleanup not awaited before exit in bin.ts:335-345
 type: is
-updated_at: 2026-02-05T11:11:02.167Z
-version: 8
+updated_at: 2026-02-05T11:26:21.417Z
+version: 9
 ---

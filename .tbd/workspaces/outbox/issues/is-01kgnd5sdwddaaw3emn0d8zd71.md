@@ -11,7 +11,7 @@ priority: 2
 status: open
 title: Add 'ambiguous' to InputMode type
 type: is
-updated_at: 2026-02-05T11:11:02.460Z
-version: 7
+updated_at: 2026-02-05T11:26:21.649Z
+version: 8
 ---
 Extend InputMode type to include 'ambiguous' for words that are both shell commands and English words

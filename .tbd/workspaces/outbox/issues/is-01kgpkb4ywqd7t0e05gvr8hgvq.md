@@ -10,6 +10,6 @@ priority: 1
 status: closed
 title: "Spec: Streaming Markdown Rendering"
 type: is
-updated_at: 2026-02-05T11:11:03.153Z
-version: 5
+updated_at: 2026-02-05T11:26:22.257Z
+version: 6
 ---

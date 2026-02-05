@@ -18,6 +18,6 @@ spec_path: docs/project/specs/active/plan-2026-02-05-better-shell-completions.md
 status: closed
 title: Implement CompletionManager in completion/manager.ts
 type: is
-updated_at: 2026-02-05T11:11:02.745Z
-version: 11
+updated_at: 2026-02-05T11:26:21.892Z
+version: 12
 ---

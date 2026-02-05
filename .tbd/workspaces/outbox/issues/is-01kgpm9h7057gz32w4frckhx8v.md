@@ -12,6 +12,6 @@ priority: 2
 status: closed
 title: "@ should not be added to input - it's purely a trigger like Tab"
 type: is
-updated_at: 2026-02-05T11:11:03.244Z
-version: 10
+updated_at: 2026-02-05T11:26:22.331Z
+version: 11
 ---

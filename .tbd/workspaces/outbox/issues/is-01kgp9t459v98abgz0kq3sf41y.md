@@ -12,6 +12,6 @@ spec_path: docs/project/specs/active/plan-2026-02-05-better-shell-completions.md
 status: closed
 title: Add @ keypress detection for immediate entity menu
 type: is
-updated_at: 2026-02-05T11:11:02.817Z
-version: 8
+updated_at: 2026-02-05T11:26:21.963Z
+version: 9
 ---

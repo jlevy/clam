@@ -16,6 +16,6 @@ spec_path: docs/project/specs/active/plan-2026-02-05-better-shell-completions.md
 status: closed
 title: Implement CommandCompleter in completers/command-completer.ts
 type: is
-updated_at: 2026-02-05T11:11:02.779Z
-version: 10
+updated_at: 2026-02-05T11:26:21.928Z
+version: 11
 ---

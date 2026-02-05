@@ -12,6 +12,6 @@ spec_path: docs/project/specs/active/plan-2026-02-05-fun-spinner-verbs.md
 status: open
 title: Build typewriter animation with ellipsis for fun verb mode
 type: is
-updated_at: 2026-02-05T11:11:02.649Z
-version: 7
+updated_at: 2026-02-05T11:26:21.805Z
+version: 8
 ---

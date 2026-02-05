@@ -13,6 +13,6 @@ spec_path: docs/project/specs/active/plan-2026-02-05-ansi-color-subprocess-outpu
 status: closed
 title: Create color-env.ts with FORCE_COLOR and CLICOLOR_FORCE env helpers
 type: is
-updated_at: 2026-02-05T11:11:03.046Z
-version: 9
+updated_at: 2026-02-05T11:26:22.158Z
+version: 10
 ---

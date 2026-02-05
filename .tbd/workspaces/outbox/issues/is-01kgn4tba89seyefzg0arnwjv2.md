@@ -10,6 +10,6 @@ priority: 1
 status: closed
 title: Fix mode detection - strip trailing punctuation from NL words
 type: is
-updated_at: 2026-02-05T11:11:02.402Z
-version: 7
+updated_at: 2026-02-05T11:26:21.591Z
+version: 8
 ---

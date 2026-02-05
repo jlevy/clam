@@ -9,7 +9,7 @@ priority: 2
 status: open
 title: Show error with suggestions for nothing mode
 type: is
-updated_at: 2026-02-05T11:11:02.508Z
-version: 6
+updated_at: 2026-02-05T11:26:21.687Z
+version: 7
 ---
 When 'nothing' detected, show helpful error: 'Command not found. Did you mean X?' with Levenshtein suggestions

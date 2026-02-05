@@ -13,6 +13,6 @@ priority: 2
 status: closed
 title: Create mode detection (lib/mode-detection.ts) for shell vs NL
 type: is
-updated_at: 2026-02-05T11:11:02.106Z
-version: 10
+updated_at: 2026-02-05T11:26:21.364Z
+version: 11
 ---

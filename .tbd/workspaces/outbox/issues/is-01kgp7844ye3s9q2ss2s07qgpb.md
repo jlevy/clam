@@ -8,6 +8,6 @@ priority: 2
 status: open
 title: Port kash recommended commands list (135 commands) with categories and priorities
 type: is
-updated_at: 2026-02-05T11:11:02.535Z
-version: 6
+updated_at: 2026-02-05T11:26:21.709Z
+version: 7
 ---

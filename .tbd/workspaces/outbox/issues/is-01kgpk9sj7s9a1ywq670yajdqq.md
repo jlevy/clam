@@ -9,6 +9,6 @@ spec_path: docs/project/specs/active/plan-2026-02-05-shell-polish.md
 status: open
 title: Shell convenience features (auto-cd, typo prevention, history search)
 type: is
-updated_at: 2026-02-05T11:11:03.127Z
-version: 6
+updated_at: 2026-02-05T11:26:22.232Z
+version: 7
 ---

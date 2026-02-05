@@ -10,6 +10,6 @@ priority: 1
 status: closed
 title: Question sentences like 'what does this codebase do' wrongly detected as shell
 type: is
-updated_at: 2026-02-05T11:11:02.426Z
-version: 7
+updated_at: 2026-02-05T11:26:21.615Z
+version: 8
 ---

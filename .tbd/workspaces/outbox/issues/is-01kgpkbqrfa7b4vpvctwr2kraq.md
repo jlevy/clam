@@ -10,6 +10,6 @@ priority: 1
 status: closed
 title: "Phase 1: Implement InlineFormatter"
 type: is
-updated_at: 2026-02-05T11:11:03.182Z
-version: 5
+updated_at: 2026-02-05T11:26:22.279Z
+version: 6
 ---

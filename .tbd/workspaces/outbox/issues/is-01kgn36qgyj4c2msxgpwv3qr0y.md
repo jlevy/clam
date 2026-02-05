@@ -12,6 +12,6 @@ priority: 2
 status: closed
 title: Add keypress event handler to InputReader for real-time mode detection
 type: is
-updated_at: 2026-02-05T11:11:02.296Z
-version: 9
+updated_at: 2026-02-05T11:26:21.509Z
+version: 10
 ---

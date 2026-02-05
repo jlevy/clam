@@ -12,6 +12,6 @@ priority: 2
 status: closed
 title: Add getColorForMode() helper to formatting.ts for input mode colors
 type: is
-updated_at: 2026-02-05T11:11:02.315Z
-version: 9
+updated_at: 2026-02-05T11:26:21.523Z
+version: 10
 ---

@@ -12,6 +12,6 @@ spec_path: docs/project/specs/active/plan-2026-02-04-streaming-markdown-renderin
 status: closed
 title: Add unit tests for BlockDetector and InlineFormatter
 type: is
-updated_at: 2026-02-05T11:11:02.930Z
-version: 7
+updated_at: 2026-02-05T11:26:22.057Z
+version: 8
 ---

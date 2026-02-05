@@ -18,6 +18,6 @@ spec_path: docs/project/specs/active/plan-2026-02-05-fun-spinner-verbs.md
 status: open
 title: "Spec: Fun Spinner Verbs"
 type: is
-updated_at: 2026-02-05T11:11:02.606Z
-version: 14
+updated_at: 2026-02-05T11:26:21.770Z
+version: 15
 ---

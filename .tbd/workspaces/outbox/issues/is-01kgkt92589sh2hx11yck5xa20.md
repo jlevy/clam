@@ -11,6 +11,6 @@ priority: 1
 status: closed
 title: Route ACP commands (/commit, /review, /model) to Claude Code
 type: is
-updated_at: 2026-02-05T11:11:02.047Z
-version: 7
+updated_at: 2026-02-05T11:26:21.314Z
+version: 8
 ---

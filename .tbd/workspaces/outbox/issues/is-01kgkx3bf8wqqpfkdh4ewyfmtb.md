@@ -11,6 +11,6 @@ priority: 2
 status: closed
 title: Add runtime validation of config values in config.ts:92,106
 type: is
-updated_at: 2026-02-05T11:11:02.198Z
-version: 8
+updated_at: 2026-02-05T11:26:21.442Z
+version: 9
 ---

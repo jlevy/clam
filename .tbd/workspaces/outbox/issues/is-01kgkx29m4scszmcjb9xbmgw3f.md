@@ -11,6 +11,6 @@ priority: 0
 status: closed
 title: Fix silent file read/write errors in acp.ts:371-393
 type: is
-updated_at: 2026-02-05T11:11:02.146Z
-version: 8
+updated_at: 2026-02-05T11:26:21.399Z
+version: 9
 ---

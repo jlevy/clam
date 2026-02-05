@@ -11,6 +11,6 @@ priority: 3
 status: closed
 title: Remove or implement unused promptForPermission function in permissions.ts
 type: is
-updated_at: 2026-02-05T11:11:02.252Z
-version: 7
+updated_at: 2026-02-05T11:26:21.480Z
+version: 8
 ---

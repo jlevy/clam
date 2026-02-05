@@ -11,6 +11,6 @@ spec_path: docs/project/specs/active/plan-2026-02-05-shell-polish.md
 status: open
 title: Modern tool detection and startup display
 type: is
-updated_at: 2026-02-05T11:11:03.099Z
-version: 7
+updated_at: 2026-02-05T11:26:22.206Z
+version: 8
 ---

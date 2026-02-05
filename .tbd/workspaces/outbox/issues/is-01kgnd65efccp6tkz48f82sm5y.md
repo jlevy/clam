@@ -11,7 +11,7 @@ priority: 2
 status: open
 title: Detect invalid shell-like input (nothing mode)
 type: is
-updated_at: 2026-02-05T11:11:02.499Z
-version: 7
+updated_at: 2026-02-05T11:26:21.679Z
+version: 8
 ---
 When input has shell operators but first word fails 'which', return 'nothing'. Examples: 'gti status', 'asdfas | grep'

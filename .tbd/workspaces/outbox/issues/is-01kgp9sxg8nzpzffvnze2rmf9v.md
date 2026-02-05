@@ -14,6 +14,6 @@ spec_path: docs/project/specs/active/plan-2026-02-05-better-shell-completions.md
 status: closed
 title: Implement SlashCompleter in completers/slash-completer.ts
 type: is
-updated_at: 2026-02-05T11:11:02.762Z
-version: 9
+updated_at: 2026-02-05T11:26:21.909Z
+version: 10
 ---

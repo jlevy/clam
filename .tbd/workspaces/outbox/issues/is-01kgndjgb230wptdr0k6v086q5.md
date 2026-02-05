@@ -8,7 +8,7 @@ priority: 2
 status: open
 title: Empty prompt Enter should erase prompt line, not show two blank prompts
 type: is
-updated_at: 2026-02-05T11:11:02.517Z
-version: 6
+updated_at: 2026-02-05T11:26:21.694Z
+version: 7
 ---
 When pressing Enter on an empty prompt (or whitespace-only), the prompt should be erased and just show a newline. Currently it shows two blank prompts in a row which looks messy.

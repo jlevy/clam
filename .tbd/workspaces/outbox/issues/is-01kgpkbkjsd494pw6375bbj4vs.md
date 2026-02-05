@@ -10,6 +10,6 @@ priority: 1
 status: closed
 title: "Phase 1: Implement BlockDetector class"
 type: is
-updated_at: 2026-02-05T11:11:03.174Z
-version: 5
+updated_at: 2026-02-05T11:26:22.272Z
+version: 6
 ---

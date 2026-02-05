@@ -13,6 +13,6 @@ spec_path: docs/project/specs/active/plan-2026-02-05-ansi-color-subprocess-outpu
 status: closed
 title: Create color-commands.ts with addColorFlags() for ls, grep, git, diff
 type: is
-updated_at: 2026-02-05T11:11:03.057Z
-version: 9
+updated_at: 2026-02-05T11:26:22.165Z
+version: 10
 ---
