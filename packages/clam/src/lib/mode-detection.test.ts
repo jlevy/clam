@@ -146,6 +146,37 @@ describe('ModeDetection', () => {
       expect(detector.detectModeSync('please help me')).toBe('nl');
       expect(detector.detectModeSync('please explain this code')).toBe('nl');
     });
+
+    it('should handle incremental typing of questions correctly', () => {
+      // Bug 4: "how are you" incremental typing
+      // Pure question words (how, what, why, when) + any text = NL
+      expect(detector.detectModeSync('how a')).toBe('nl');
+      expect(detector.detectModeSync('how ar')).toBe('nl');
+      expect(detector.detectModeSync('how are')).toBe('nl');
+      expect(detector.detectModeSync('how are you')).toBe('nl');
+
+      // Same for other pure question words
+      expect(detector.detectModeSync('what i')).toBe('nl');
+      expect(detector.detectModeSync('what is')).toBe('nl');
+      expect(detector.detectModeSync('what is this')).toBe('nl');
+
+      expect(detector.detectModeSync('why d')).toBe('nl');
+      expect(detector.detectModeSync('why does')).toBe('nl');
+
+      expect(detector.detectModeSync('when w')).toBe('nl');
+      expect(detector.detectModeSync('when will')).toBe('nl');
+    });
+
+    it('should detect single characters as potential shell commands', () => {
+      // Single characters could be the start of commands
+      expect(detector.detectModeSync('l')).toBe('shell');
+      expect(detector.detectModeSync('g')).toBe('shell');
+      expect(detector.detectModeSync('n')).toBe('shell');
+
+      // Command-like words
+      expect(detector.detectModeSync('ls')).toBe('shell');
+      expect(detector.detectModeSync('git')).toBe('shell');
+    });
   });
 
   describe('detectMode (async)', () => {

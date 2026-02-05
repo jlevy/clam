@@ -303,22 +303,47 @@ function isAllNaturalLanguageWords(trimmed: string): boolean {
 
 /**
  * Question words at start of multi-word input → NL.
- * Note: "who", "which", "where", "what" are also shell commands on some systems,
- * but when followed by NL words they're clearly questions.
+ * Note: "who", "which", "where" are also shell commands on some systems,
+ * but when followed by any text they're clearly questions.
  * TEST-DRIVEN: only add words that tests require.
  */
 const QUESTION_WORDS = new Set(['what', 'how', 'why', 'when', 'where', 'who', 'which']);
 
 /**
+ * Pure question words that are NEVER shell commands.
+ * If these start a multi-word input, it's definitely NL.
+ * Simpler rule: any text after these = NL (no need to check if rest are NL words).
+ */
+const PURE_QUESTION_WORDS = new Set(['what', 'how', 'why', 'when']);
+
+/**
  * Check if input looks like a natural language question.
  * e.g., "what does this do", "how do I list files"
+ *
+ * Simplified rule for pure question words (what, how, why, when):
+ * - These are NEVER shell commands
+ * - Any text after them = definitely NL
+ * - Handles partial typing like "how ar" → "how are you"
+ *
+ * For ambiguous question words (who, which, where):
+ * - These ARE shell commands, so require rest to have NL words
  */
 function looksLikeQuestion(trimmed: string, firstWord: string): boolean {
   const words = trimmed.split(/\s+/);
   // Must have multiple words and start with a question word
   if (words.length < 2) return false;
-  if (!QUESTION_WORDS.has(firstWord.toLowerCase())) return false;
-  // Check if any of the other words look like NL
+
+  const lowerFirst = firstWord.toLowerCase();
+  if (!QUESTION_WORDS.has(lowerFirst)) return false;
+
+  // Pure question words (never shell commands): any text after = NL
+  // This handles partial typing like "how ar" → NL
+  if (PURE_QUESTION_WORDS.has(lowerFirst)) {
+    return true;
+  }
+
+  // Ambiguous question words (who, which, where are shell commands):
+  // Require rest to have NL words to distinguish from shell usage
   const restWords = words.slice(1);
   return restWords.some((w) => NL_ONLY_WORDS.has(stripTrailingPunctuation(w.toLowerCase())));
 }
