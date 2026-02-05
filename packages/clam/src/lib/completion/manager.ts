@@ -22,12 +22,19 @@ import { sortCompletions } from './scoring.js';
 export interface CompletionOptions {
   /** Maximum number of completions to return (default: 50) */
   maxResults?: number;
+  /** Timeout in ms for completer execution (default: 5000) */
+  timeout?: number;
 }
 
 /**
  * Default maximum number of completions.
  */
 const DEFAULT_MAX_RESULTS = 50;
+
+/**
+ * Default timeout for completers in ms.
+ */
+const DEFAULT_TIMEOUT = 5000;
 
 /**
  * CompletionManager orchestrates multiple completers and merges results.
@@ -64,12 +71,12 @@ export class CompletionManager {
    * Get completions for the given input state.
    *
    * 1. Filter to relevant completers (fast isRelevant check)
-   * 2. Run all relevant completers in parallel
+   * 2. Run all relevant completers in parallel with timeout
    * 3. Merge, deduplicate, and sort results
    * 4. Return top N completions
    */
   async getCompletions(state: InputState, options: CompletionOptions = {}): Promise<Completion[]> {
-    const { maxResults = DEFAULT_MAX_RESULTS } = options;
+    const { maxResults = DEFAULT_MAX_RESULTS, timeout = DEFAULT_TIMEOUT } = options;
 
     // Find relevant completers
     const relevantCompleters = this.getCompleters().filter((c) => c.isRelevant(state));
@@ -78,9 +85,9 @@ export class CompletionManager {
       return [];
     }
 
-    // Run all completers in parallel
+    // Run all completers in parallel with error handling and timeout
     const completionArrays = await Promise.all(
-      relevantCompleters.map((c) => c.getCompletions(state))
+      relevantCompleters.map((c) => this.runCompleterWithTimeout(c, state, timeout))
     );
 
     // Flatten results
@@ -94,6 +101,31 @@ export class CompletionManager {
 
     // Return top N
     return sortedCompletions.slice(0, maxResults);
+  }
+
+  /**
+   * Run a completer with timeout and error handling.
+   * Returns empty array on error or timeout.
+   */
+  private async runCompleterWithTimeout(
+    completer: Completer,
+    state: InputState,
+    timeout: number
+  ): Promise<Completion[]> {
+    try {
+      const result = await Promise.race([
+        completer.getCompletions(state),
+        new Promise<Completion[]>((_, reject) =>
+          setTimeout(() => {
+            reject(new Error('Timeout'));
+          }, timeout)
+        ),
+      ]);
+      return result;
+    } catch {
+      // Silently ignore errors and timeouts, return empty
+      return [];
+    }
   }
 
   /**
