@@ -1,4 +1,6 @@
 ---
+close_reason: Implemented token parser with 18 passing tests
+closed_at: 2026-02-05T07:18:24.944Z
 created_at: 2026-02-05T07:03:16.041Z
 dependencies:
   - target: is-01kgp9sg1w1b03spyfj8f8gtyp
@@ -9,9 +11,9 @@ labels: []
 parent_id: is-01kgp9s4730cf2cxhxa7p0eafy
 priority: 1
 spec_path: docs/project/specs/active/plan-2026-02-05-better-shell-completions.md
-status: open
+status: closed
 title: Implement token parser in input/parser.ts
 type: is
-updated_at: 2026-02-05T07:03:57.654Z
-version: 2
+updated_at: 2026-02-05T07:18:24.944Z
+version: 4
 ---
