@@ -1,4 +1,6 @@
 ---
+close_reason: Implemented CompletionManager with 9 passing tests
+closed_at: 2026-02-05T07:22:37.488Z
 created_at: 2026-02-05T07:03:23.321Z
 dependencies:
   - target: is-01kgp9sxg8nzpzffvnze2rmf9v
@@ -13,9 +15,9 @@ labels: []
 parent_id: is-01kgp9s4730cf2cxhxa7p0eafy
 priority: 1
 spec_path: docs/project/specs/active/plan-2026-02-05-better-shell-completions.md
-status: open
+status: closed
 title: Implement CompletionManager in completion/manager.ts
 type: is
-updated_at: 2026-02-05T07:04:12.651Z
-version: 4
+updated_at: 2026-02-05T07:22:37.489Z
+version: 6
 ---
