@@ -253,7 +253,7 @@ function findListEnd(buffer: string, type: 'ordered' | 'unordered'): BlockBounda
     const line = lines[i];
     if (line === undefined) continue;
     // Check if it's a list item or continuation (indented)
-    if (listPattern.test(line) || (lastListLine >= 0 && (/^\s+\S/.exec(line)))) {
+    if (listPattern.test(line) || (lastListLine >= 0 && /^\s+\S/.exec(line))) {
       lastListLine = i;
     } else if (line.trim() === '' && lastListLine >= 0) {
       // Blank line after list - list is complete
