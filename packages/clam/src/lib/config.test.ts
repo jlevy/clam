@@ -2,8 +2,8 @@
  * Tests for configuration module.
  */
 
+import { afterEach, describe, expect, it } from 'bun:test';
 import { homedir } from 'node:os';
-import { afterEach, describe, expect, it } from 'vitest';
 import { formatConfig, getConfigDir, getConfigPath, getHistoryPath, loadConfig } from './config.js';
 
 describe('getConfigDir', () => {

@@ -7,46 +7,35 @@ pre-commit:
   parallel: true
 
   commands:
-    # Auto-format with prettier (~500ms)
-    format:
-      glob: '*.{js,ts,tsx,json,yaml,yml}'
-      run: npx prettier --write --log-level warn {staged_files}
+    # Biome check (lint + format) with auto-fix (~200ms)
+    check:
+      glob: '*.{js,ts,tsx,json}'
+      run: bunx biome check --write {staged_files}
       stage_fixed: true
       priority: 1
 
-    # Format markdown with prettier + flowmark (~500ms)
+    # Format markdown with flowmark (~500ms)
     # Excludes auto-generated files (.tbd/, .claude/skills/, AGENTS.md)
     format-md:
       glob: '*.md'
       exclude: '(\.tbd/|\.claude/skills/|AGENTS\.md)'
-      run: npx prettier --write --log-level warn {staged_files} && uvx flowmark@latest --auto {staged_files}
+      run: uvx flowmark@latest --auto {staged_files}
       stage_fixed: true
       priority: 1
-
-    # Lint with auto-fix and caching (~1s first, ~200ms cached)
-    lint:
-      glob: '*.{js,ts,tsx}'
-      run: >
-        npx eslint
-        --cache
-        --cache-location node_modules/.cache/eslint
-        --fix {staged_files}
-      stage_fixed: true
-      priority: 2
 
     # Type check with incremental mode (~2s)
     typecheck:
       glob: '*.{ts,tsx}'
-      run: pnpm typecheck
-      priority: 3
+      run: bun run typecheck
+      priority: 2
 
 pre-push:
   commands:
     # Build first
     build:
-      run: pnpm build
+      run: bun run build
       priority: 1
     # Then run tests
     test:
-      run: pnpm test
+      run: bun run test
       priority: 2

@@ -8,8 +8,8 @@
  * - All semantic methods produce output
  */
 
+import { beforeEach, describe, expect, it } from 'bun:test';
 import { Writable } from 'node:stream';
-import { beforeEach, describe, expect, it } from 'vitest';
 import { createOutputWriter } from './output.js';
 
 /**

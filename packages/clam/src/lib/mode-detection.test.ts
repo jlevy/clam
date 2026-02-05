@@ -8,16 +8,16 @@
  * - Explicit shell trigger (!)
  */
 
-import { describe, expect, it, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'bun:test';
 import {
   createModeDetector,
   hasShellOperators,
-  isExplicitShell,
   isExplicitNL,
-  stripShellTrigger,
-  stripNLTrigger,
-  suggestCommand,
+  isExplicitShell,
   type ModeDetector,
+  stripNLTrigger,
+  stripShellTrigger,
+  suggestCommand,
 } from './mode-detection.js';
 import type { ShellModule } from './shell.js';
 

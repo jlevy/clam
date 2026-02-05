@@ -13,8 +13,8 @@
  */
 
 import type { InputState } from '../input/state.js';
-import type { Completer, Completion } from './types.js';
 import { sortCompletions } from './scoring.js';
+import type { Completer, Completion } from './types.js';
 
 /**
  * Options for getCompletions.

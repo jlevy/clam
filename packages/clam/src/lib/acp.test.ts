@@ -5,8 +5,8 @@
  * Integration tests with real claude-code-acp would be in a separate file.
  */
 
+import { beforeEach, describe, expect, it, vi } from 'bun:test';
 import { Writable } from 'node:stream';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AcpClient, createAcpClient } from './acp.js';
 import { createOutputWriter } from './output.js';
 

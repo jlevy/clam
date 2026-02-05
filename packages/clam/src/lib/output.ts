@@ -329,24 +329,16 @@ export function createOutputWriter(options: OutputWriterOptions = {}): OutputWri
 
         if (allowOnce && allowAlways) {
           writeLine(
-            box('\u2502  ') +
-              colors.permissionKey(`[${allowOnce.key}]`) +
-              ' ' +
-              colors.permissionAllow(allowOnce.option.name.padEnd(16)) +
-              colors.permissionKey(`[${allowAlways.key}]`) +
-              ' ' +
-              colors.permissionAllow(allowAlways.option.name)
+            `${
+              box('\u2502  ') + colors.permissionKey(`[${allowOnce.key}]`)
+            } ${colors.permissionAllow(allowOnce.option.name.padEnd(16))}${colors.permissionKey(`[${allowAlways.key}]`)} ${colors.permissionAllow(allowAlways.option.name)}`
           );
         }
         if (denyOnce && denyAlways) {
           writeLine(
-            box('\u2502  ') +
-              colors.permissionKey(`[${denyOnce.key}]`) +
-              ' ' +
-              colors.permissionDeny(denyOnce.option.name.padEnd(16)) +
-              colors.permissionKey(`[${denyAlways.key}]`) +
-              ' ' +
-              colors.permissionDeny(denyAlways.option.name)
+            `${
+              box('\u2502  ') + colors.permissionKey(`[${denyOnce.key}]`)
+            } ${colors.permissionDeny(denyOnce.option.name.padEnd(16))}${colors.permissionKey(`[${denyAlways.key}]`)} ${colors.permissionDeny(denyAlways.option.name)}`
           );
         }
       } else {

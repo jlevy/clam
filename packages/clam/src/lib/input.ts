@@ -14,7 +14,7 @@
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import * as readline from 'node:readline';
-import { formatConfig, type ClamCodeConfig } from './config.js';
+import { type ClamCodeConfig, formatConfig } from './config.js';
 import {
   colors,
   getColorForMode,
@@ -22,7 +22,7 @@ import {
   inputColors,
   promptChars,
 } from './formatting.js';
-import type { ModeDetector, InputMode } from './mode-detection.js';
+import type { InputMode, ModeDetector } from './mode-detection.js';
 import { isExplicitShell, stripShellTrigger, suggestCommand } from './mode-detection.js';
 import type { OutputWriter } from './output.js';
 import type { ShellModule } from './shell.js';

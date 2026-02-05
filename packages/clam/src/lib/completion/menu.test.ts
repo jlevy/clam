@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import { CompletionMenu, renderCompletionItem, renderCompletionMenu } from './menu.js';
-import { CompletionGroup, COMPLETION_ICONS, type Completion } from './types.js';
+import { COMPLETION_ICONS, type Completion, CompletionGroup } from './types.js';
 
 describe('CompletionMenu', () => {
   describe('renderCompletionItem', () => {

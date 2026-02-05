@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { CompletionGroup, COMPLETION_ICONS, type Completer } from './types.js';
+import { describe, expect, it } from 'bun:test';
 import { createInputState } from '../input/state.js';
+import { COMPLETION_ICONS, type Completer, CompletionGroup } from './types.js';
 
 describe('Completion Types', () => {
   describe('CompletionGroup', () => {

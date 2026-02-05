@@ -1,12 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import {
+  calculateLengthPenalty,
   calculatePrefixScore,
   calculateRecencyBonus,
-  calculateLengthPenalty,
   scoreCompletion,
   sortCompletions,
 } from './scoring.js';
-import { CompletionGroup, type Completion } from './types.js';
+import { type Completion, CompletionGroup } from './types.js';
 
 describe('Completion Scoring', () => {
   describe('calculatePrefixScore', () => {

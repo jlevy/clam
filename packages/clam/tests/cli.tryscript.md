@@ -6,7 +6,7 @@ env:
 # Test: --help shows usage
 
 ```console
-$ node dist/bin.mjs --help
+$ node dist/bin.js --help
 clam - True terminal scrollback ACP client for Claude Code
 
 USAGE:
@@ -46,7 +46,7 @@ MULTI-LINE INPUT:
 # Test: --version shows version
 
 ```console
-$ node dist/bin.mjs --version
+$ node dist/bin.js --version
 clam [..]
 ? 0
 ```
@@ -57,7 +57,7 @@ This test verifies that the embedded @zed-industries/claude-code-acp adapter can
 resolved from node_modules.
 
 ```console
-$ node -e "const { createRequire } = require('module'); const r = createRequire(require.resolve('./dist/bin.mjs')); console.log(r.resolve('@zed-industries/claude-code-acp/dist/index.js').includes('node_modules') ? 'ok' : 'fail')"
+$ node -e "const { createRequire } = require('module'); const r = createRequire(require.resolve('./dist/bin.js')); console.log(r.resolve('@zed-industries/claude-code-acp/dist/index.js').includes('node_modules') ? 'ok' : 'fail')"
 ok
 ? 0
 ```

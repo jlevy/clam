@@ -9,9 +9,8 @@
  * Used by mode detection to identify shell commands.
  */
 
-import { spawn } from 'node:child_process';
+import { exec as execCallback, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
-import { exec as execCallback } from 'node:child_process';
 
 const execPromise = promisify(execCallback);
 
@@ -211,14 +210,12 @@ export function createShellModule(options: ShellModuleOptions = {}): ShellModule
           { timeout: whichTimeout }
         );
         return stdout.trim().split('\n').filter(Boolean);
-      } else {
-        // Complete files/directories
-        const { stdout } = await execPromise(
-          `compgen -f -- ${shellEscape(currentWord)} | head -20`,
-          { timeout: whichTimeout }
-        );
-        return stdout.trim().split('\n').filter(Boolean);
       }
+      // Complete files/directories
+      const { stdout } = await execPromise(`compgen -f -- ${shellEscape(currentWord)} | head -20`, {
+        timeout: whichTimeout,
+      });
+      return stdout.trim().split('\n').filter(Boolean);
     } catch {
       return [];
     }

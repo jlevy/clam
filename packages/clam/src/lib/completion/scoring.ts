@@ -9,8 +9,8 @@
  * Ported from kash scoring system with simplifications.
  */
 
-import type { Completion } from './types.js';
 import type { HistoryEntry } from '../input/state.js';
+import type { Completion } from './types.js';
 
 /**
  * Maximum score for a perfect match.

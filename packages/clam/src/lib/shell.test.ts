@@ -8,7 +8,7 @@
  * - Completion generation
  */
 
-import { describe, expect, it, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import { createShellModule, isShellBuiltin, type ShellModule } from './shell.js';
 
 describe('ShellModule', () => {

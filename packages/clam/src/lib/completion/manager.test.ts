@@ -1,8 +1,8 @@
-import { describe, it, expect } from 'vitest';
-import { CompletionManager } from './manager.js';
-import { CompletionGroup, type Completer, type Completion } from './types.js';
-import { createInputState } from '../input/state.js';
+import { describe, expect, it } from 'bun:test';
 import { updateInputStateWithTokens } from '../input/parser.js';
+import { createInputState } from '../input/state.js';
+import { CompletionManager } from './manager.js';
+import { type Completer, type Completion, CompletionGroup } from './types.js';
 
 describe('CompletionManager', () => {
   // Helper to create a simple completer

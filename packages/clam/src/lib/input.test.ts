@@ -7,8 +7,8 @@
  * - Built-in commands
  */
 
+import { beforeEach, describe, expect, it, vi } from 'bun:test';
 import { Writable } from 'node:stream';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createInputReader, InputReader } from './input.js';
 import { createOutputWriter } from './output.js';
 
