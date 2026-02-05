@@ -1,4 +1,6 @@
 ---
+close_reason: Implemented Completion and Completer types with tests
+closed_at: 2026-02-05T07:09:40.371Z
 created_at: 2026-02-05T07:03:22.625Z
 dependencies:
   - target: is-01kgp9spgsmh4wwceewwzcjg6v
@@ -11,9 +13,9 @@ labels: []
 parent_id: is-01kgp9s4730cf2cxhxa7p0eafy
 priority: 1
 spec_path: docs/project/specs/active/plan-2026-02-05-better-shell-completions.md
-status: in_progress
+status: closed
 title: Implement Completion and Completer types in completion/types.ts
 type: is
-updated_at: 2026-02-05T07:08:52.409Z
-version: 4
+updated_at: 2026-02-05T07:09:40.372Z
+version: 5
 ---

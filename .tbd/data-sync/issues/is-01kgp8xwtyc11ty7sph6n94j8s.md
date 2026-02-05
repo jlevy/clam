@@ -1,4 +1,12 @@
 ---
+child_order_hints:
+  - is-01kgpa4p131yxhf92bhg9pf2tt
+  - is-01kgpa4p8pzvshmpzc6qpt1pwz
+  - is-01kgpa4pg5czs9g92bwswa6zzw
+  - is-01kgpa4pqrkfmeqdvf9pdg8x2t
+  - is-01kgpa4vqpxshbqags87tz0031
+  - is-01kgpa4w1z4r39fbv722y0g9mk
+  - is-01kgpa4wa2aat8prx9n2pq7r6v
 created_at: 2026-02-05T06:48:11.869Z
 dependencies:
   - target: is-01kgp8y1jf3c478jgc17222sce
@@ -8,11 +16,12 @@ dependencies:
 id: is-01kgp8xwtyc11ty7sph6n94j8s
 kind: feature
 labels: []
+parent_id: is-01kgpa3z336tnt8wz5dcpq4j34
 priority: 2
 spec_path: docs/project/specs/active/plan-2026-02-04-streaming-markdown-rendering.md
 status: open
 title: Implement core BlockAwareStreamRenderer with block detection and inline formatting
 type: is
-updated_at: 2026-02-05T06:49:24.570Z
-version: 3
+updated_at: 2026-02-05T07:09:29.281Z
+version: 11
 ---
