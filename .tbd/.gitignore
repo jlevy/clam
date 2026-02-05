@@ -10,6 +10,9 @@ data-sync/
 # Local state
 state.yml
 
+# Local workspace state (outbox for sync failures)
+workspaces/
+
 # Migration backups (local only, not synced)
 backups/
 
