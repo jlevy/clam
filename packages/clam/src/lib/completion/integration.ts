@@ -198,6 +198,31 @@ export class CompletionIntegration {
   }
 
   /**
+   * Render the completion menu without cursor save/restore wrapping.
+   * Use this when the caller handles cursor positioning manually.
+   * Returns the raw menu content, or empty if no menu to show.
+   */
+  renderMenuRaw(): string {
+    if (!this.keyHandler.isActive()) {
+      return '';
+    }
+
+    const content = this.menu.render({
+      maxVisible: this.options.maxVisible,
+      valueWidth: 25,
+    });
+
+    if (!content) {
+      return '';
+    }
+
+    const lineCount = content.split('\n').length;
+    this.menuLinesShown = lineCount;
+
+    return content;
+  }
+
+  /**
    * Get string to clear the current menu.
    */
   clearMenuOutput(): string {

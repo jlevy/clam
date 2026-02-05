@@ -59,11 +59,12 @@ export function renderCompletionItem(
   const line = `${marker}${icon}${paddedValue}${description}`;
 
   if (selected) {
-    // Use inverse for selection highlight (visible in TTY)
-    return pc.inverse(line);
+    // Use yellow inverse for selection highlight
+    return pc.inverse(pc.yellow(line));
   }
 
-  return line;
+  // Use yellow for all completion items - consistent completion color
+  return pc.yellow(line);
 }
 
 /**

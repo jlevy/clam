@@ -113,18 +113,30 @@ describe('detectTrigger', () => {
     });
   });
 
-  describe('no trigger', () => {
-    it('should return no trigger for argument position without special chars', () => {
+  describe('argument trigger', () => {
+    it('should trigger entity completion for argument position (Tab completion)', () => {
       const state = createInputState('git status');
       const result = detectTrigger(state);
-      expect(result.type).toBe(TriggerType.None);
-      expect(result.triggered).toBe(false);
+      // Tab after command should trigger entity/file completion
+      expect(result.type).toBe(TriggerType.Entity);
+      expect(result.triggered).toBe(true);
+      expect(result.prefix).toBe('status');
     });
 
-    it('should return no trigger when cursor is not at trigger position', () => {
+    it('should trigger entity completion with empty prefix after space', () => {
+      const state = createInputState('ls ');
+      const result = detectTrigger(state);
+      expect(result.type).toBe(TriggerType.Entity);
+      expect(result.triggered).toBe(true);
+      expect(result.prefix).toBe('');
+    });
+  });
+
+  describe('no trigger', () => {
+    it('should return no trigger when cursor is in middle of word', () => {
       const state = createInputState('echo hello @', 5);
       const result = detectTrigger(state);
-      // Cursor is at position 5 ("hello"), not at @
+      // Cursor is at position 5 (middle of "hello"), not at end of word or at @
       expect(result.triggered).toBe(false);
     });
   });
