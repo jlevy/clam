@@ -309,15 +309,28 @@ The existing `tsconfig.base.json` is mostly compatible. Key additions:
 
 **Goal**: Get clam running on Bun with existing build tools.
 
+**Phase 1a: Validate Bun Compatibility (keep pnpm as fallback)**
+
 - [ ] Install Bun globally (`curl -fsSL https://bun.sh/install | bash`)
-- [ ] Create `bun.lock` from existing dependencies (`bun install`)
+- [ ] Create `bun.lock` alongside `pnpm-lock.yaml` (`bun install`)
+- [ ] Add Bun-specific dev script (keep pnpm scripts as fallback):
+  ```json
+  "clam:bun": "bun packages/clam/src/bin.ts"
+  ```
+- [ ] Verify `bun run clam:bun --help` works with existing tsdown build
+- [ ] Run tests under Bun: `bun run test` (using existing vitest)
+- [ ] Benchmark: `time bun packages/clam/src/bin.ts --help` vs `time pnpm run start`
+
+**Phase 1b: Full Switch (after 1a validates)**
+
 - [ ] Update root `package.json`:
   - Remove `packageManager: pnpm@10.28.2`
-  - Update scripts from `pnpm` to `bun`
-- [ ] Delete `pnpm-workspace.yaml` (add `workspaces` to root package.json)
+  - Update all scripts from `pnpm` to `bun`
+- [ ] Add `workspaces` field to root `package.json`
+- [ ] Delete `pnpm-workspace.yaml`
 - [ ] Delete `.npmrc`
-- [ ] Verify `bun run start` works (runs existing tsx/tsdown)
-- [ ] Benchmark: `time bun run start --help` vs `time pnpm run start --help`
+- [ ] Delete `pnpm-lock.yaml` (only after validation)
+- [ ] Verify all commands work: `bun run build`, `bun run test`, `bun run start`
 
 ### Phase 2: Build Tool (tsdown to Bunup)
 
