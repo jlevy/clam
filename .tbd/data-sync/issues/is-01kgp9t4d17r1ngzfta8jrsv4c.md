@@ -1,0 +1,15 @@
+---
+created_at: 2026-02-05T07:03:37.120Z
+dependencies: []
+id: is-01kgp9t4d17r1ngzfta8jrsv4c
+kind: task
+labels: []
+parent_id: is-01kgp9s4730cf2cxhxa7p0eafy
+priority: 2
+spec_path: docs/project/specs/active/plan-2026-02-05-better-shell-completions.md
+status: open
+title: Add Tab handling and menu navigation (up/down/enter/escape)
+type: is
+updated_at: 2026-02-05T07:03:37.120Z
+version: 1
+---
