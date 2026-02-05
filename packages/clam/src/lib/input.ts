@@ -714,11 +714,10 @@ export class InputReader {
           const mode = await modeDetector.detectMode(trimmed);
 
           if (mode === 'shell') {
-            // Route shell command directly
+            // Route shell command directly - use stdio inherit for real TTY (colors work)
             const command = isExplicitShell(trimmed) ? stripShellTrigger(trimmed) : trimmed;
             try {
-              const result = await shell.exec(command, { captureOutput: true });
-              output.shellOutput(result);
+              await shell.exec(command, { captureOutput: false });
             } catch (error) {
               if (error instanceof Error) {
                 output.error(`Shell error: ${error.message}`);
@@ -731,10 +730,9 @@ export class InputReader {
           if (mode === 'ambiguous') {
             const confirmed = await this.confirmShellCommand(trimmed);
             if (confirmed) {
-              // User confirmed - execute as shell command
+              // User confirmed - execute as shell command with real TTY (colors work)
               try {
-                const result = await shell.exec(trimmed, { captureOutput: true });
-                output.shellOutput(result);
+                await shell.exec(trimmed, { captureOutput: false });
               } catch (error) {
                 if (error instanceof Error) {
                   output.error(`Shell error: ${error.message}`);

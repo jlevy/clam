@@ -12,9 +12,12 @@
  */
 export const COLOR_ALWAYS_COMMANDS: Record<string, string[]> = {
   ls: ['--color=always'],
+  eza: ['--color=always'],
+  exa: ['--color=always'],
   grep: ['--color=always'],
   egrep: ['--color=always'],
   fgrep: ['--color=always'],
+  rg: ['--color=always'],
   diff: ['--color=always'],
 };
 
