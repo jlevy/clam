@@ -14,6 +14,6 @@ spec_path: docs/project/specs/active/plan-2026-02-05-fun-spinner-verbs.md
 status: closed
 title: Implement plain spinner mode (animated characters only)
 type: is
-updated_at: 2026-02-05T09:48:37.522Z
-version: 4
+updated_at: 2026-02-05T11:28:54.534Z
+version: 5
 ---

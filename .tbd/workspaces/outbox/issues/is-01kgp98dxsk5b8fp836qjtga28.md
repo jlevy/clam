@@ -18,6 +18,6 @@ spec_path: docs/project/specs/active/plan-2026-02-05-fun-spinner-verbs.md
 status: closed
 title: Create wave spinner character set and rotation logic
 type: is
-updated_at: 2026-02-05T09:45:10.404Z
-version: 6
+updated_at: 2026-02-05T11:28:54.525Z
+version: 7
 ---

@@ -14,6 +14,6 @@ spec_path: docs/project/specs/active/plan-2026-02-05-fun-spinner-verbs.md
 status: closed
 title: Integrate fun verb spinner with Claude Code processing state
 type: is
-updated_at: 2026-02-05T09:50:35.707Z
-version: 4
+updated_at: 2026-02-05T11:28:54.577Z
+version: 5
 ---

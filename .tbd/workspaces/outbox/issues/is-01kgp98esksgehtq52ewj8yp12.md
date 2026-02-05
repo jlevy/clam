@@ -14,6 +14,6 @@ spec_path: docs/project/specs/active/plan-2026-02-05-fun-spinner-verbs.md
 status: closed
 title: Create aquatic verb list and random selection system
 type: is
-updated_at: 2026-02-05T09:46:53.668Z
-version: 4
+updated_at: 2026-02-05T11:28:54.553Z
+version: 5
 ---

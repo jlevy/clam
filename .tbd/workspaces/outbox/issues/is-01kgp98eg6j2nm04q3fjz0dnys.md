@@ -14,6 +14,6 @@ spec_path: docs/project/specs/active/plan-2026-02-05-fun-spinner-verbs.md
 status: closed
 title: Implement custom message spinner mode (characters + static message)
 type: is
-updated_at: 2026-02-05T09:48:37.922Z
-version: 3
+updated_at: 2026-02-05T11:28:54.544Z
+version: 4
 ---
