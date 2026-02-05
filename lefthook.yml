@@ -30,12 +30,45 @@ pre-commit:
       priority: 2
 
 pre-push:
+  parallel: true
+
   commands:
-    # Build first
+    # Build packages
     build:
       run: bun run build
       priority: 1
-    # Then run tests
+
+    # Tests with caching - skip if already passed for this commit
     test:
-      run: bun run test
+      run: |
+        COMMIT_HASH=$(git rev-parse HEAD)
+        CACHE_DIR="node_modules/.test-cache"
+        CACHE_FILE="$CACHE_DIR/$COMMIT_HASH"
+
+        # Check for uncommitted changes - always run tests
+        if ! git diff --quiet || ! git diff --cached --quiet; then
+          bun run test
+          exit $?
+        fi
+
+        # Check cache
+        if [ -f "$CACHE_FILE" ]; then
+          SHORT_HASH=$(echo "$COMMIT_HASH" | cut -c1-8)
+          echo "Tests already passed for commit $SHORT_HASH"
+          exit 0
+        fi
+
+        # Run tests
+        bun run test
+
+        # Cache on success
+        if [ $? -eq 0 ]; then
+          mkdir -p "$CACHE_DIR"
+          touch "$CACHE_FILE"
+          exit 0
+        else
+          echo "Tests failed - push blocked"
+          echo "Bypass with: git push --no-verify"
+          exit 1
+        fi
       priority: 2
