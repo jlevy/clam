@@ -6,17 +6,19 @@ child_order_hints:
   - is-01kgnd65096v7cvhdccpbb3qc8
   - is-01kgnd65efccp6tkz48f82sm5y
   - is-01kgnd65xefm0gnj41qy3vge0j
+close_reason: "All child tasks completed: ambiguous mode, nothing mode, confirmation flow, error suggestions"
+closed_at: 2026-02-05T01:58:37.313Z
 created_at: 2026-02-04T22:42:58.731Z
 dependencies: []
 id: is-01kgnd5e1cf55qyz9sdta9zdn0
 kind: epic
 labels: []
 priority: 2
-status: open
+status: closed
 title: "Enhanced mode detection: ambiguous and nothing modes"
 type: is
-updated_at: 2026-02-04T22:43:23.181Z
-version: 7
+updated_at: 2026-02-05T01:58:37.314Z
+version: 8
 ---
 Add two new detection modes to improve UX:
 1. 'ambiguous' - For words like 'who', 'date' that are both shell commands AND English
