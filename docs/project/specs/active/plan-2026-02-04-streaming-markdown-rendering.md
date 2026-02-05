@@ -1,10 +1,10 @@
 # Feature: Streaming Markdown Rendering
 
-**Date:** 2026-02-04 (last updated 2026-02-04)
+**Date:** 2026-02-04 (last updated 2026-02-05)
 
 **Author:** Claude (with research assistance)
 
-**Status:** Draft
+**Status:** Implementation Complete (All Phases Done)
 
 **Research:**
 [research-2026-02-04-streaming-markdown-rendering.md](../../research/active/research-2026-02-04-streaming-markdown-rendering.md)
@@ -141,37 +141,38 @@ interface CodeHighlighter {
 
 ## Implementation Plan
 
-### Phase 1: Core Block Renderer
+### Phase 1: Core Block Renderer ✅
 
 Implement the `BlockAwareStreamRenderer` with basic block detection and inline
 formatting.
 
-- [ ] Create `packages/clam/src/lib/markdown/` directory structure
-- [ ] Implement `BlockDetector` class with paragraph/header/code fence detection
-- [ ] Implement `InlineFormatter` for bold, italic, inline code using picocolors
-- [ ] Implement `BlockAwareStreamRenderer` coordinating detection and formatting
-- [ ] Integrate into `OutputWriter.streamChunk()` with feature flag
-- [ ] Add unit tests for block detection and inline formatting
-- [ ] Add integration tests with streaming mock
+- [x] Create `packages/clam/src/lib/markdown/` directory structure
+- [x] Implement `BlockDetector` class with paragraph/header/code fence detection
+- [x] Implement `InlineFormatter` for bold, italic, inline code using picocolors
+- [x] Implement `BlockAwareStreamRenderer` coordinating detection and formatting
+- [x] Integrate into `OutputWriter.streamChunk()` with feature flag
+- [x] Add unit tests for block detection and inline formatting
+- [x] Add integration tests with streaming mock
 
-### Phase 2: Code Block Highlighting
+### Phase 2: Code Block Highlighting ✅
 
 Add syntax highlighting for fenced code blocks.
 
-- [ ] Add cli-highlight or similar dependency for syntax highlighting
-- [ ] Implement `CodeHighlighter` wrapping the highlighting library
-- [ ] Integrate into `BlockAwareStreamRenderer` for code blocks
-- [ ] Test with common languages (typescript, python, bash, json)
+- [x] Add cli-highlight dependency for syntax highlighting
+- [x] Implement `CodeHighlighter` wrapping the highlighting library
+- [x] Integrate into `BlockAwareStreamRenderer` for code blocks
+- [x] Test with common languages (typescript, python, bash, json)
 
-### Phase 3: Lists and Tables
+### Phase 3: Lists and Tables ✅
 
 Add support for list and table formatting.
+(Note: Implemented as part of Phase 1 core block renderer)
 
-- [ ] Implement list detection (unordered `-`/`*`, ordered `1.`)
-- [ ] Implement list rendering with proper indentation and bullets
-- [ ] Implement table detection (pipe-delimited rows)
-- [ ] Implement table buffering until complete (column width calculation)
-- [ ] Implement table rendering with aligned columns
+- [x] Implement list detection (unordered `-`/`*`, ordered `1.`)
+- [x] Implement list rendering with proper indentation and bullets
+- [x] Implement table detection (pipe-delimited rows)
+- [x] Implement table buffering until complete (column width calculation)
+- [x] Implement table rendering with aligned columns
 
 ## Testing Strategy
 
@@ -201,9 +202,35 @@ Add support for list and table formatting.
 
 ## Open Questions
 
+**Original questions:**
+
 - Should we add a configuration option for custom colors/styles?
 - Should incomplete inline formatting be rendered speculatively or stripped?
 - What’s the right behavior for malformed markdown (unclosed fences, etc.)?
+
+**Questions discovered during implementation:**
+
+- **Buffer leading whitespace**: When blocks end with blank lines (`\n\n`), the trailing
+  newline can remain in the buffer, causing next block detection to fail if it starts
+  with the leftover newline.
+  Current behavior: treats as empty paragraph.
+  Should the detector strip leading whitespace before block detection?
+
+- **Multi-block streaming chunk boundaries**: When markdown blocks span multiple
+  streaming chunks, proper blank line handling between blocks is critical.
+  The renderer assumes each block ends with appropriate boundaries.
+  Should we add explicit guidance for LLM prompt formatting to ensure clean block
+  boundaries?
+
+- **cli-highlight color support**: The cli-highlight library respects FORCE_COLOR and
+  chalk’s color detection.
+  In non-TTY environments (CI, tests), colors may be disabled.
+  Current tests check behavior (no throw, returns string) rather than exact ANSI output.
+  Is this sufficient?
+
+- **Phase 3 scope**: Lists and tables were already implemented as part of Phase 1 core
+  block renderer. Should Phase 3 be redefined for advanced features (nested lists,
+  complex tables) or marked as complete?
 
 ## References
 

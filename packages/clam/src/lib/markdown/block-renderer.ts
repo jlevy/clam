@@ -13,6 +13,7 @@
 import pc from 'picocolors';
 
 import { createBlockDetector, type BlockDetector } from './block-detector.js';
+import { highlightCode as cliHighlightCode } from './code-highlighter.js';
 import { formatInline } from './inline-formatter.js';
 import type { BlockType, StreamRenderer } from './types.js';
 
@@ -334,11 +335,19 @@ function formatParagraph(content: string): string {
 }
 
 /**
- * Default code highlighting (basic coloring without syntax analysis).
+ * Default code highlighting using cli-highlight.
+ * Falls back to cyan coloring for unsupported languages.
  */
-function defaultCodeHighlight(code: string, _language: string): string {
-  // Simple highlighting: just color the entire code block
-  return pc.cyan(code);
+function defaultCodeHighlight(code: string, language: string): string {
+  // Try cli-highlight first
+  const highlighted = cliHighlightCode(code, language);
+
+  // If no language or highlighting returned unchanged, use basic cyan
+  if (!language || highlighted === code) {
+    return pc.cyan(code);
+  }
+
+  return highlighted;
 }
 
 export type BlockRenderer = ReturnType<typeof createBlockRenderer>;

@@ -35,6 +35,8 @@ export {
 
 export { createBlockDetector, type BlockDetector } from './block-detector.js';
 
+export { createCodeHighlighter, highlightCode, isLanguageSupported } from './code-highlighter.js';
+
 export { createInlineFormatter, formatInline, hasUnclosedFormatting } from './inline-formatter.js';
 
 export type {
