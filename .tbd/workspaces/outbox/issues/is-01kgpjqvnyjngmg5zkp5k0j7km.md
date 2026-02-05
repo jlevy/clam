@@ -13,6 +13,6 @@ spec_path: docs/project/specs/active/plan-2026-02-05-shell-polish.md
 status: closed
 title: Fix interactive command handling (bash/vim terminal corruption)
 type: is
-updated_at: 2026-02-05T10:59:15.157Z
-version: 4
+updated_at: 2026-02-05T11:37:45.959Z
+version: 5
 ---
