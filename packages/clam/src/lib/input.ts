@@ -26,6 +26,10 @@ import type { ModeDetector, InputMode } from './mode-detection.js';
 import { isExplicitShell, stripShellTrigger, suggestCommand } from './mode-detection.js';
 import type { OutputWriter } from './output.js';
 import type { ShellModule } from './shell.js';
+import {
+  createCompletionIntegration,
+  type CompletionIntegration,
+} from './completion/integration.js';
 
 /** Check if stdout is a TTY for cursor control sequences */
 const isTTY = process.stdout.isTTY ?? false;
@@ -104,11 +108,20 @@ export class InputReader {
   private running = false;
   private history: string[] = [];
   private lastCtrlCTime = 0; // Track last Ctrl+C for double-tap to quit
+  private completionIntegration: CompletionIntegration;
 
   constructor(options: InputReaderOptions) {
     this.options = options;
     this.loadHistory();
     this.registerBuiltinCommands();
+
+    // Initialize completion system
+    this.completionIntegration = createCompletionIntegration({
+      enableCommands: true,
+      enableSlashCommands: true,
+      enableEntities: true,
+      cwd: process.cwd(),
+    });
   }
 
   /**
@@ -534,7 +547,57 @@ export class InputReader {
       const currentLine = this.rl?.line ?? '';
       const modeDetector = this.options.modeDetector;
 
-      // === MENU NAVIGATION (doesn't affect mode) ===
+      // === NEW COMPLETION SYSTEM NAVIGATION ===
+      if (this.completionIntegration.isActive()) {
+        const modifiers = {
+          shift: key.shift ?? false,
+          ctrl: key.ctrl ?? false,
+          alt: key.meta ?? false,
+        };
+
+        // Map key names to our key handler format
+        let keyName = key.name ?? '';
+        if (keyName === 'tab') keyName = 'Tab';
+        if (keyName === 'up') keyName = 'ArrowUp';
+        if (keyName === 'down') keyName = 'ArrowDown';
+        if (keyName === 'return') keyName = 'Enter';
+        if (keyName === 'escape') keyName = 'Escape';
+
+        const result = this.completionIntegration.handleKeypress(keyName, modifiers);
+
+        if (result.handled) {
+          // Clear menu output first
+          const clearOutput = this.completionIntegration.clearMenuOutput();
+          if (clearOutput) {
+            process.stdout.write(clearOutput);
+          }
+
+          if (result.insertText && this.rl) {
+            // Accept completion - replace current input
+            const rlInternal = this.rl as readline.Interface & { line: string; cursor: number };
+            rlInternal.line = result.insertText;
+            rlInternal.cursor = result.insertText.length;
+
+            // Detect new mode and recolor
+            const newMode = modeDetector?.detectModeSync(result.insertText) ?? 'nl';
+            this.currentInputMode = newMode;
+            this.recolorLine(result.insertText, newMode);
+          }
+
+          if (result.suppress) {
+            // Re-render menu if still active (for navigation)
+            if (this.completionIntegration.isActive()) {
+              const menuOutput = this.completionIntegration.renderMenu();
+              if (menuOutput) {
+                process.stdout.write(menuOutput);
+              }
+            }
+            return; // Don't process key further
+          }
+        }
+      }
+
+      // === LEGACY MENU NAVIGATION (slash commands) ===
       if (menuShownForCurrentInput && this.menuItems.length > 0) {
         if (key.name === 'down') {
           const newIndex =
@@ -596,6 +659,8 @@ export class InputReader {
         // Defer until readline has processed the keystroke
         setImmediate(() => {
           const actualLine = this.rl?.line ?? '';
+          const actualCursor =
+            (this.rl as readline.Interface & { cursor?: number })?.cursor ?? actualLine.length;
           const newMode = modeDetector.detectModeSync(actualLine);
 
           // Always update mode and recolor to ensure consistency
@@ -621,6 +686,29 @@ export class InputReader {
           if (actualLine === '') {
             menuShownForCurrentInput = false;
           }
+
+          // === UPDATE NEW COMPLETION SYSTEM ===
+          // Clear old menu output first
+          const clearOutput = this.completionIntegration.clearMenuOutput();
+          if (clearOutput && isTTY) {
+            process.stdout.write(clearOutput);
+          }
+
+          // Update completions based on current input
+          // Normalize mode for completion system (ambiguous/nothing → shell for completion purposes)
+          const completionMode =
+            newMode === 'ambiguous' || newMode === 'nothing' ? 'shell' : newMode;
+          void this.completionIntegration
+            .updateCompletions(actualLine, actualCursor, completionMode)
+            .then(() => {
+              // Render new menu if active
+              if (this.completionIntegration.isActive() && isTTY) {
+                const menuOutput = this.completionIntegration.renderMenu();
+                if (menuOutput) {
+                  process.stdout.write(menuOutput);
+                }
+              }
+            });
         });
       }
     };
