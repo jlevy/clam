@@ -11,7 +11,11 @@
 import type { InputState } from '../../input/state.js';
 import type { Completer, Completion } from '../types.js';
 import { CompletionGroup, COMPLETION_ICONS } from '../types.js';
-import { RECOMMENDED_COMMANDS, isRecommendedCommand } from '../recommended-commands.js';
+import {
+  RECOMMENDED_COMMANDS,
+  isRecommendedCommand,
+  getCommandDescription,
+} from '../recommended-commands.js';
 import { calculatePrefixScore } from '../scoring.js';
 
 /**
@@ -82,6 +86,7 @@ export function createCommandCompleter(): CommandCompleter {
 
         completions.push({
           value: cmd,
+          description: getCommandDescription(cmd),
           group,
           score,
           source: 'command',
