@@ -179,7 +179,8 @@ async function main(): Promise<void> {
 
   // Show welcome message
   output.newline();
-  output.writeLine(`${colors.bold('clam')} - Claude Code with true terminal scrollback`);
+  output.writeLine(`${colors.bold('clam')} \u25aa An unusually intelligent shell`);
+  output.newline();
 
   // Connect to agent with spinner
   output.spinnerStart('Connecting to Claude Code');
