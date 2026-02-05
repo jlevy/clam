@@ -500,30 +500,30 @@ export class InputReader {
     // Reset input mode at start
     this.currentInputMode = 'nl';
 
-    // Listen for keypresses to detect mode and update colors
+    /**
+     * Unified keypress handler for mode detection and visual updates.
+     *
+     * Design principles:
+     * 1. Mode detection is the SINGLE source of truth for input classification
+     * 2. Visual state (prompt char, colors) always derives from mode
+     * 3. After every keypress, we: detect mode → update state → recolor
+     * 4. Menu display is separate from mode detection (it's a UI overlay)
+     *
+     * State transitions:
+     * - Empty line → 'nl' mode (pink ▶)
+     * - "/" at start → 'slash' mode (blue ▶)
+     * - Command-like input → 'shell' mode (white $)
+     * - Question/NL input → 'nl' mode (pink ▶)
+     */
     const keypressHandler = (_ch: string, key: readline.Key | undefined) => {
       if (!key) return;
 
       const currentLine = this.rl?.line ?? '';
       const modeDetector = this.options.modeDetector;
 
-      // When "/" is pressed at start of empty line, show menu and switch color
-      if (key.sequence === '/' && currentLine === '' && !menuShownForCurrentInput) {
-        menuShownForCurrentInput = true;
-        this.currentInputMode = 'slash';
-        // Switch to slash command color
-        process.stdout.write(inputColors.slashCommand);
-        // Defer to after the "/" is added to the line
-        setImmediate(() => {
-          this.showCommandMenu();
-        });
-        return;
-      }
-
-      // Handle arrow key navigation when menu is shown
+      // === MENU NAVIGATION (doesn't affect mode) ===
       if (menuShownForCurrentInput && this.menuItems.length > 0) {
         if (key.name === 'down') {
-          // Move selection down
           const newIndex =
             this.menuSelectedIndex < this.menuItems.length - 1 ? this.menuSelectedIndex + 1 : 0;
           this.clearCommandMenu();
@@ -531,7 +531,6 @@ export class InputReader {
           return;
         }
         if (key.name === 'up') {
-          // Move selection up
           const newIndex =
             this.menuSelectedIndex > 0 ? this.menuSelectedIndex - 1 : this.menuItems.length - 1;
           this.clearCommandMenu();
@@ -539,23 +538,18 @@ export class InputReader {
           return;
         }
         if (key.name === 'return' && this.menuSelectedIndex >= 0) {
-          // Select the highlighted item
+          // Select the highlighted menu item
           const selectedCommand = this.menuItems[this.menuSelectedIndex];
           if (selectedCommand && this.rl) {
-            // Clear current line and insert selected command
             this.clearCommandMenu();
-            // Clear the current input line
-            process.stdout.write('\x1b[2K\r');
-            // Write prompt and selected command
-            process.stdout.write(
-              `${colors.inputPrompt(`${promptChars.input} `)}${inputColors.slashCommand}/${selectedCommand}`
-            );
+            const newLine = `/${selectedCommand}`;
             // Update readline's internal line buffer
-            // We need to simulate the input by writing to readline
-            (this.rl as readline.Interface & { line: string; cursor: number }).line =
-              `/${selectedCommand}`;
+            (this.rl as readline.Interface & { line: string; cursor: number }).line = newLine;
             (this.rl as readline.Interface & { line: string; cursor: number }).cursor =
-              selectedCommand.length + 1;
+              newLine.length;
+            // Recolor with slash mode (mode detection would also give 'slash', but we know)
+            this.currentInputMode = 'slash';
+            this.recolorLine(newLine, 'slash');
           }
           menuShownForCurrentInput = false;
           this.menuSelectedIndex = -1;
@@ -564,41 +558,55 @@ export class InputReader {
         }
       }
 
-      // Any other keypress while menu is shown - clear the menu and reset selection
-      if (menuShownForCurrentInput && key.sequence !== '/') {
-        this.clearCommandMenu(true);
+      // === SPECIAL: Show slash command menu on "/" at start ===
+      if (key.sequence === '/' && currentLine === '' && !menuShownForCurrentInput) {
+        menuShownForCurrentInput = true;
+        // Don't return - let mode detection handle the coloring
       }
 
-      // Update mode detection and recolor the line on each keypress
-      if (modeDetector && key.name !== 'return') {
-        // Defer mode detection and recoloring until after readline has processed the keystroke
-        // This ensures we work with the actual updated line buffer
-        // Important: readline processes backspace before this event fires, so we can't
-        // simulate nextLine - we need to wait for the actual buffer state
+      // Clear menu on any non-navigation keypress
+      if (menuShownForCurrentInput && !['up', 'down'].includes(key.name ?? '')) {
+        if (key.name !== 'return' || this.menuSelectedIndex < 0) {
+          this.clearCommandMenu(true);
+        }
+      }
+
+      // === MAIN MODE DETECTION AND RECOLORING ===
+      // This is the single source of truth for mode and visual state
+      if (key.name === 'return') {
+        // Line is being submitted - don't recolor, just clean up
+        menuShownForCurrentInput = false;
+        return;
+      }
+
+      if (modeDetector) {
+        // Defer until readline has processed the keystroke
         setImmediate(() => {
           const actualLine = this.rl?.line ?? '';
           const newMode = modeDetector.detectModeSync(actualLine);
-          if (newMode !== this.currentInputMode) {
-            this.currentInputMode = newMode;
-            this.recolorLine(actualLine, newMode);
-          }
-        });
-      }
 
-      // Reset menu flag on Enter or when line is cleared completely
-      // NOTE: Don't reset currentInputMode here - prompt() needs it to know what mode the line was
-      if (key.name === 'return') {
-        this.clearCommandMenu(true);
-        menuShownForCurrentInput = false;
-      } else if (key.name === 'backspace') {
-        // Check if we've backspaced to empty after readline processes the key
-        setImmediate(() => {
-          const actualLine = this.rl?.line ?? '';
+          // Always update mode and recolor to ensure consistency
+          // This handles: mode changes, backspace, and edge cases
+          const modeChanged = newMode !== this.currentInputMode;
+          this.currentInputMode = newMode;
+
+          // Always recolor to maintain visual consistency
+          // (readline operations like backspace can reset terminal state)
+          this.recolorLine(actualLine, newMode);
+
+          // Show menu after recoloring if "/" was just typed
+          if (
+            modeChanged &&
+            newMode === 'slash' &&
+            actualLine === '/' &&
+            menuShownForCurrentInput
+          ) {
+            this.showCommandMenu();
+          }
+
+          // Reset menu flag when line is empty
           if (actualLine === '') {
-            this.clearCommandMenu(true);
             menuShownForCurrentInput = false;
-            this.currentInputMode = 'nl';
-            this.recolorLine('', 'nl');
           }
         });
       }

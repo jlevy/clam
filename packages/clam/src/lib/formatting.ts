@@ -54,8 +54,30 @@ export const colors = {
   /** Slash command text - purple/blue to distinguish from regular input */
   slashCommand: (s: string) => pc.blue(s),
 
-  /** Shell command text - white/default to distinguish from NL input */
-  shellCommand: (s: string) => pc.reset(s),
+  /** Shell command text - bold white to distinguish from NL input */
+  shellCommand: (s: string) => pc.bold(pc.white(s)),
+
+  /** Shell prompt character ($) - bold white */
+  shellPrompt: (s: string) => pc.bold(pc.white(s)),
+
+  /** Slash command prompt character (▶) - blue */
+  slashPrompt: (s: string) => pc.blue(s),
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SUBMITTED STATE COLORS (dimmed for scroll history)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /** Shell prompt after submission - dim to not compete with output */
+  shellPromptDim: (s: string) => pc.dim(pc.white(s)),
+
+  /** Slash prompt after submission - dim blue */
+  slashPromptDim: (s: string) => pc.dim(pc.blue(s)),
+
+  /** Shell command text after submission - dim */
+  shellCommandDim: (s: string) => pc.dim(pc.white(s)),
+
+  /** Slash command text after submission - dim blue */
+  slashCommandDim: (s: string) => pc.dim(pc.blue(s)),
 
   /** Streaming indicator while agent is thinking/responding */
   streaming: (s: string) => pc.cyan(s),
@@ -153,6 +175,89 @@ export const promptChars = {
 };
 
 /**
+ * Raw ANSI color codes for dynamic input coloring.
+ * Used when we need to change text color mid-input (not wrapping strings).
+ * Returns empty strings when stdout is not a TTY to avoid garbage output.
+ *
+ * NOTE: Defined before modeVisualConfig because it's referenced there.
+ */
+const isTTY = process.stdout.isTTY ?? false;
+export const inputColors = {
+  /** Natural language input - magenta */
+  naturalLanguage: isTTY ? '\x1b[35m' : '',
+  /** Slash command input - bold blue */
+  slashCommand: isTTY ? '\x1b[1;34m' : '',
+  /** Shell command input - bold white */
+  shell: isTTY ? '\x1b[1;37m' : '',
+  /** Ambiguous input - yellow (caution) */
+  ambiguous: isTTY ? '\x1b[33m' : '',
+  /** Invalid input - red (error) */
+  nothing: isTTY ? '\x1b[31m' : '',
+  /** Reset to default */
+  reset: isTTY ? '\x1b[0m' : '',
+};
+
+/**
+ * Mode-specific visual configuration.
+ * All prompt character, formatting, and color settings for each mode are here.
+ * To change any aspect of a mode's appearance, edit this configuration.
+ */
+export interface ModeVisualConfig {
+  /** Prompt character for this mode */
+  char: string;
+  /** Color function for active (editing) state */
+  activePromptColor: (s: string) => string;
+  /** Color function for submitted (history) state */
+  submittedPromptColor: (s: string) => string;
+  /** Color function for input text */
+  textColor: (s: string) => string;
+  /** Raw ANSI code for mid-line coloring */
+  rawColor: string;
+}
+
+/**
+ * Visual configuration for all input modes.
+ * Single source of truth for mode appearance - easy to customize.
+ */
+export const modeVisualConfig: Record<InputMode, ModeVisualConfig> = {
+  nl: {
+    char: promptChars.nl,
+    activePromptColor: colors.inputPrompt,
+    submittedPromptColor: colors.inputPromptDim,
+    textColor: colors.userPrompt,
+    rawColor: inputColors.naturalLanguage,
+  },
+  shell: {
+    char: promptChars.shell,
+    activePromptColor: colors.shellPrompt,
+    submittedPromptColor: colors.shellPromptDim,
+    textColor: colors.shellCommand,
+    rawColor: inputColors.shell,
+  },
+  slash: {
+    char: promptChars.slash,
+    activePromptColor: colors.slashPrompt,
+    submittedPromptColor: colors.slashPromptDim,
+    textColor: colors.slashCommand,
+    rawColor: inputColors.slashCommand,
+  },
+  ambiguous: {
+    char: promptChars.nl,
+    activePromptColor: pc.yellow,
+    submittedPromptColor: (s: string) => pc.dim(pc.yellow(s)),
+    textColor: pc.yellow,
+    rawColor: inputColors.ambiguous,
+  },
+  nothing: {
+    char: promptChars.nl,
+    activePromptColor: pc.red,
+    submittedPromptColor: (s: string) => pc.dim(pc.red(s)),
+    textColor: pc.red,
+    rawColor: inputColors.nothing,
+  },
+};
+
+/**
  * Get the prompt character and color for a given input mode.
  * Used for dynamic prompt display based on detected mode.
  *
@@ -164,82 +269,24 @@ export function getPromptForMode(mode: InputMode): {
   colorFn: (s: string) => string;
   rawColor: string;
 } {
-  switch (mode) {
-    case 'shell':
-      return {
-        char: promptChars.shell,
-        colorFn: pc.bold,
-        rawColor: inputColors.shell,
-      };
-    case 'nl':
-      return {
-        char: promptChars.nl,
-        colorFn: pc.magenta,
-        rawColor: inputColors.naturalLanguage,
-      };
-    case 'slash':
-      return {
-        char: promptChars.slash,
-        colorFn: pc.blue,
-        rawColor: inputColors.slashCommand,
-      };
-    case 'ambiguous':
-      return {
-        char: promptChars.nl,
-        colorFn: pc.yellow,
-        rawColor: inputColors.ambiguous,
-      };
-    case 'nothing':
-      return {
-        char: promptChars.nl,
-        colorFn: pc.red,
-        rawColor: inputColors.nothing,
-      };
-  }
+  const config = modeVisualConfig[mode];
+  return {
+    char: config.char,
+    colorFn: config.activePromptColor,
+    rawColor: config.rawColor,
+  };
 }
-
-/**
- * Raw ANSI color codes for dynamic input coloring.
- * Used when we need to change text color mid-input (not wrapping strings).
- * Returns empty strings when stdout is not a TTY to avoid garbage output.
- */
-const isTTY = process.stdout.isTTY ?? false;
-export const inputColors = {
-  /** Natural language input - magenta */
-  naturalLanguage: isTTY ? '\x1b[35m' : '',
-  /** Slash command input - bold blue */
-  slashCommand: isTTY ? '\x1b[1;34m' : '',
-  /** Shell command input - white (future) */
-  shell: isTTY ? '\x1b[37m' : '',
-  /** Ambiguous input - yellow (caution) */
-  ambiguous: isTTY ? '\x1b[33m' : '',
-  /** Invalid input - red (error) */
-  nothing: isTTY ? '\x1b[31m' : '',
-  /** Reset to default */
-  reset: isTTY ? '\x1b[0m' : '',
-};
 
 /**
  * Get the color function for a given input mode.
  * Used for real-time input coloring based on detected mode.
+ * Derives from modeVisualConfig for consistency.
  *
  * @param mode - The detected input mode
  * @returns A function that colors the input string
  */
 export function getColorForMode(mode: InputMode): (s: string) => string {
-  switch (mode) {
-    case 'shell':
-      // Use pc.white to explicitly set white color (not inherit from previous color)
-      return pc.white;
-    case 'nl':
-      return pc.magenta;
-    case 'slash':
-      return pc.blue;
-    case 'ambiguous':
-      return pc.yellow; // Yellow to indicate "caution"
-    case 'nothing':
-      return pc.red; // Red to indicate error/invalid
-  }
+  return modeVisualConfig[mode].textColor;
 }
 
 /**
