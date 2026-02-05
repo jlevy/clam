@@ -236,6 +236,8 @@ export type TokenType =
 export interface HistoryEntry {
   command: string;
   timestamp: Date;
+  /** Input mode at time of execution (for correct coloring on history navigation) */
+  mode: InputMode;
 }
 ```
 
@@ -1084,10 +1086,34 @@ export class MenuRenderer {
 | `/` at start | Open slash command menu |
 | Tab | Show/cycle completions |
 | Up/Down | Navigate menu items |
-| Enter | Select current item |
+| Enter | Insert selected completion with trailing space (for adding arguments) |
 | Escape | Close menu |
 | Continue typing | Filter completions |
 | Backspace | Update filter (close menu if empty) |
+
+**Cursor Management:** The menu is rendered below the input line using ANSI escape
+sequences. Cursor position is preserved using `\x1b[s` (save) before rendering and
+`\x1b[u` (restore) after, so the cursor stays next to the input text rather than jumping
+to the end of menu content.
+
+**Completion Acceptance:** When Enter is pressed to accept a completion (for both
+Tab-triggered command completions and @-triggered entity completions), the selected
+value is inserted with a trailing space.
+The command is NOT executed - the prompt stays open so the user can add arguments.
+This is achieved by intercepting the Enter key and re-prompting with the completion text
+pre-filled.
+
+**@ Trigger Behavior:** The @ key is purely a trigger for entity (file) completion - it
+should never appear in the actual input.
+Design:
+- @ triggers entity completion at the current cursor position (same as Tab triggers
+  command completion)
+- The @ character itself is NOT added to the input line
+- If a completion is selected, insert the file path at cursor position (no @ prefix in
+  result)
+- If dismissed without selection, input is unchanged (@ was never added)
+- Works identically in shell mode and NL/agent mode for consistency
+- In NL mode, @ indicates explicitly looking for a file mention
 
 ## InputRenderer (Coloring/Styling)
 
@@ -1365,6 +1391,46 @@ export class InputHandler {
 - Test in various terminals
 - Performance with large file lists
 - Verify @ menu appears instantly (no delay)
+
+## Related Issues (Beads)
+
+### Open
+
+- `clam-jdny` - Spec: Unified Completion System (tracking issue)
+- `clam-4qfe` - Port kash completion scoring algorithm with fuzzy matching and priority
+  groups
+- `clam-7ni5` - Implement styled completion rendering with bold commands, dim
+  descriptions, and emoji prefixes
+- `clam-7re1` - Add TLDR description caching for command completions
+- `clam-t0i9` - Detect invalid shell-like input (nothing mode)
+
+### Bugs (Epic: clam-welh)
+
+- `clam-1eha` - **Bug**: Extra newline appears before prompt after accepting completion.
+  Cursor management during completion acceptance needs refinement.
+- `clam-wpbn` - **Bug**: History navigation shows pink color - need to store input mode
+  with history entries
+- `clam-qwuf` - **Bug**: @ should not be added to input - it’s purely a trigger like
+  Tab. Currently @ is added to the line by readline before triggering completion.
+- `clam-yqqz` - **Bug**: Completion acceptance replaces whole line instead of inserting
+  at cursor position. Should preserve existing input and insert completion at cursor.
+- `clam-jida` - **Bug**: Tab after command should trigger entity completion.
+  E.g., "ls <tab>" should show file completions, similar to @ trigger behavior.
+
+### Closed
+
+- `clam-dpf8` - Command completions now include PATH commands (fixed)
+
+### Completed
+
+- `clam-begv` - Create input/ and completion/ directory structure
+- `clam-68q0` - Implement Completion and Completer types in completion/types.ts
+- `clam-yuq9` - Implement scoring algorithm in completion/scoring.ts
+- `clam-lauj` - Add file path tab completion for @path/to/file mentions
+- `clam-dfmq` - Create shell module (lib/shell.ts) with which, exec, getCompletions
+- `clam-2vrk` - Add Down Arrow navigation for slash command completion menu
+- `clam-y5ni` - Skip input recoloring when completion menu is visible
+- `clam-r25h` - Real-time input coloring based on detected mode (shell/NL/slash)
 
 ## References
 

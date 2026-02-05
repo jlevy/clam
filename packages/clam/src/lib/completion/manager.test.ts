@@ -197,4 +197,92 @@ describe('CompletionManager', () => {
       expect(manager.getCompleters()).not.toContain(completer);
     });
   });
+
+  describe('error handling', () => {
+    it('should handle completer errors gracefully', async () => {
+      const manager = new CompletionManager();
+
+      const errorCompleter: Completer = {
+        name: 'error',
+        isRelevant: () => true,
+        getCompletions: () => Promise.reject(new Error('Completer error')),
+      };
+
+      const workingCompletion: Completion = {
+        value: 'working',
+        group: CompletionGroup.RecommendedCommand,
+        score: 90,
+        source: 'working',
+      };
+
+      manager.registerCompleter(errorCompleter);
+      manager.registerCompleter(createTestCompleter('working', () => true, [workingCompletion]));
+
+      const state = updateInputStateWithTokens(createInputState('w', 1, 'shell', '/'));
+
+      // Should not throw, should return completions from working completer
+      const completions = await manager.getCompletions(state);
+
+      expect(completions).toHaveLength(1);
+      expect(completions[0]?.value).toBe('working');
+    });
+  });
+
+  describe('deduplication', () => {
+    it('should deduplicate completions with same value', async () => {
+      const manager = new CompletionManager();
+
+      const completion1: Completion = {
+        value: 'git',
+        group: CompletionGroup.RecommendedCommand,
+        score: 90,
+        source: 'source1',
+      };
+
+      const completion2: Completion = {
+        value: 'git',
+        group: CompletionGroup.RecommendedCommand,
+        score: 85,
+        source: 'source2',
+      };
+
+      manager.registerCompleter(createTestCompleter('source1', () => true, [completion1]));
+      manager.registerCompleter(createTestCompleter('source2', () => true, [completion2]));
+
+      const state = updateInputStateWithTokens(createInputState('g', 1, 'shell', '/'));
+
+      const completions = await manager.getCompletions(state);
+
+      // Should only have one 'git' completion (highest score kept)
+      const gitCompletions = completions.filter((c) => c.value === 'git');
+      expect(gitCompletions).toHaveLength(1);
+      expect(gitCompletions[0]?.score).toBe(90); // Higher score wins
+    });
+  });
+
+  describe('timeout handling', () => {
+    it('should respect timeout option', async () => {
+      const manager = new CompletionManager();
+
+      const slowCompleter: Completer = {
+        name: 'slow',
+        isRelevant: () => true,
+        getCompletions: () =>
+          new Promise((resolve) =>
+            setTimeout(() => {
+              resolve([]);
+            }, 1000)
+          ),
+      };
+
+      manager.registerCompleter(slowCompleter);
+
+      const state = updateInputStateWithTokens(createInputState('s', 1, 'shell', '/'));
+
+      // With short timeout, should return empty
+      const completions = await manager.getCompletions(state, { timeout: 50 });
+
+      expect(completions).toHaveLength(0);
+    });
+  });
 });

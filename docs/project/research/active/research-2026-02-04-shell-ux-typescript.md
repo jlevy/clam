@@ -1716,6 +1716,272 @@ This matches Node.js CLI conventions while achieving similar UX to xonsh/prompt-
 - [xonsh Completers Tutorial](https://xon.sh/tutorial_completers.html)
 - [prompt-toolkit Completion Styles](https://github.com/xonsh/xonsh/issues/2840)
 
+### 10. ANSI Color Output in Subprocesses
+
+When running commands through a shell wrapper (like a TypeScript shell application), the
+command’s stdout is typically piped rather than connected to a TTY. Many commands check
+`isatty()` and disable color output when not connected to a terminal.
+
+#### 10.1 The Problem
+
+```
+┌─────────────┐     ┌─────────────┐     ┌──────────────┐
+│ Shell App   │────▶│    Pipe     │────▶│   Command    │
+│ (TypeScript)│     │ (not a TTY) │     │ (ls, grep)   │
+└─────────────┘     └─────────────┘     └──────────────┘
+                           │
+                           ▼
+              Command detects !isatty(stdout)
+              → Disables color output
+```
+
+Commands like `ls`, `grep`, `git diff`, and many CLI tools check if their stdout is a
+TTY before outputting ANSI color codes.
+
+#### 10.2 How Xonsh Solves This: PTY (Pseudo-Terminal)
+
+Xonsh uses `pty.openpty()` on POSIX systems to create real pseudo-terminals for
+subprocess stdout/stderr.
+This makes commands think they’re running in an interactive terminal.
+
+**From `xonsh/procs/specs.py` (lines 938, 958, 979):**
+
+```python
+# Line 938: Use TTY for external commands on POSIX
+use_tty = xp.ON_POSIX and not callable_alias
+
+# Line 958: Create PTY instead of pipe for stdout
+r, w = xli.pty.openpty() if use_tty else os.pipe()
+
+# Line 979: Same for stderr
+r, w = xli.pty.openpty() if use_tty else os.pipe()
+```
+
+Xonsh also properly sets the PTY window size to match the parent terminal (lines
+862-875), which is important for commands that wrap output based on terminal width.
+
+**Benefits:**
+
+- Commands automatically output colors without special flags
+- Works with all commands, even those without `--color` flags
+- Proper terminal size propagation for formatting
+
+**Drawbacks:**
+
+- Requires native PTY support (POSIX-specific)
+- More complex implementation
+- Windows support requires different approach (conpty)
+
+#### 10.3 Environment Variables for Forcing Color
+
+Two competing de facto standards exist for controlling terminal color:
+
+| Variable | Value | Effect | Supported By |
+| --- | --- | --- | --- |
+| `FORCE_COLOR` | `1` | Force colors on | chalk, supports-color, many npm tools |
+| `CLICOLOR_FORCE` | `1` | Force colors on | BSD/macOS tools (ls, grep) |
+| `CLICOLOR` | `1` | Enable colors (TTY only) | BSD/macOS tools |
+| `NO_COLOR` | (any) | Disable colors | Many tools (opposite purpose) |
+
+**Priority order (recommended by
+[bixense.com/clicolors](http://bixense.com/clicolors/)):**
+
+1. If `NO_COLOR` is set → disable colors
+2. If `CLICOLOR_FORCE` is set → enable colors (even when not a TTY)
+3. If `CLICOLOR` is set → enable colors only if output is a TTY
+4. Command-line flags (`--color=always`) override environment variables
+
+**Example usage with Execa:**
+
+```typescript
+import { execa } from 'execa';
+
+// Set environment variables to force color output
+const result = await execa('ls', ['-la'], {
+  env: {
+    FORCE_COLOR: '1',
+    CLICOLOR_FORCE: '1',
+  },
+});
+```
+
+#### 10.4 Command-Specific Flags
+
+Many commands support explicit color flags:
+
+| Command | Flag | Example |
+| --- | --- | --- |
+| `ls` | `--color=always` | `ls --color=always -la` |
+| `grep` | `--color=always` | `grep --color=always pattern file` |
+| `git diff` | `--color=always` | `git diff --color=always` |
+| `git log` | `--color=always` | `git log --color=always` |
+| `diff` | `--color=always` | `diff --color=always a b` |
+| `gcc`/`clang` | `-fdiagnostics-color=always` | `gcc -fdiagnostics-color=always` |
+
+**Note:** Using `--color=always` is explicit and always works, but requires knowing each
+command’s specific flag.
+
+#### 10.5 Node.js Implementation Options
+
+**Option A: Use `node-pty` (Full PTY)**
+
+The [node-pty](https://github.com/microsoft/node-pty) package provides `forkpty(3)`
+bindings for Node.js, allowing you to spawn processes with real pseudo-terminals.
+
+```typescript
+import * as pty from 'node-pty';
+
+const ptyProcess = pty.spawn('ls', ['-la'], {
+  name: 'xterm-256color',
+  cols: 80,
+  rows: 30,
+  cwd: process.cwd(),
+  env: process.env,
+});
+
+ptyProcess.onData((data) => {
+  console.log(data); // Includes ANSI colors
+});
+```
+
+**Pros:**
+
+- Commands automatically output colors
+- Works with all commands
+- Proper terminal emulation
+
+**Cons:**
+
+- Native dependency (requires compilation)
+- Windows support requires Windows 10 1809+ (conpty API)
+- More complex error handling
+
+**Option B: Environment Variables (Simple)**
+
+```typescript
+import { execa } from 'execa';
+
+// Create subprocess with color-forcing environment
+async function runWithColors(cmd: string, args: string[]) {
+  return execa(cmd, args, {
+    env: {
+      ...process.env,
+      FORCE_COLOR: '1',
+      CLICOLOR_FORCE: '1',
+      // Preserve TERM for proper color support detection
+      TERM: process.env.TERM || 'xterm-256color',
+    },
+  });
+}
+```
+
+**Pros:**
+
+- Simple, no native dependencies
+- Works with most modern CLI tools
+- Cross-platform
+
+**Cons:**
+
+- Not all commands support these variables
+- Some commands only check `isatty()` regardless
+
+**Option C: stdio: ‘inherit’ (Pass-through)**
+
+```typescript
+import { execa } from 'execa';
+
+// Pass parent's TTY directly to subprocess
+await execa('ls', ['-la'], { stdio: 'inherit' });
+```
+
+**Pros:**
+
+- Perfect color support (uses real TTY)
+- Simple
+
+**Cons:**
+
+- Cannot capture output for processing
+- Output goes directly to terminal
+
+#### 10.6 Recommended Approach for Clam
+
+For a TypeScript shell application, use a **hybrid approach**:
+
+1. **For interactive commands** (where output goes directly to user):
+   - Use `stdio: 'inherit'` when possible
+   - Falls back to PTY via `node-pty` if output needs processing
+
+2. **For captured commands** (where output is processed):
+   - Set `FORCE_COLOR=1` and `CLICOLOR_FORCE=1` environment variables
+   - Add `--color=always` for known commands (git, grep, ls)
+   - Consider `node-pty` if color support is critical
+
+3. **Environment variable setup:**
+
+```typescript
+// lib/shell/color-env.ts
+export const COLOR_FORCING_ENV = {
+  FORCE_COLOR: '1',
+  CLICOLOR_FORCE: '1',
+  // Don't set CLICOLOR alone - it only works with TTY
+};
+
+export function getColorEnv(): NodeJS.ProcessEnv {
+  return {
+    ...process.env,
+    ...COLOR_FORCING_ENV,
+    TERM: process.env.TERM || 'xterm-256color',
+  };
+}
+```
+
+4. **Command-specific handling:**
+
+```typescript
+// lib/shell/color-commands.ts
+const COLOR_ALWAYS_COMMANDS: Record<string, string[]> = {
+  ls: ['--color=always'],
+  grep: ['--color=always'],
+  egrep: ['--color=always'],
+  fgrep: ['--color=always'],
+  diff: ['--color=always'],
+  git: [], // git subcommands need --color individually
+};
+
+const GIT_COLOR_SUBCOMMANDS = ['diff', 'log', 'show', 'status', 'branch'];
+
+export function addColorFlags(cmd: string, args: string[]): string[] {
+  if (cmd === 'git' && args.length > 0 && GIT_COLOR_SUBCOMMANDS.includes(args[0])) {
+    // Insert --color=always after the subcommand
+    return [args[0], '--color=always', ...args.slice(1)];
+  }
+
+  const extraFlags = COLOR_ALWAYS_COMMANDS[cmd];
+  if (extraFlags) {
+    return [...extraFlags, ...args];
+  }
+
+  return args;
+}
+```
+
+#### 10.7 Testing Color Output
+
+To verify color output is working:
+
+```bash
+# Should show colors even when piped
+ls --color=always | cat
+
+# Test FORCE_COLOR
+FORCE_COLOR=1 npm test 2>&1 | cat
+
+# Test with a Node.js script
+node -e "console.log('\x1b[31mRed\x1b[0m')" | cat
+```
+
 * * *
 
 ## Next Steps
@@ -1753,6 +2019,14 @@ This matches Node.js CLI conventions while achieving similar UX to xonsh/prompt-
 - [ ] Benchmark microfuzz vs fuzzball vs fuse.js for command completion
 - [ ] Evaluate tiny-glob vs fast-glob for file path completion
 - [ ] Consider hybrid: kash data files + microfuzz for simpler implementation
+
+### ANSI Color Output
+
+- [ ] Implement `getColorEnv()` helper to set `FORCE_COLOR` and `CLICOLOR_FORCE`
+- [ ] Create `addColorFlags()` for command-specific `--color=always` injection
+- [ ] Evaluate `node-pty` for PTY-based color support (if env vars insufficient)
+- [ ] Test color output with common commands (ls, grep, git diff)
+- [ ] Consider Windows support via conpty if using `node-pty`
 
 * * *
 
@@ -1854,3 +2128,20 @@ This matches Node.js CLI conventions while achieving similar UX to xonsh/prompt-
   commands)
 - [tldr-node-client](https://github.com/tldr-pages/tldr-node-client) - Node.js client
 - [cheat.sh](https://github.com/chubin/cheat.sh) - Unified cheat sheet access
+
+### Terminal Color & PTY
+
+- [node-pty](https://github.com/microsoft/node-pty) - Fork pseudoterminals in Node.js
+  (Microsoft)
+- [CLICOLOR Standard](http://bixense.com/clicolors/) - De facto standard for CLI color
+  control
+- [NO_COLOR](https://no-color.org/) - Standard for disabling ANSI color output
+- [FORCE_COLOR](https://force-color.org/) - Standard for forcing ANSI color output
+- [chalk](https://github.com/chalk/chalk) - Terminal string styling for Node.js
+  (supports FORCE_COLOR)
+- [supports-color](https://github.com/chalk/supports-color) - Detect terminal color
+  support
+- [colors.js Piping Issue](https://github.com/Marak/colors.js/issues/127) - Discussion
+  of color loss when piping
+- [Node.js FORCE_COLOR Issue](https://github.com/nodejs/node/issues/37404) - Request to
+  document FORCE_COLOR/NO_COLOR

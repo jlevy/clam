@@ -26,6 +26,10 @@ import type { InputMode, ModeDetector } from './mode-detection.js';
 import { isExplicitShell, stripShellTrigger, suggestCommand } from './mode-detection.js';
 import type { OutputWriter } from './output.js';
 import type { ShellModule } from './shell.js';
+import {
+  createCompletionIntegration,
+  type CompletionIntegration,
+} from './completion/integration.js';
 
 /** Check if stdout is a TTY for cursor control sequences */
 const isTTY = process.stdout.isTTY ?? false;
@@ -103,12 +107,25 @@ export class InputReader {
   private commands = new Map<string, SlashCommand>();
   private running = false;
   private history: string[] = [];
+  private historyModes = new Map<string, InputMode>(); // Store mode for each history entry
   private lastCtrlCTime = 0; // Track last Ctrl+C for double-tap to quit
+  private completionIntegration: CompletionIntegration;
+  private completionAcceptedText: string | null = null; // Text to re-insert after completion accept
+  private suppressPromptNewline = false; // Suppress leading newline after completion accept
+  private entityCompletionCursor: number | null = null; // Cursor position for entity completion insertion
 
   constructor(options: InputReaderOptions) {
     this.options = options;
     this.loadHistory();
     this.registerBuiltinCommands();
+
+    // Initialize completion system
+    this.completionIntegration = createCompletionIntegration({
+      enableCommands: true,
+      enableSlashCommands: true,
+      enableEntities: true,
+      cwd: process.cwd(),
+    });
   }
 
   /**
@@ -528,13 +545,222 @@ export class InputReader {
      * - Command-like input → 'shell' mode (white $)
      * - Question/NL input → 'nl' mode (pink ▶)
      */
+    // Track if completion menu was triggered
+    let completionMenuTriggered = false;
+
     const keypressHandler = (_ch: string, key: readline.Key | undefined) => {
       if (!key) return;
 
       const currentLine = this.rl?.line ?? '';
       const modeDetector = this.options.modeDetector;
 
-      // === MENU NAVIGATION (doesn't affect mode) ===
+      // === @ KEY: Immediately trigger entity completions ===
+      // @ stays visible while menu is shown, then replaced with path on accept
+      if (key.sequence === '@' && isTTY) {
+        // Defer to after readline processes the @
+        setImmediate(() => {
+          const lineWithAt = this.rl?.line ?? '';
+          const cursorPos =
+            (this.rl as readline.Interface & { cursor?: number })?.cursor ?? lineWithAt.length;
+
+          // Only trigger if @ is at a valid position (after whitespace or at start)
+          const atIndex = lineWithAt.lastIndexOf('@');
+          if (atIndex >= 0 && (atIndex === 0 || /\s/.test(lineWithAt[atIndex - 1] ?? ''))) {
+            // Store the @ position for proper replacement on accept
+            this.entityCompletionCursor = atIndex;
+
+            completionMenuTriggered = true;
+            const mode = modeDetector?.detectModeSync(lineWithAt) ?? 'shell';
+            const completionMode = mode === 'ambiguous' || mode === 'nothing' ? 'shell' : mode;
+            void this.completionIntegration
+              .updateCompletions(lineWithAt, cursorPos, completionMode)
+              .then(() => {
+                if (this.completionIntegration.isActive()) {
+                  // Save cursor, reset colors, render menu below, restore cursor
+                  process.stdout.write('\x1b[s\x1b[0m\n');
+                  const menuOutput = this.completionIntegration.renderMenuRaw();
+                  if (menuOutput) {
+                    process.stdout.write(menuOutput);
+                  }
+                  process.stdout.write('\x1b[u');
+                  // Note: Don't recolorLine here - menu is now visible, color would bleed
+                }
+              });
+          }
+        });
+        return;
+      }
+
+      // === TAB: Trigger or navigate completion menu ===
+      if (key.name === 'tab' && isTTY) {
+        const cursorPos =
+          (this.rl as readline.Interface & { cursor?: number })?.cursor ?? currentLine.length;
+        const mode = modeDetector?.detectModeSync(currentLine) ?? 'shell';
+        const completionMode = mode === 'ambiguous' || mode === 'nothing' ? 'shell' : mode;
+
+        if (!completionMenuTriggered) {
+          // First Tab - trigger completions
+          completionMenuTriggered = true;
+          void this.completionIntegration
+            .updateCompletions(currentLine, cursorPos, completionMode)
+            .then(() => {
+              if (this.completionIntegration.isActive()) {
+                // Save cursor, reset colors, render menu below, restore cursor
+                process.stdout.write('\x1b[s\x1b[0m\n');
+                const menuOutput = this.completionIntegration.renderMenuRaw();
+                if (menuOutput) {
+                  process.stdout.write(menuOutput);
+                }
+                process.stdout.write('\x1b[u');
+                // Note: Don't recolorLine here - menu is now visible, color would bleed
+              }
+            });
+        } else {
+          // Subsequent Tab - navigate in menu
+          const modifiers = { shift: key.shift ?? false, ctrl: false, alt: false };
+          // Get current menu line count before navigation
+          const prevLineCount = this.completionIntegration.getState().menuLines;
+          const result = this.completionIntegration.handleKeypress('Tab', modifiers);
+          if (result.handled && this.completionIntegration.isActive()) {
+            // Save cursor, reset colors, clear old menu, re-render, restore cursor
+            process.stdout.write('\x1b[s\x1b[0m');
+            if (prevLineCount > 0) {
+              process.stdout.write('\n');
+              for (let i = 0; i < prevLineCount; i++) {
+                process.stdout.write('\x1b[2K\n');
+              }
+              process.stdout.write(`\x1b[${prevLineCount}A`);
+            }
+            // Re-render menu with new selection
+            const menuOutput = this.completionIntegration.renderMenuRaw();
+            if (menuOutput) {
+              process.stdout.write(menuOutput);
+            }
+            process.stdout.write('\x1b[u');
+          }
+        }
+        return;
+      }
+
+      // === ARROW KEYS: Navigate completion menu ===
+      if (completionMenuTriggered && (key.name === 'up' || key.name === 'down')) {
+        const keyName = key.name === 'up' ? 'ArrowUp' : 'ArrowDown';
+        // Get current menu line count before navigation
+        const prevLineCount = this.completionIntegration.getState().menuLines;
+        const result = this.completionIntegration.handleKeypress(keyName, {});
+        if (result.handled && this.completionIntegration.isActive()) {
+          // Save cursor, reset colors, clear old menu, re-render, restore cursor
+          process.stdout.write('\x1b[s\x1b[0m');
+          if (prevLineCount > 0) {
+            process.stdout.write('\n');
+            for (let i = 0; i < prevLineCount; i++) {
+              process.stdout.write('\x1b[2K\n');
+            }
+            process.stdout.write(`\x1b[${prevLineCount}A`);
+          }
+          // Re-render menu with new selection
+          const menuOutput = this.completionIntegration.renderMenuRaw();
+          if (menuOutput) {
+            process.stdout.write(menuOutput);
+          }
+          process.stdout.write('\x1b[u');
+        }
+        return;
+      }
+
+      // === ENTER: Accept completion or submit ===
+      if (
+        key.name === 'return' &&
+        completionMenuTriggered &&
+        this.completionIntegration.isActive()
+      ) {
+        const result = this.completionIntegration.handleKeypress('Enter', {});
+        if (result.handled && result.insertText && this.rl) {
+          // Clear the menu
+          const lineCount = this.completionIntegration.getState().menuLines;
+          if (lineCount > 0) {
+            process.stdout.write('\n');
+            for (let i = 0; i < lineCount; i++) {
+              process.stdout.write('\x1b[2K\n');
+            }
+            process.stdout.write(`\x1b[${lineCount}A`);
+          }
+
+          // Note: Readline will process Enter and add a newline.
+          // We'll compensate for this in prompt() when we detect completionAcceptedText.
+
+          // Construct the new line by inserting completion at the correct position
+          // For @ entity triggers: replace @<prefix> with the completion value
+          // For Tab command triggers: replace the command prefix with the completion value
+          const rlInternal = this.rl as readline.Interface & { line: string; cursor: number };
+          const oldLine = rlInternal.line;
+          const cursorPos = rlInternal.cursor;
+
+          let newLine: string;
+
+          if (this.entityCompletionCursor !== null) {
+            // Entity completion: replace from @ to cursor with completion value
+            const atPos = this.entityCompletionCursor;
+            const beforeAt = oldLine.slice(0, atPos);
+            const afterCursor = oldLine.slice(cursorPos);
+            newLine = beforeAt + result.insertText + ' ' + afterCursor;
+            this.entityCompletionCursor = null;
+          } else {
+            // Command/other completion: find start of current token and replace it
+            // Look backwards from cursor to find start of current word
+            let tokenStart = cursorPos;
+            while (tokenStart > 0 && !/\s/.test(oldLine[tokenStart - 1] ?? '')) {
+              tokenStart--;
+            }
+            const beforeToken = oldLine.slice(0, tokenStart);
+            const afterCursor = oldLine.slice(cursorPos);
+            newLine = beforeToken + result.insertText + ' ' + afterCursor;
+          }
+
+          // Store the complete new line to re-insert after the Enter is processed
+          this.completionAcceptedText = newLine;
+
+          completionMenuTriggered = false;
+          this.completionIntegration.reset();
+          return;
+        }
+      }
+
+      // === ESCAPE: Dismiss completion menu ===
+      if (key.name === 'escape' && completionMenuTriggered) {
+        const lineCount = this.completionIntegration.getState().menuLines;
+        if (lineCount > 0) {
+          process.stdout.write('\n');
+          for (let i = 0; i < lineCount; i++) {
+            process.stdout.write('\x1b[2K\n');
+          }
+          process.stdout.write(`\x1b[${lineCount}A`);
+        }
+        completionMenuTriggered = false;
+        this.completionIntegration.reset();
+        const mode = modeDetector?.detectModeSync(currentLine) ?? 'nl';
+        this.recolorLine(currentLine, mode);
+        return;
+      }
+
+      // === ANY OTHER KEY: Dismiss completion menu if open ===
+      if (
+        completionMenuTriggered &&
+        !['tab', 'up', 'down', 'return', 'escape'].includes(key.name ?? '')
+      ) {
+        const lineCount = this.completionIntegration.getState().menuLines;
+        if (lineCount > 0) {
+          process.stdout.write('\n');
+          for (let i = 0; i < lineCount; i++) {
+            process.stdout.write('\x1b[2K\n');
+          }
+          process.stdout.write(`\x1b[${lineCount}A`);
+        }
+        completionMenuTriggered = false;
+        this.completionIntegration.reset();
+      }
+
+      // === LEGACY MENU NAVIGATION (slash commands) ===
       if (menuShownForCurrentInput && this.menuItems.length > 0) {
         if (key.name === 'down') {
           const newIndex =
@@ -596,7 +822,11 @@ export class InputReader {
         // Defer until readline has processed the keystroke
         setImmediate(() => {
           const actualLine = this.rl?.line ?? '';
-          const newMode = modeDetector.detectModeSync(actualLine);
+
+          // Check if this line is from history (use stored mode if available)
+          // This prevents shell commands from history being colored as NL mode
+          const storedMode = this.historyModes.get(actualLine);
+          const newMode = storedMode ?? modeDetector.detectModeSync(actualLine);
 
           // Always update mode and recolor to ensure consistency
           // This handles: mode changes, backspace, and edge cases
@@ -621,6 +851,9 @@ export class InputReader {
           if (actualLine === '') {
             menuShownForCurrentInput = false;
           }
+
+          // Note: Completion menu is triggered only by Tab press (handled above)
+          // Not on every keystroke - this is intentional for shell-style completion
         });
       }
     };
@@ -714,11 +947,10 @@ export class InputReader {
           const mode = await modeDetector.detectMode(trimmed);
 
           if (mode === 'shell') {
-            // Route shell command directly
+            // Route shell command directly - use stdio inherit for real TTY (colors work)
             const command = isExplicitShell(trimmed) ? stripShellTrigger(trimmed) : trimmed;
             try {
-              const result = await shell.exec(command, { captureOutput: true });
-              output.shellOutput(result);
+              await shell.exec(command, { captureOutput: false });
             } catch (error) {
               if (error instanceof Error) {
                 output.error(`Shell error: ${error.message}`);
@@ -731,10 +963,9 @@ export class InputReader {
           if (mode === 'ambiguous') {
             const confirmed = await this.confirmShellCommand(trimmed);
             if (confirmed) {
-              // User confirmed - execute as shell command
+              // User confirmed - execute as shell command with real TTY (colors work)
               try {
-                const result = await shell.exec(trimmed, { captureOutput: true });
-                output.shellOutput(result);
+                await shell.exec(trimmed, { captureOutput: false });
               } catch (error) {
                 if (error instanceof Error) {
                   output.error(`Shell error: ${error.message}`);
@@ -843,13 +1074,42 @@ export class InputReader {
 
       while (true) {
         // Include input color at end of prompt so typed text has correct color
-        // Add newline before first prompt for cleaner visual separation
+        // Add newline before first prompt for cleaner visual separation (unless suppressed)
+        const shouldAddNewline = isFirstLine && !this.suppressPromptNewline;
+        this.suppressPromptNewline = false; // Reset flag after checking
         const promptText = isFirstLine
-          ? `\n${colors.inputPrompt(`${promptChars.input} `)}${inputColors.naturalLanguage}`
+          ? `${shouldAddNewline ? '\n' : ''}${colors.inputPrompt(`${promptChars.input} `)}${inputColors.naturalLanguage}`
           : `${colors.muted(`${promptChars.continuation} `)}${inputColors.naturalLanguage}`;
         const line = await this.question(promptText);
         // Reset color after input
         process.stdout.write(inputColors.reset);
+
+        // Check if a completion was just accepted - if so, re-prompt with the completion text
+        if (this.completionAcceptedText !== null) {
+          const textToInsert = this.completionAcceptedText;
+          this.completionAcceptedText = null;
+
+          // Readline processed Enter and added a newline, leaving us below the input line.
+          // Move up one line and clear it to prepare for the new prompt with completion text.
+          if (isTTY) {
+            process.stdout.write('\x1b[1A\x1b[2K');
+          }
+
+          // Suppress the leading newline so we print the new prompt cleanly.
+          this.suppressPromptNewline = true;
+
+          // Pre-fill the next prompt with the completion text
+          if (this.rl) {
+            setImmediate(() => {
+              this.rl?.write(textToInsert);
+              // Detect and set the mode for proper coloring
+              const mode = this.options.modeDetector?.detectModeSync(textToInsert) ?? 'shell';
+              this.currentInputMode = mode;
+              this.recolorLine(textToInsert, mode);
+            });
+          }
+          continue; // Skip processing this line, loop back for new input
+        }
 
         // Slash commands submit immediately on first Enter
         if (isFirstLine && line.startsWith('/')) {
@@ -860,6 +1120,8 @@ export class InputReader {
               `${colors.inputPromptDim(`${promptChars.input} `)}${colors.slashCommand(line)}\n`
             );
           }
+          // Store mode for history navigation
+          this.historyModes.set(line, 'slash');
           this.currentInputMode = 'nl'; // Reset for next input
           return line;
         }
@@ -873,6 +1135,8 @@ export class InputReader {
               `${colors.inputPromptDim(`${promptChars.input} `)}${colors.shellCommand(line)}\n`
             );
           }
+          // Store mode for history navigation
+          this.historyModes.set(line, 'shell');
           this.currentInputMode = 'nl'; // Reset for next input
           return line;
         }
@@ -927,7 +1191,10 @@ export class InputReader {
         isFirstLine = false;
       }
 
-      return lines.join('\n');
+      // Store mode for history navigation (NL mode for multi-line input)
+      const fullInput = lines.join('\n');
+      this.historyModes.set(fullInput, 'nl');
+      return fullInput;
     } catch {
       // Readline closed
       return null;
