@@ -1,4 +1,6 @@
 ---
+close_reason: Implemented color-env.ts with COLOR_FORCING_ENV and getColorEnv()
+closed_at: 2026-02-05T08:18:01.416Z
 created_at: 2026-02-05T07:24:49.699Z
 dependencies:
   - target: is-01kgpb0seczm9e35cxxq4z2w3s
@@ -8,9 +10,9 @@ kind: task
 labels: []
 priority: 2
 spec_path: docs/project/specs/active/plan-2026-02-05-ansi-color-subprocess-output.md
-status: open
+status: closed
 title: Create color-env.ts with FORCE_COLOR and CLICOLOR_FORCE env helpers
 type: is
-updated_at: 2026-02-05T07:24:55.737Z
-version: 2
+updated_at: 2026-02-05T08:18:01.417Z
+version: 4
 ---
