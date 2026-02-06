@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, jest } from 'bun:test';
 import {
   AQUATIC_VERBS,
   createSpinner,
@@ -47,9 +47,9 @@ describe('spinner', () => {
     });
 
     it('should contain core aquatic verbs', () => {
-      const expectedVerbs = ['Swimming', 'Drifting', 'Bubbling', 'Clamming', 'Filtering'];
+      const expectedVerbs = ['Swimming', 'Drifting', 'Bubbling', 'Clamming', 'Filtering'] as const;
       for (const verb of expectedVerbs) {
-        expect(AQUATIC_VERBS).toContain(verb);
+        expect(AQUATIC_VERBS.includes(verb)).toBe(true);
       }
     });
 
@@ -74,7 +74,7 @@ describe('spinner', () => {
     it('should return verbs from the list', () => {
       const selector = createVerbSelector();
       const verb = selector();
-      expect(AQUATIC_VERBS).toContain(verb);
+      expect((AQUATIC_VERBS as readonly string[]).includes(verb)).toBe(true);
     });
 
     it('should return different verbs over multiple calls', () => {
@@ -112,13 +112,13 @@ describe('spinner', () => {
     let mockWrite: (text: string) => void;
 
     beforeEach(() => {
-      vi.useFakeTimers();
+      jest.useFakeTimers();
       output = [];
       mockWrite = (text: string) => output.push(text);
     });
 
     afterEach(() => {
-      vi.useRealTimers();
+      jest.useRealTimers();
     });
 
     describe('plain mode', () => {
@@ -130,7 +130,7 @@ describe('spinner', () => {
         expect(output[0]).toContain('─');
         expect(output[0]).not.toContain('...');
 
-        vi.advanceTimersByTime(80);
+        jest.advanceTimersByTime(80);
         expect(output[1]).toContain('~');
 
         spinner.stop();
@@ -202,10 +202,10 @@ describe('spinner', () => {
         spinner.start();
 
         // Collect outputs over time to check ellipsis animation
-        vi.advanceTimersByTime(200); // First frame: "Verb"
-        vi.advanceTimersByTime(150); // Second frame: "Verb."
-        vi.advanceTimersByTime(150); // Third frame: "Verb.."
-        vi.advanceTimersByTime(400); // Fourth frame: "Verb..."
+        jest.advanceTimersByTime(200); // First frame: "Verb"
+        jest.advanceTimersByTime(150); // Second frame: "Verb."
+        jest.advanceTimersByTime(150); // Third frame: "Verb.."
+        jest.advanceTimersByTime(400); // Fourth frame: "Verb..."
 
         // Check that we see progressive dots
         const dotsPattern = output.filter(
