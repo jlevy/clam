@@ -16,6 +16,6 @@ spec_path: docs/project/specs/active/plan-2026-02-04-streaming-markdown-renderin
 status: closed
 title: Create renderMarkdownBlock() utility using marked-terminal
 type: is
-updated_at: 2026-02-06T06:10:59.017Z
-version: 5
+updated_at: 2026-02-06T06:23:55.703Z
+version: 7
 ---

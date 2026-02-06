@@ -14,6 +14,6 @@ spec_path: docs/project/specs/active/plan-2026-02-04-streaming-markdown-renderin
 status: closed
 title: Update tests for marked-terminal output format
 type: is
-updated_at: 2026-02-06T06:10:59.853Z
-version: 3
+updated_at: 2026-02-06T06:23:55.719Z
+version: 5
 ---

@@ -19,6 +19,6 @@ spec_path: docs/project/specs/active/plan-2026-02-04-streaming-markdown-renderin
 status: closed
 title: "Spec: Phase 4 - Enhanced Table Rendering with marked-terminal"
 type: is
-updated_at: 2026-02-06T06:11:15.976Z
-version: 9
+updated_at: 2026-02-06T06:23:55.689Z
+version: 11
 ---

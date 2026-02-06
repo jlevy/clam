@@ -12,6 +12,6 @@ spec_path: docs/project/specs/active/plan-2026-02-04-streaming-markdown-renderin
 status: closed
 title: Remove unused custom formatters
 type: is
-updated_at: 2026-02-06T06:11:15.566Z
-version: 2
+updated_at: 2026-02-06T06:23:55.726Z
+version: 4
 ---
