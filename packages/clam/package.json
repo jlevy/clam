@@ -63,9 +63,12 @@
     "@zed-industries/claude-code-acp": "^0.14.0",
     "cli-highlight": "^2.1.11",
     "dotenv": "^16.4.5",
+    "marked": "^15.0.12",
+    "marked-terminal": "^7.3.0",
     "picocolors": "^1.1.1"
   },
   "devDependencies": {
+    "@types/marked-terminal": "^6.1.1",
     "@types/node": "^22.19.7",
     "@vitest/coverage-v8": "^2.1.9",
     "publint": "^0.3.17",

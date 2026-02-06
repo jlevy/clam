@@ -29,6 +29,7 @@
 
 export {
   createBlockRenderer,
+  renderMarkdownBlock,
   type BlockRenderer,
   type BlockRendererOptions,
 } from './block-renderer.js';

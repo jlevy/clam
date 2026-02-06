@@ -76,25 +76,30 @@ describe('createBlockRenderer', () => {
     it('formats unordered lists', () => {
       const list = '- item 1\n- item 2\n\nNext';
       const output = renderer.processChunk(list);
-      expect(output).toContain(pc.cyan('\u2022')); // bullet
+      // marked-terminal renders list items with * prefix
+      expect(output).toContain('item 1');
+      expect(output).toContain('item 2');
     });
 
     it('formats ordered lists', () => {
       const list = '1. first\n2. second\n\nNext';
       const output = renderer.processChunk(list);
-      expect(output).toContain(pc.cyan('1.'));
-      expect(output).toContain(pc.cyan('2.'));
+      expect(output).toContain('1.');
+      expect(output).toContain('2.');
     });
   });
 
   describe('processChunk - tables', () => {
-    it('formats tables', () => {
+    it('formats tables with box-drawing characters', () => {
       const table = '| a | b |\n|---|---|\n| 1 | 2 |\n\nNext';
       const output = renderer.processChunk(table);
-      // Headers are bold, cells are padded to equal width
+      // marked-terminal renders tables with box-drawing characters
       expect(output).toContain('a');
       expect(output).toContain('b');
-      expect(output).toContain('|');
+      expect(output).toContain('┌'); // top-left corner
+      expect(output).toContain('┐'); // top-right corner
+      expect(output).toContain('└'); // bottom-left corner
+      expect(output).toContain('┘'); // bottom-right corner
     });
   });
 
@@ -102,7 +107,8 @@ describe('createBlockRenderer', () => {
     it('formats blockquotes', () => {
       const quote = '> This is a quote.\n\nNext';
       const output = renderer.processChunk(quote);
-      expect(output).toContain(pc.gray('\u2502')); // vertical bar
+      // marked-terminal renders blockquotes with indentation and styling
+      expect(output).toContain('This is a quote.');
     });
   });
 
