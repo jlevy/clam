@@ -154,6 +154,16 @@ export const colors = {
 
   /** Dim text */
   dim: (s: string) => pc.dim(s),
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SPINNER COLORS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /** Spinner wave icon - bold blue for visibility */
+  spinnerIcon: (s: string) => pc.bold(pc.blue(s)),
+
+  /** Spinner text (verbs, messages) - dim blue for subtlety */
+  spinnerText: (s: string) => pc.dim(pc.blue(s)),
 };
 
 /**
