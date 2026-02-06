@@ -51,7 +51,7 @@ export function renderMarkdownBlock(markdown: string): string {
     (markedTerminal as any)({
       width: getTerminalWidth(),
       reflowText: true,
-      showSectionPrefix: false,
+      showSectionPrefix: true,
       tab: 2,
     })
   );
@@ -59,8 +59,8 @@ export function renderMarkdownBlock(markdown: string): string {
 
   const rendered = markedInstance.parse(trimmed) as string;
 
-  // marked-terminal may add extra trailing newlines; normalize to single trailing newline
-  return rendered.replace(/\n+$/, '\n');
+  // Normalize to double newline for proper spacing between blocks
+  return rendered.replace(/\n+$/, '\n\n');
 }
 
 /**
@@ -215,7 +215,7 @@ function formatCodeFence(
   const langIndicator = lang ? pc.gray(`[${lang}]`) : '';
   const border = pc.gray('```');
 
-  return `${border}${langIndicator}\n${highlighted}\n${border}\n`;
+  return `${border}${langIndicator}\n${highlighted}\n${border}\n\n`;
 }
 
 /**
