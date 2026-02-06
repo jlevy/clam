@@ -30,12 +30,16 @@ export interface ClamCodeConfig {
 
   /** Agent command to spawn (default: claude-code-acp) */
   agentCommand?: string;
+
+  /** Enable markdown rendering in streaming output (default: true) */
+  markdownRendering?: boolean;
 }
 
 const DEFAULT_CONFIG: ClamCodeConfig = {
   truncateAfter: 10,
   showTimestamps: false,
   verbose: false,
+  markdownRendering: true,
   // agentCommand is undefined by default - uses embedded adapter
 };
 
@@ -110,6 +114,9 @@ export function loadConfig(cwd?: string): ClamCodeConfig {
         if (typeof obj.verbose === 'boolean') {
           fileConfig.verbose = obj.verbose;
         }
+        if (typeof obj.markdownRendering === 'boolean') {
+          fileConfig.markdownRendering = obj.markdownRendering;
+        }
         if (typeof obj.agentCommand === 'string' && obj.agentCommand.length > 0) {
           fileConfig.agentCommand = obj.agentCommand;
         }
@@ -144,6 +151,9 @@ export function loadConfig(cwd?: string): ClamCodeConfig {
   if (process.env.CLAM_CODE_AGENT_COMMAND) {
     config.agentCommand = process.env.CLAM_CODE_AGENT_COMMAND;
   }
+  if (process.env.CLAM_CODE_NO_MARKDOWN === '1') {
+    config.markdownRendering = false;
+  }
 
   return config;
 }
@@ -157,6 +167,7 @@ export function formatConfig(config: ClamCodeConfig): string[] {
     `truncateAfter: ${config.truncateAfter ?? 10}`,
     `showTimestamps: ${config.showTimestamps ?? false}`,
     `verbose: ${config.verbose ?? false}`,
+    `markdownRendering: ${config.markdownRendering ?? true}`,
     `agentCommand: ${config.agentCommand ?? 'claude-code-acp'}`,
     `configDir: ${getConfigDir()}`,
   ];
