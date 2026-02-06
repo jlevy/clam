@@ -43,7 +43,7 @@ describe('loadConfig', () => {
 
   it('should return default config when no config file exists', () => {
     const config = loadConfig('/nonexistent/path');
-    expect(config.truncateAfter).toBe(5);
+    expect(config.truncateAfter).toBe(3);
     expect(config.showTimestamps).toBe(false);
     expect(config.verbose).toBe(false);
   });
@@ -69,13 +69,13 @@ describe('loadConfig', () => {
   it('should ignore invalid CLAM_CODE_TRUNCATE_AFTER values', () => {
     process.env.CLAM_CODE_TRUNCATE_AFTER = 'invalid';
     const config = loadConfig('/nonexistent/path');
-    expect(config.truncateAfter).toBe(5); // default
+    expect(config.truncateAfter).toBe(3); // default
   });
 
   it('should ignore zero CLAM_CODE_TRUNCATE_AFTER', () => {
     process.env.CLAM_CODE_TRUNCATE_AFTER = '0';
     const config = loadConfig('/nonexistent/path');
-    expect(config.truncateAfter).toBe(5); // default - 0 is not valid
+    expect(config.truncateAfter).toBe(3); // default - 0 is not valid
   });
 
   it('should respect CLAM_CODE_AGENT_COMMAND environment variable', () => {
