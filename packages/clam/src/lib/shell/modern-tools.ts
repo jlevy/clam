@@ -116,7 +116,7 @@ export async function detectInstalledTools(): Promise<Map<string, AbsolutePath>>
 /**
  * Format tool status for startup display.
  *
- * Example output: "Modern tools: ✔ eza ✔ bat ✔ rg ✗ dust"
+ * Example output: "Found tools: ✔ eza ✔ bat ✔ rg ✗ dust"
  *
  * @param installed - Map of tool name to path (presence indicates availability)
  * @param options - Formatting options
@@ -145,7 +145,7 @@ export function formatToolStatus(
     return '';
   }
 
-  return `Modern tools: ${parts.join(' ')}`;
+  return `Found tools: ${parts.join(' ')}`;
 }
 
 /**

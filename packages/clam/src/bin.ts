@@ -219,7 +219,7 @@ async function main(): Promise<void> {
     const installedTools = await detectInstalledTools();
     shell.setInstalledTools(installedTools);
 
-    const toolStatus = formatToolStatus(installedTools, { showOnlyInstalled: true });
+    const toolStatus = formatToolStatus(installedTools);
     if (toolStatus) {
       output.writeLine(colors.muted(toolStatus));
     }

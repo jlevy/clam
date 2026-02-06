@@ -60,7 +60,7 @@ describe('Modern Tools', () => {
       ]);
 
       const status = formatToolStatus(installed);
-      expect(status).toContain('Modern tools:');
+      expect(status).toContain('Found tools:');
       expect(status).toContain('✔ eza');
       expect(status).toContain('✔ bat');
       expect(status).toContain('✗ rg');
