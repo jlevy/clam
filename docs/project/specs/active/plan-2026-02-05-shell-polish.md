@@ -266,38 +266,31 @@ packages/clam/src/lib/
 **IMPORTANT**: Tool detection must happen in ONE place only.
 
 - `modern-tools.ts` owns detection via `detectInstalledTools()` which returns
-  `Map<string, boolean>`
+  `Map<string, AbsolutePath>` (only installed tools are in the map)
 - Other modules (zoxide.ts, command-aliases.ts) consume the detection results
 - No module should re-implement `which` checks or duplicate the exec/promisify pattern
 
 **Shared utilities** (`shell/utils.ts`):
 
 ```typescript
-// Shared exec helper - single source of truth
-import { exec as execCallback } from 'node:child_process';
-import { promisify } from 'node:util';
+// Branded type for type-safe absolute paths
+export type AbsolutePath = string & { readonly __brand: 'AbsolutePath' };
 
-export const execPromise = promisify(execCallback);
+export function asAbsolutePath(path: string): AbsolutePath;
 
-export async function isCommandAvailable(command: string, timeout = 500): Promise<boolean> {
-  try {
-    await execPromise(`which ${command}`, { timeout });
-    return true;
-  } catch {
-    return false;
-  }
-}
+// Get command path (returns null if not found)
+export async function getCommandPath(command: string, timeout = 500): Promise<AbsolutePath | null>;
+
+// Convenience boolean check
+export async function isCommandAvailable(command: string, timeout = 500): Promise<boolean>;
 ```
 
 **Consuming detection results** (not re-checking):
 
 ```typescript
-// In zoxide.ts - WRONG (duplicates detection):
-export async function isZoxideInstalled(): Promise<boolean> { ... }
-
-// CORRECT - consume from detectInstalledTools():
-export function isZoxideAvailable(installedTools: Map<string, boolean>): boolean {
-  return installedTools.get('zoxide') ?? false;
+// In zoxide.ts - consume from detectInstalledTools():
+export function isZoxideAvailable(installedTools: Map<string, AbsolutePath>): boolean {
+  return installedTools.has('zoxide');  // Presence in map = installed
 }
 ```
 
@@ -326,9 +319,9 @@ export const MODERN_TOOLS: ToolInfo[] = [
   { name: 'fd', command: 'fd', replaces: 'find', description: 'Modern find' },
 ];
 
-export async function detectInstalledTools(): Promise<Map<string, boolean>>;
-export function getToolAliases(installed: Map<string, boolean>, config: ToolConfig): Map<string, string[]>;
-export function formatToolStatus(installed: Map<string, boolean>): string;
+// Returns map of tool name -> absolute path (only installed tools are in map)
+export async function detectInstalledTools(): Promise<Map<string, AbsolutePath>>;
+export function formatToolStatus(installed: Map<string, AbsolutePath>): string;
 ```
 
 ### TTY Management API

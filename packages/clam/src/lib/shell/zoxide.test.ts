@@ -10,21 +10,17 @@ import {
   buildZiCommand,
   isZoxideAvailable,
 } from './zoxide.js';
+import { asAbsolutePath, type AbsolutePath } from './utils.js';
 
 describe('Zoxide Integration', () => {
   describe('isZoxideAvailable', () => {
     it('should return true when zoxide is in the map', () => {
-      const tools = new Map([['zoxide', true]]);
+      const tools = new Map<string, AbsolutePath>([['zoxide', asAbsolutePath('/usr/bin/zoxide')]]);
       expect(isZoxideAvailable(tools)).toBe(true);
     });
 
-    it('should return false when zoxide is not installed', () => {
-      const tools = new Map([['zoxide', false]]);
-      expect(isZoxideAvailable(tools)).toBe(false);
-    });
-
     it('should return false when zoxide is not in the map', () => {
-      const tools = new Map<string, boolean>();
+      const tools = new Map<string, AbsolutePath>();
       expect(isZoxideAvailable(tools)).toBe(false);
     });
   });

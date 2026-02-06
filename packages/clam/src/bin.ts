@@ -13,6 +13,7 @@ import { createInputReader } from './lib/input.js';
 import { createModeDetector } from './lib/mode-detection.js';
 import { createOutputWriter, type PermissionOption } from './lib/output.js';
 import { createShellModule } from './lib/shell.js';
+import { formatPromptWithContext } from './lib/prompts.js';
 import { detectInstalledTools, formatToolStatus } from './lib/shell/index.js';
 import { installEmergencyCleanup } from './lib/tty/index.js';
 
@@ -232,6 +233,9 @@ async function main(): Promise<void> {
 
   output.newline();
 
+  // Session cwd is fixed at connection time - this is where Claude's tools execute
+  const sessionCwd = cwd;
+
   // Create input reader
   const inputReader = createInputReader({
     output,
@@ -322,11 +326,15 @@ async function main(): Promise<void> {
         return;
       }
 
-      // Send prompt to ACP
+      // Send prompt to ACP with working directory context
       if (acpClient.isConnected()) {
         output.spinnerStart();
         try {
-          await acpClient.prompt(text);
+          // Get user's current working directory from shell
+          const userCwd = shell.getCwd();
+          // Format prompt with cwd context so Claude knows where the user is
+          const promptWithContext = formatPromptWithContext(text, { sessionCwd, userCwd });
+          await acpClient.prompt(promptWithContext);
         } catch (error) {
           output.spinnerStop();
           const msg = error instanceof Error ? error.message : String(error);

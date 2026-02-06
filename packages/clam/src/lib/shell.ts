@@ -16,6 +16,7 @@ import { exec as execCallback } from 'node:child_process';
 import { getColorEnv } from './shell/color-env.js';
 import { rewriteCommand } from './shell/command-aliases.js';
 import { detectZoxideCommand, rewriteZoxideCommand, zoxideAdd } from './shell/zoxide.js';
+import type { AbsolutePath } from './shell/utils.js';
 import { withTtyManagement } from './tty/index.js';
 
 const execPromise = promisify(execCallback);
@@ -46,7 +47,7 @@ export interface ShellModule {
   setCwd(path: string): void;
 
   /** Set installed tools for command aliasing */
-  setInstalledTools(tools: Map<string, boolean>): void;
+  setInstalledTools(tools: Map<string, AbsolutePath>): void;
 
   /** Enable or disable command aliasing */
   setAliasingEnabled(enabled: boolean): void;
@@ -139,7 +140,7 @@ export function createShellModule(options: ShellModuleOptions = {}): ShellModule
   let currentCwd = options.cwd ?? process.cwd();
 
   // Command aliasing state
-  let installedTools = new Map<string, boolean>();
+  let installedTools = new Map<string, AbsolutePath>();
   let aliasingEnabled = true;
 
   // Cache which results to avoid repeated lookups
@@ -162,7 +163,7 @@ export function createShellModule(options: ShellModuleOptions = {}): ShellModule
   /**
    * Set installed tools for command aliasing.
    */
-  function setInstalledTools(tools: Map<string, boolean>): void {
+  function setInstalledTools(tools: Map<string, AbsolutePath>): void {
     installedTools = tools;
   }
 
@@ -248,7 +249,7 @@ export function createShellModule(options: ShellModuleOptions = {}): ShellModule
     const zoxideType = detectZoxideCommand(command);
     let workingCommand = command;
 
-    if (zoxideType && installedTools.get('zoxide')) {
+    if (zoxideType && installedTools.has('zoxide')) {
       // Rewrite z/zi to actual zoxide commands
       workingCommand = rewriteZoxideCommand(command, effectiveCwd);
     }
@@ -360,7 +361,7 @@ export function createShellModule(options: ShellModuleOptions = {}): ShellModule
 
       // If zoxide is installed, add the new directory to zoxide's database
       // This enables zoxide to learn frequently visited directories
-      if (installedTools.get('zoxide')) {
+      if (installedTools.has('zoxide')) {
         // Run in background, don't wait for it
         zoxideAdd(currentCwd).catch(() => {
           // Ignore errors

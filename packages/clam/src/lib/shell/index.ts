@@ -2,7 +2,13 @@
  * Shell utilities - color environment, command flags, and subprocess execution.
  */
 
-export { execPromise, isCommandAvailable } from './utils.js';
+export {
+  execPromise,
+  isCommandAvailable,
+  getCommandPath,
+  asAbsolutePath,
+  type AbsolutePath,
+} from './utils.js';
 export { COLOR_FORCING_ENV, getColorEnv } from './color-env.js';
 export {
   COLOR_ALWAYS_COMMANDS,

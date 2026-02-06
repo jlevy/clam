@@ -7,6 +7,8 @@
  * Example: `ls` -> `eza --group-directories-first -F`
  */
 
+import type { AbsolutePath } from './utils.js';
+
 /**
  * Alias definition for command rewriting.
  */
@@ -75,13 +77,13 @@ export const COMMAND_ALIASES: CommandAlias[] = [
  * Rewrite a command using available aliases.
  *
  * @param command - The original command string
- * @param installedTools - Map of tool name to availability
+ * @param installedTools - Map of tool name to path (presence indicates availability)
  * @param enabled - Whether aliasing is enabled
  * @returns Rewritten command or original if no alias applies
  */
 export function rewriteCommand(
   command: string,
-  installedTools: Map<string, boolean>,
+  installedTools: Map<string, AbsolutePath>,
   enabled = true
 ): string {
   if (!enabled) return command;
@@ -99,8 +101,7 @@ export function rewriteCommand(
   if (!alias) return command;
 
   // Check if the required tool is installed
-  const isInstalled = installedTools.get(alias.requiresTool) ?? false;
-  if (!isInstalled) return command;
+  if (!installedTools.has(alias.requiresTool)) return command;
 
   // Build the rewritten command
   const flagsStr = alias.defaultFlags.length > 0 ? alias.defaultFlags.join(' ') + ' ' : '';
@@ -113,18 +114,17 @@ export function rewriteCommand(
  * Get the alias for a specific command, if one exists.
  *
  * @param cmdName - Command name to look up
- * @param installedTools - Map of tool name to availability
+ * @param installedTools - Map of tool name to path (presence indicates availability)
  * @returns The alias if found and tool is installed, undefined otherwise
  */
 export function getAlias(
   cmdName: string,
-  installedTools: Map<string, boolean>
+  installedTools: Map<string, AbsolutePath>
 ): CommandAlias | undefined {
   const alias = COMMAND_ALIASES.find((a) => a.original === cmdName);
   if (!alias) return undefined;
 
-  const isInstalled = installedTools.get(alias.requiresTool) ?? false;
-  if (!isInstalled) return undefined;
+  if (!installedTools.has(alias.requiresTool)) return undefined;
 
   return alias;
 }
@@ -132,11 +132,11 @@ export function getAlias(
 /**
  * Get all active aliases (where the required tool is installed).
  *
- * @param installedTools - Map of tool name to availability
+ * @param installedTools - Map of tool name to path (presence indicates availability)
  * @returns Array of active aliases
  */
-export function getActiveAliases(installedTools: Map<string, boolean>): CommandAlias[] {
-  return COMMAND_ALIASES.filter((alias) => installedTools.get(alias.requiresTool) ?? false);
+export function getActiveAliases(installedTools: Map<string, AbsolutePath>): CommandAlias[] {
+  return COMMAND_ALIASES.filter((alias) => installedTools.has(alias.requiresTool));
 }
 
 /**
