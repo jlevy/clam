@@ -1,10 +1,10 @@
 # Feature: Bun Ecosystem Migration Spike
 
-**Date:** 2026-02-05 (last updated 2026-02-05)
+**Date:** 2026-02-05 (last updated 2026-02-06)
 
 **Author:** Claude (with user direction)
 
-**Status:** Draft
+**Status:** Complete
 
 ## Overview
 
@@ -314,96 +314,107 @@ Key additions:
 
 **Phase 1a: Validate Bun Compatibility (keep pnpm as fallback)**
 
-- [ ] Install Bun globally (`curl -fsSL https://bun.sh/install | bash`)
-- [ ] Create `bun.lock` alongside `pnpm-lock.yaml` (`bun install`)
-- [ ] Add Bun-specific dev script (keep pnpm scripts as fallback):
+- [x] Install Bun globally (`curl -fsSL https://bun.sh/install | bash`)
+- [x] Create `bun.lock` alongside `pnpm-lock.yaml` (`bun install`)
+- [x] Add Bun-specific dev script (keep pnpm scripts as fallback):
   ```json
   "clam:bun": "bun packages/clam/src/bin.ts"
   ```
-- [ ] Verify `bun run clam:bun --help` works with existing tsdown build
-- [ ] Run tests under Bun: `bun run test` (using existing vitest)
-- [ ] Benchmark: `time bun packages/clam/src/bin.ts --help` vs `time pnpm run start`
+- [x] Verify `bun run clam:bun --help` works with existing tsdown build
+- [x] Run tests under Bun: `bun run test` (using existing vitest)
+- [x] Benchmark: `time bun packages/clam/src/bin.ts --help` vs `time pnpm run start`
 
 **Phase 1b: Full Switch (after 1a validates)**
 
-- [ ] Update root `package.json`:
+- [x] Update root `package.json`:
   - Remove `packageManager: pnpm@10.28.2`
   - Update all scripts from `pnpm` to `bun`
-- [ ] Add `workspaces` field to root `package.json`
-- [ ] Delete `pnpm-workspace.yaml`
-- [ ] Delete `.npmrc`
-- [ ] Delete `pnpm-lock.yaml` (only after validation)
-- [ ] Verify all commands work: `bun run build`, `bun run test`, `bun run start`
+- [x] Add `workspaces` field to root `package.json`
+- [x] Delete `pnpm-workspace.yaml`
+- [x] Delete `.npmrc`
+- [x] Delete `pnpm-lock.yaml` (only after validation)
+- [x] Verify all commands work: `bun run build`, `bun run test`, `bun run start`
 
 ### Phase 2: Build Tool (tsdown to Bunup)
 
 **Goal**: Replace tsdown with Bunup for faster builds.
 
-- [ ] Add `bunup` to devDependencies
-- [ ] Create `packages/clam/bunup.config.ts`
-- [ ] Update bin shebang from `node` to `bun`
-- [ ] Update `package.json` build script to use `bunup`
-- [ ] Verify build output matches (ESM, DTS, bin executable)
-- [ ] Remove `tsdown` from devDependencies
-- [ ] Delete `packages/clam/tsdown.config.ts`
-- [ ] Benchmark: `time bun run build` (before/after)
+- [x] Add `bunup` to devDependencies
+- [x] Create `packages/clam/bunup.config.ts`
+- [x] Update bin shebang from `node` to `bun`
+- [x] Update `package.json` build script to use `bunup`
+- [x] Verify build output matches (ESM, DTS, bin executable)
+- [x] Remove `tsdown` from devDependencies
+- [x] Delete `packages/clam/tsdown.config.ts`
+- [x] Benchmark: `time bun run build` (before/after)
 
 ### Phase 3: Test Runner (vitest to bun test)
 
 **Goal**: Replace vitest with bun test.
 
-- [ ] Update all test imports from `vitest` to `bun:test`
-- [ ] Run `bun test` and verify all tests pass
-- [ ] Check coverage support (`bun test --coverage`)
-- [ ] Verify tryscript golden tests work (`bun run tryscript ...`)
-- [ ] Remove `vitest` and `@vitest/coverage-v8` from devDependencies
-- [ ] Delete `packages/clam/vitest.config.ts`
-- [ ] Update test scripts in `package.json`
+- [x] Update all test imports from `vitest` to `bun:test`
+- [x] Run `bun test` and verify all tests pass
+- [x] Check coverage support (`bun test --coverage`)
+- [x] Verify tryscript golden tests work (`bun run tryscript ...`)
+- [x] Remove `vitest` and `@vitest/coverage-v8` from devDependencies
+- [x] Delete `packages/clam/vitest.config.ts`
+- [x] Update test scripts in `package.json`
 
 ### Phase 4: Lint + Format (ESLint + Prettier to Biome)
 
 **Goal**: Consolidate to single Biome config.
 
-- [ ] Add `@biomejs/biome` to root devDependencies
-- [ ] Create `biome.json` with equivalent rules
-- [ ] Run `biome check` and fix any issues
-- [ ] Update `package.json` scripts (lint, format, check)
-- [ ] Remove ESLint and Prettier dependencies
-- [ ] Delete `eslint.config.js`, `.prettierrc`, `.prettierignore`
-- [ ] Update lefthook to use `biome check`
+- [x] Add `@biomejs/biome` to root devDependencies
+- [x] Create `biome.json` with equivalent rules
+- [x] Run `biome check` and fix any issues
+- [x] Update `package.json` scripts (lint, format, check)
+- [x] Remove ESLint and Prettier dependencies
+- [x] Delete `eslint.config.js`, `.prettierrc`, `.prettierignore`
+- [x] Update lefthook to use `biome check`
 
 ### Phase 5: TypeScript + Dev Experience
 
 **Goal**: Optimize TypeScript config and dev workflow.
 
-- [ ] Add `bun-types` to devDependencies
-- [ ] Update `tsconfig.base.json` with `isolatedDeclarations: true`
-- [ ] Remove `tsx` dependency (Bun runs TS natively)
-- [ ] Update dev scripts to use `bun` directly
-- [ ] Verify IDE experience (VS Code, type hints, etc.)
+- [x] Add `bun-types` to devDependencies
+- [x] Update `tsconfig.base.json` with `isolatedDeclarations: true`
+- [x] Remove `tsx` dependency (Bun runs TS natively)
+- [x] Update dev scripts to use `bun` directly
+- [x] Verify IDE experience (VS Code, type hints, etc.)
 
 ### Phase 6: CI/CD
 
 **Goal**: Update GitHub Actions for Bun.
 
-- [ ] Update `.github/workflows/ci.yml`:
+- [x] Update `.github/workflows/ci.yml`:
   - Replace `pnpm/action-setup` with `oven-sh/setup-bun@v2`
   - Remove `actions/setup-node` (Bun includes runtime)
   - Update install command to `bun install --frozen-lockfile`
   - Update all script commands
-- [ ] Test CI on a branch before merging
+- [x] Test CI on a branch before merging
+- [x] Cross-platform CI (Ubuntu, macOS, Windows) - all passing
 
 ### Phase 7: Validation + Benchmarks
 
 **Goal**: Document improvements and validate goals.
 
-- [ ] Benchmark startup time (cold start, 10 runs averaged)
-- [ ] Benchmark build time (clean build, 10 runs averaged)
-- [ ] Benchmark test time (full suite, 10 runs averaged)
-- [ ] Benchmark package install time
-- [ ] Document any compatibility issues found
-- [ ] Update clam-acp-client-spike spec with learnings
-- [ ] Recommend go/no-go for completing migration
+- [x] Benchmark startup time (cold start, 10 runs averaged)
+- [x] Benchmark build time (clean build, 10 runs averaged)
+- [x] Benchmark test time (full suite, 10 runs averaged)
+- [x] Benchmark package install time
+- [x] Document any compatibility issues found
+- [x] Update clam-acp-client-spike spec with learnings
+- [x] Recommend go/no-go for completing migration
+
+### Phase 8: Documentation Update
+
+**Goal**: Update all documentation to reflect Bun migration.
+
+- [x] Update `README.md` development section (pnpm → bun)
+- [x] Update `docs/development.md` (full rewrite for Bun)
+- [x] Update `docs/publishing.md` (changeset commands)
+- [x] Update `.changeset/README.md`
+- [x] Update `.gitignore` comments
 
 ## Testing Strategy
 
