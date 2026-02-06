@@ -31,6 +31,9 @@ export interface ClamCodeConfig {
   /** Agent command to spawn (default: claude-code-acp) */
   agentCommand?: string;
 
+  /** Enable markdown rendering in streaming output (default: true) */
+  markdownRendering?: boolean;
+
   /** Require double-Enter to submit NL input (default: false) */
   doubleEnterForNl?: boolean;
 }
@@ -39,6 +42,7 @@ const DEFAULT_CONFIG: ClamCodeConfig = {
   truncateAfter: 3,
   showTimestamps: false,
   verbose: false,
+  markdownRendering: true,
   doubleEnterForNl: false,
   // agentCommand is undefined by default - uses embedded adapter
 };
@@ -114,6 +118,9 @@ export function loadConfig(cwd?: string): ClamCodeConfig {
         if (typeof obj.verbose === 'boolean') {
           fileConfig.verbose = obj.verbose;
         }
+        if (typeof obj.markdownRendering === 'boolean') {
+          fileConfig.markdownRendering = obj.markdownRendering;
+        }
         if (typeof obj.doubleEnterForNl === 'boolean') {
           fileConfig.doubleEnterForNl = obj.doubleEnterForNl;
         }
@@ -151,6 +158,9 @@ export function loadConfig(cwd?: string): ClamCodeConfig {
   if (process.env.CLAM_CODE_AGENT_COMMAND) {
     config.agentCommand = process.env.CLAM_CODE_AGENT_COMMAND;
   }
+  if (process.env.CLAM_CODE_NO_MARKDOWN === '1') {
+    config.markdownRendering = false;
+  }
   if (process.env.CLAM_CODE_DOUBLE_ENTER_FOR_NL === '1') {
     config.doubleEnterForNl = true;
   }
@@ -167,6 +177,8 @@ export function formatConfig(config: ClamCodeConfig): string[] {
     `truncateAfter: ${config.truncateAfter ?? 5}`,
     `showTimestamps: ${config.showTimestamps ?? false}`,
     `verbose: ${config.verbose ?? false}`,
+    `markdownRendering: ${config.markdownRendering ?? true}`,
+    `doubleEnterForNl: ${config.doubleEnterForNl ?? false}`,
     `agentCommand: ${config.agentCommand ?? 'claude-code-acp'}`,
     `configDir: ${getConfigDir()}`,
   ];

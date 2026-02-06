@@ -12,7 +12,7 @@
 
 A unified, functional alias system for Clam that consolidates command aliasing and
 zoxide integration into a single architecture inspired by
-[xonsh's callable aliases](https://xon.sh/api/_autosummary/cmd/xonsh.aliases.html).
+[xonsh’s callable aliases](https://xon.sh/api/_autosummary/cmd/xonsh.aliases.html).
 
 This replaces the current fragmented approach (separate `command-aliases.ts` and
 `zoxide.ts` modules with two different rewrite functions) with a single `ALIASES` object
@@ -69,7 +69,7 @@ Xonsh provides a powerful alias system where aliases can be:
 The key insight from xonsh is that the `Aliases` class (a `MutableMapping`) normalizes
 all alias types on assignment, and `eval_alias()` handles recursive expansion with cycle
 detection. We adopt the polymorphic expansion pattern (string vs callable) while
-deliberately not adopting xonsh's complexity (recursive expansion, decorator aliases,
+deliberately not adopting xonsh’s complexity (recursive expansion, decorator aliases,
 `ExecAlias`, `PartialEvalAlias`, signature-adaptive dispatch via `run_alias_by_params`).
 
 **Key xonsh code references** (checked out in `attic/xonsh/`):
@@ -147,9 +147,10 @@ export interface AliasExpansionResult {
 
 **Design decisions on types:**
 
-- **No `string[]` expansion type**: Not used by any alias. If needed later, trivial to add.
-- **No `env` in AliasContext**: No current alias needs environment variables. Add when a
-  real use case appears.
+- **No `string[]` expansion type**: Not used by any alias.
+  If needed later, trivial to add.
+- **No `env` in AliasContext**: No current alias needs environment variables.
+  Add when a real use case appears.
 - **`argsStr` included**: Callable aliases get both the parsed `args` array and the raw
   `argsStr` string. This avoids losing quoting information when args are split.
 - **No sync API**: All expansion goes through one async `expandAlias()`. Avoids the
@@ -468,8 +469,8 @@ export function formatAliasesCompact(
 
 ### Integration with Shell
 
-Update `shell.ts` to use the new system. This shows the full exec() changes needed,
-not just the alias call:
+Update `shell.ts` to use the new system.
+This shows the full exec() changes needed, not just the alias call:
 
 ```typescript
 // In shell.ts - updated imports
@@ -579,8 +580,8 @@ behavior is now handled by the z/zi callable aliases in alias-definitions.ts.
 - [ ] Remove `command-aliases.ts` (replaced by alias-definitions.ts + alias-expander.ts)
 - [ ] Simplify `zoxide.ts` to only contain `zoxideAdd()` and `isZoxideAvailable()`
 - [ ] Update `shell/index.ts` exports (remove old, add new)
-- [ ] Remove old tests (`command-aliases.test.ts`, `zoxide.test.ts`) after verifying
-  new tests cover all scenarios
+- [ ] Remove old tests (`command-aliases.test.ts`, `zoxide.test.ts`) after verifying new
+  tests cover all scenarios
 - [ ] Run full test suite and verify no regressions
 
 ## Testing Strategy
@@ -784,7 +785,8 @@ describe('formatActiveAliases', () => {
 The new test suite must cover all scenarios from the existing tests:
 
 - From `command-aliases.test.ts`: rewriting with installed tools, argument preservation,
-  tool availability checks, disabled flag, empty/whitespace commands, getAlias, formatAlias
+  tool availability checks, disabled flag, empty/whitespace commands, getAlias,
+  formatAlias
 - From `zoxide.test.ts`: z with args, z without args (cd ~), zi, zi with query,
   non-zoxide commands passed through, isZoxideAvailable
 
@@ -842,9 +844,9 @@ const isCdCommand = expandedCommand.trim().startsWith('cd');
 // ... execute expandedCommand
 ```
 
-The two-function pipeline collapses to a single call. The `isCdCommand` detection
-simplifies because z/zi aliases expand to `cd "$(zoxide query ...)"`, which starts
-with `cd`.
+The two-function pipeline collapses to a single call.
+The `isCdCommand` detection simplifies because z/zi aliases expand to
+`cd "$(zoxide query ...)"`, which starts with `cd`.
 
 ## Comparison: Before vs After
 
@@ -860,25 +862,31 @@ with `cd`.
 ## Decisions (Resolved Open Questions)
 
 1. **Quoted argument handling**: Callable aliases receive both `args: string[]` (split)
-   and `argsStr: string` (raw). String aliases use `argsStr` for pass-through, preserving
-   quoting. Callable aliases can choose which to use. This is sufficient for our use cases.
+   and `argsStr: string` (raw).
+   String aliases use `argsStr` for pass-through, preserving quoting.
+   Callable aliases can choose which to use.
+   This is sufficient for our use cases.
 
-2. **Alias chaining**: Not supported. No recursive expansion. An alias expands once.
+2. **Alias chaining**: Not supported.
+   No recursive expansion.
+   An alias expands once.
    This avoids the complexity of cycle detection (which xonsh handles via `seen_tokens`
-   set). If needed in future, xonsh's `eval_alias` shows how to do it.
+   set). If needed in future, xonsh’s `eval_alias` shows how to do it.
 
-3. **Platform differences**: Not addressed in this spec. All current aliases use the same
-   flags on all platforms. If platform-specific behavior is needed, the callable alias
-   pattern already supports it (the function can check `process.platform`). Cross that
-   bridge when we get there.
+3. **Platform differences**: Not addressed in this spec.
+   All current aliases use the same flags on all platforms.
+   If platform-specific behavior is needed, the callable alias pattern already supports
+   it (the function can check `process.platform`). Cross that bridge when we get there.
 
 ## Known Limitations
 
 - **Shell injection in zoxide args**: The z/zi callable aliases interpolate query args
-  into shell command strings. The `--` separator prevents flag injection, and the double
-  quotes around `$(...)` prevent word splitting, but shell metacharacters in directory
-  queries could theoretically cause issues. This is the same behavior as the current
-  `zoxide.ts` implementation and is acceptable for a local shell tool.
+  into shell command strings.
+  The `--` separator prevents flag injection, and the double quotes around `$(...)`
+  prevent word splitting, but shell metacharacters in directory queries could
+  theoretically cause issues.
+  This is the same behavior as the current `zoxide.ts` implementation and is acceptable
+  for a local shell tool.
 
 ## Future Enhancements
 
