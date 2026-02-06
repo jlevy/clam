@@ -515,15 +515,55 @@ async function runInteractiveCommand(cmd: string, args: string[]): Promise<void>
 
 Priority: **HIGH** - This causes terminal corruption
 
-Start with Option A (simple approach using `stty sane`):
+**Status: IMPLEMENTED** (using spawnSync approach)
 
-- [ ] Pause keypress handler before spawning interactive subprocess
-- [ ] Disable raw mode before spawn: `process.stdin.setRawMode(false)`
-- [ ] Run `stty sane` after subprocess exits to restore terminal
-- [ ] Re-enable raw mode and keypress handler after subprocess
-- [ ] Add emergency `stty sane` on Clam exit (process.on('exit'), SIGINT, SIGTERM)
+#### The Problem
+
+When running interactive subprocesses like `bash` or `vim`, the child process calls
+`tcsetpgrp()` to become the foreground process group.
+If Node’s readline is also trying to read from stdin (via async event handlers), the
+parent process receives SIGTTIN and gets stopped:
+
+```
+▶ bash
+bash-5.2$
+[1]+  Stopped                 pnpm clam
+```
+
+#### Approaches Considered
+
+**Option A: Pause keypress handler** (originally proposed)
+- Remove keypress listener before spawn
+- Disable raw mode, run subprocess, run `stty sane`, re-enable
+- Problem: Requires coordination between input.ts and shell.ts
+
+**Option B: Proper Unix approach** (what xonsh does)
+- Create new process group for child (`os.setpgrp`)
+- Call `tcsetpgrp()` to give child foreground control
+- Block SIGTTIN/SIGTTOU during handoff
+- Problem: Node.js doesn’t expose `tcsetpgrp()` natively
+- See: https://github.com/nodejs/node/issues/5549
+
+**Option C: spawnSync** (implemented)
+- Use synchronous spawn which blocks the entire Node event loop
+- Prevents readline from competing for stdin during subprocess
+- Combined with TTY management for raw mode and `stty sane` restoration
+
+#### Implementation (Option C)
+
+Chose spawnSync because:
+- Requires no native dependencies (vs node-pty or ffi)
+- Works reliably across platforms
+- Appropriate for interactive commands where we’re waiting anyway
+- Simple and maintainable
+
+Code location: `packages/clam/src/lib/shell.ts` in the `exec()` function.
+
+- [x] Use spawnSync for interactive commands (captureOutput: false)
+- [x] Wrap with TTY management (disable raw mode, stty sane after)
+- [x] Add emergency `stty sane` on Clam exit (process.on('exit'), SIGINT, SIGTERM)
 - [ ] Test with `bash`, `vim`, `less`, `htop`
-- [ ] Handle Ctrl+C during subprocess (don’t let it kill Clam)
+- [x] Handle Ctrl+C during subprocess (spawnSync handles this naturally)
 
 ### Phase 1b: Working Directory State Management
 

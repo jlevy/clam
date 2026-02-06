@@ -9,7 +9,7 @@
  * Used by mode detection to identify shell commands.
  */
 
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { promisify } from 'node:util';
 import { exec as execCallback } from 'node:child_process';
 
@@ -265,35 +265,78 @@ export function createShellModule(options: ShellModuleOptions = {}): ShellModule
     // We'll need to update our tracked cwd after and call zoxide add
     const isCdCommand = workingCommand.trim().startsWith('cd') || zoxideType !== null;
 
-    const runCommand = (): Promise<ExecResult> => {
-      return new Promise((resolve, reject) => {
-        // Build environment: start with process.env or color env, then overlay user env
-        const baseEnv = execOptions.forceColor ? getColorEnv() : process.env;
-        const env = { ...baseEnv, ...execOptions.env };
+    // Build environment: start with process.env or color env, then overlay user env
+    const baseEnv = execOptions.forceColor ? getColorEnv() : process.env;
+    const env = { ...baseEnv, ...execOptions.env } as NodeJS.ProcessEnv;
 
-        // For cd commands, we need to capture the new working directory after the command
-        // We append "; pwd" to get the resulting directory, but only if captureOutput is true
-        // For interactive mode, we'll query pwd separately after the command completes
-        const finalCommand =
-          isCdCommand && execOptions.captureOutput ? `${aliasedCommand} && pwd` : aliasedCommand;
+    // For cd commands, we need to capture the new working directory after the command
+    // We append "; pwd" to get the resulting directory, but only if captureOutput is true
+    // For interactive mode, we'll query pwd separately after the command completes
+    const finalCommand =
+      isCdCommand && execOptions.captureOutput ? `${aliasedCommand} && pwd` : aliasedCommand;
 
+    let result: ExecResult;
+
+    if (isInteractive) {
+      // For interactive commands, use spawnSync with TTY management.
+      //
+      // WHY SPAWNSYNC: When running interactive subprocesses like bash or vim,
+      // the child process calls tcsetpgrp() to become the foreground process
+      // group. If Node's readline is also trying to read from stdin (via async
+      // event handlers), the parent process receives SIGTTIN and gets stopped.
+      //
+      // The proper Unix solution (what xonsh does) would be:
+      // 1. Create new process group for child (os.setpgrp)
+      // 2. Call tcsetpgrp() to give child foreground control
+      // 3. Block SIGTTIN/SIGTTOU during handoff
+      // 4. Return terminal to parent after child exits
+      //
+      // However, Node.js doesn't expose tcsetpgrp() natively. The 'detached'
+      // option only calls setsid(), which creates a new session but doesn't
+      // make the child the foreground process group.
+      // See: https://github.com/nodejs/node/issues/5549
+      //
+      // SOLUTION: Use spawnSync which blocks the entire Node event loop.
+      // This prevents readline from competing for stdin during subprocess
+      // execution. It's a "sledgehammer" approach but:
+      // - Requires no native dependencies (vs node-pty or ffi)
+      // - Works reliably across platforms
+      // - Is appropriate for interactive commands where we're waiting anyway
+      //
+      // The TTY management wrapper handles raw mode and stty sane restoration.
+      result = await withTtyManagement(() => {
+        const syncResult = spawnSync('bash', ['-c', finalCommand], {
+          cwd: effectiveCwd,
+          env,
+          stdio: 'inherit',
+          // No timeout for interactive commands - user controls duration
+        });
+
+        return Promise.resolve({
+          stdout: '',
+          stderr: '',
+          exitCode: syncResult.status ?? 0,
+          signal: syncResult.signal ?? undefined,
+        });
+      });
+    } else {
+      // For non-interactive commands (captureOutput: true), use async spawn
+      result = await new Promise((resolve, reject) => {
         const proc = spawn('bash', ['-c', finalCommand], {
           cwd: effectiveCwd,
           env,
-          stdio: execOptions.captureOutput ? 'pipe' : 'inherit',
+          stdio: 'pipe',
         });
 
         let stdout = '';
         let stderr = '';
 
-        if (execOptions.captureOutput) {
-          proc.stdout?.on('data', (data: Buffer) => {
-            stdout += data.toString();
-          });
-          proc.stderr?.on('data', (data: Buffer) => {
-            stderr += data.toString();
-          });
-        }
+        proc.stdout?.on('data', (data: Buffer) => {
+          stdout += data.toString();
+        });
+        proc.stderr?.on('data', (data: Buffer) => {
+          stderr += data.toString();
+        });
 
         const timeout = execOptions.timeout
           ? setTimeout(() => proc.kill('SIGTERM'), execOptions.timeout)
@@ -311,14 +354,6 @@ export function createShellModule(options: ShellModuleOptions = {}): ShellModule
 
         proc.on('error', reject);
       });
-    };
-
-    // Wrap interactive commands with TTY management to prevent terminal corruption
-    let result: ExecResult;
-    if (isInteractive) {
-      result = await withTtyManagement(runCommand);
-    } else {
-      result = await runCommand();
     }
 
     // Update tracked cwd after successful cd command
