@@ -2,6 +2,7 @@
  * Tests for shell convenience features.
  */
 
+import { tmpdir } from 'node:os';
 import { describe, expect, it } from 'vitest';
 import {
   isDirectoryPath,
@@ -17,8 +18,8 @@ describe('Shell Conveniences', () => {
       expect(isDirectoryPath('.')).toBe(true);
       // Parent directory
       expect(isDirectoryPath('..')).toBe(true);
-      // Absolute path
-      expect(isDirectoryPath('/tmp')).toBe(true);
+      // Absolute path (use OS temp dir for cross-platform compatibility)
+      expect(isDirectoryPath(tmpdir())).toBe(true);
     });
 
     it('should return true for home directory shortcut', () => {
