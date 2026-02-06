@@ -6,7 +6,7 @@
  * previously tested in command-aliases.test.ts and zoxide.test.ts.
  */
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 
 import { getAliasDefinition, getAliasNames } from './alias-definitions.js';
 import {
