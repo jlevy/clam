@@ -43,16 +43,29 @@ jobs:
         id: version
         run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
-      - name: Generate release notes
+      - name: Extract release notes
         id: changelog
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          # Try CHANGELOG first, fall back to generated notes from commits
-          CHANGELOG=$(awk "/^## ${VERSION//./\\.}$/,/^## [0-9]/" packages/clam/CHANGELOG.md 2>/dev/null | head -n -1 || true)
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+
+          # Try to extract from CHANGELOG.md
+          CHANGELOG=$(awk "/^## ${VERSION//./\\.}/,/^## [0-9]/" packages/clam/CHANGELOG.md 2>/dev/null | head -n -1 || true)
+
+          # If no CHANGELOG entry, create placeholder with commit range
           if [ -z "$CHANGELOG" ] || [ "$CHANGELOG" = "" ]; then
-            # Generate from conventional commits
-            CHANGELOG=$(./scripts/generate-release-notes.sh "v${VERSION}" 2>/dev/null || echo "Release v${VERSION}")
+            if [ -n "$PREV_TAG" ]; then
+              COMPARE_URL="https://github.com/${{ github.repository }}/compare/${PREV_TAG}...v${VERSION}"
+              CHANGELOG="## What's Changed
+
+See [full commit history](${COMPARE_URL}) for details.
+
+*Edit this release to add curated release notes following the template in docs/project/templates/release-notes.md*"
+            else
+              CHANGELOG="Release v${VERSION}"
+            fi
           fi
+
           echo "body<<EOF" >> $GITHUB_OUTPUT
           echo "$CHANGELOG" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT

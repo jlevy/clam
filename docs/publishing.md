@@ -145,51 +145,64 @@ publishes automatically.
 
 ## GitHub Releases
 
-The release workflow automatically creates a GitHub Release when a tag is pushed:
+The release workflow creates a GitHub Release when a tag is pushed.
+Release notes should be written following tbd guidelines.
 
-- **Release name**: Matches the tag (e.g., `v0.2.0`)
-- **Release notes**: Auto-generated from conventional commits (or CHANGELOG if present)
-- **Pre-release flag**: Automatically set for versions containing `-` (e.g.,
-  `1.0.0-beta.1`)
+### Writing Release Notes
+
+Use the template at `docs/project/templates/release-notes.md` and follow the
+[tbd release-notes-guidelines](https://github.com/jlevy/tbd):
+
+1. **Review commits** since the last release:
+   ```bash
+   git log $(git describe --tags --abbrev=0)..HEAD --oneline
+   ```
+
+2. **Describe the aggregate delta** - what’s different now vs the previous release, not
+   a list of individual commits
+
+3. **Consolidate related changes** - group sub-features and fixes under their parent
+   feature
+
+4. **Write from user perspective** - what can users do differently after upgrading?
+
+5. **Skip internal-only changes** - tests, CI, refactoring with no user impact
 
 ### Release Notes Format
-
-Release notes follow the [tbd release-notes-guidelines](https://github.com/jlevy/tbd)
-format:
 
 ```markdown
 ## What's Changed
 
 ### Features
-- **scope**: Description of new capability
+- **Feature name**: Description of new capability
+  - Sub-capability or detail
 
 ### Fixes
-- **scope**: Description of bug fix
+- **Issue description**: What was broken → what works now
 
 ### Refactoring
-- **scope**: Internal improvement (if user-visible)
+- **Area**: User-visible improvement (performance, stability)
 
 ### Documentation
 - Notable doc improvements
 
-**Full commit history**: [compare link]
+**Full commit history**: https://github.com/jlevy/clam/compare/vX.X.X...vY.Y.Y
 ```
 
-### Writing Good Commits for Release Notes
+### Adding Release Notes
 
-Use conventional commit format for automatic categorization:
+**Option A: Edit CHANGELOG.md before tagging**
 
-| Prefix | Section | Example |
-| --- | --- | --- |
-| `feat:` | Features | `feat(shell): add zoxide integration` |
-| `fix:` | Fixes | `fix(cli): handle empty input gracefully` |
-| `refactor:` | Refactoring | `refactor(completion): simplify scoring` |
-| `docs:` | Documentation | `docs: update publishing guide` |
+Write release notes directly in `packages/clam/CHANGELOG.md` under the version header.
+The workflow extracts this for the GitHub Release.
 
-The `(scope)` is optional but recommended - it becomes **bold** in release notes.
+**Option B: Edit GitHub Release after creation**
 
-Commits without these prefixes (e.g., `chore:`, `test:`, `ci:`) are excluded from
-release notes as internal-only changes.
+Let the workflow create the release, then edit it on GitHub to add curated notes.
+
+### Pre-release Flag
+
+Versions containing `-` (e.g., `1.0.0-beta.1`) are automatically marked as pre-releases.
 
 ## Troubleshooting
 
