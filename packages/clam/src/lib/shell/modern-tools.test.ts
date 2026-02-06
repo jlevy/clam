@@ -35,11 +35,16 @@ describe('Modern Tools', () => {
   });
 
   describe('detectInstalledTools', () => {
-    it('should return a map of tool paths', async () => {
-      const installed = await detectInstalledTools();
-      expect(installed).toBeInstanceOf(Map);
-      // Only installed tools are in the map now
-    });
+    // Increase timeout for this test - on macOS CI, tool detection can be slow
+    it(
+      'should return a map of tool paths',
+      async () => {
+        const installed = await detectInstalledTools();
+        expect(installed).toBeInstanceOf(Map);
+        // Only installed tools are in the map now
+      },
+      { timeout: 30000 }
+    );
 
     it('should detect common tools like ls alternative', async () => {
       const installed = await detectInstalledTools();

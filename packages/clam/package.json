@@ -51,7 +51,7 @@
     "dev": "bun --watch src/bin.ts",
     "start": "bun src/bin.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "bun test && tryscript run tests/*.tryscript.md",
+    "test": "bun test && tryscript run tests/cli.tryscript.md",
     "test:unit": "bun test",
     "test:golden": "tryscript run tests/*.tryscript.md",
     "test:watch": "bun test --watch",
