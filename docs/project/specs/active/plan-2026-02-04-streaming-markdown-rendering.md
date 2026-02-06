@@ -1,10 +1,10 @@
 # Feature: Streaming Markdown Rendering
 
-**Date:** 2026-02-04 (last updated 2026-02-05)
+**Date:** 2026-02-04 (last updated 2026-02-05, Phase 4 added)
 
 **Author:** Claude (with research assistance)
 
-**Status:** Implementation Complete (All Phases Done)
+**Status:** In Progress (Phase 4: Enhanced Table Rendering)
 
 **Research:**
 [research-2026-02-04-streaming-markdown-rendering.md](../../research/active/research-2026-02-04-streaming-markdown-rendering.md)
@@ -174,6 +174,61 @@ Add support for list and table formatting.
 - [x] Implement table buffering until complete (column width calculation)
 - [x] Implement table rendering with aligned columns
 
+### Phase 4: Use marked-terminal for All Block Rendering
+
+Replace custom block formatters with `marked-terminal` for all block types.
+This matches the rendering approach used in tbd for a consistent, polished terminal
+experience.
+
+**Rationale:** Since we’re adding `marked` and `marked-terminal` dependencies, we should
+use them for everything - not just tables.
+This gives us:
+
+- Professional box-drawing tables
+- Consistent header styling
+- Proper list rendering with bullets
+- Styled blockquotes
+- Less custom code to maintain
+
+**Current approach (custom formatters):**
+
+```
+| Header 1 | Header 2 |     # Header           - Item 1
+|----------|----------|     Some paragraph     - Item 2
+| Cell 1   | Cell 2   |
+```
+
+**New approach (marked-terminal):**
+
+```
+┌───────────┬───────────┐
+│ Header 1  │ Header 2  │   # Header (bold/colored)
+├───────────┼───────────┤
+│ Cell 1    │ Cell 2    │   Some paragraph
+└───────────┴───────────┘
+                            • Item 1
+                            • Item 2
+```
+
+**Implementation:**
+
+- [x] Add `marked` and `marked-terminal` dependencies (done - version 15.0.12)
+- [ ] Create `renderMarkdownBlock()` utility using marked-terminal (mimic tbd’s
+  approach)
+- [ ] Configure marked-terminal with `{ width: getTerminalWidth(), reflowText: true }`
+- [ ] Handle type casting for `@types/marked-terminal` (outdated types, see tbd
+  workaround)
+- [ ] Update `formatBlock()` in block-renderer.ts to use `renderMarkdownBlock()` for all
+  block types (tables, headers, lists, blockquotes, paragraphs)
+- [ ] Keep `cli-highlight` for code blocks (better syntax highlighting than
+  marked-terminal)
+- [ ] Update tests to expect marked-terminal output format
+- [ ] Remove custom formatters that are no longer needed (formatHeader, formatTable,
+  formatList, formatBlockquote, formatParagraph)
+
+**Reference:** tbd’s implementation at
+[tbd/src/cli/lib/output.ts:196-216](https://github.com/jlevy/tbd/blob/main/packages/tbd/src/cli/lib/output.ts#L196-L216)
+
 ## Testing Strategy
 
 **Unit tests** for each component:
@@ -229,8 +284,8 @@ Add support for list and table formatting.
   Is this sufficient?
 
 - **Phase 3 scope**: Lists and tables were already implemented as part of Phase 1 core
-  block renderer. Should Phase 3 be redefined for advanced features (nested lists,
-  complex tables) or marked as complete?
+  block renderer. Phase 3 is marked complete; Phase 4 now adds enhanced table rendering
+  using `marked-terminal` for box-drawing table borders.
 
 ## References
 
