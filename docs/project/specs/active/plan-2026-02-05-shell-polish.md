@@ -566,26 +566,16 @@ Priority: **HIGH** - Correct routing of input
   ```
 - [ ] Write tests for tool detection
 
-### Phase 3: Command Aliasing/Rewriting
+### Phase 3: Functional Alias System
 
-- [ ] Implement alias registry mapping original command to replacement
-- [ ] Add command rewriting hook in shell execution path (before spawn)
-- [ ] Implement these aliases (only if tool detected in Phase 2):
-  - `ls` -> `eza --group-directories-first -F`
-  - `ll` -> `eza --group-directories-first -F -l`
-  - `cat` -> `bat --paging=never` (disable pager for non-interactive use)
-- [ ] Pass through original command if replacement tool not found
+**See separate spec:**
+[Functional Alias System](plan-2026-02-05-functional-alias-system.md)
 
-### Phase 4: Zoxide Integration
+This phase consolidates command aliasing and zoxide into a unified, functional system
+inspired by xonsh’s callable aliases.
+Moved to its own spec to allow the shell-polish base work to be merged independently.
 
-- [ ] Use `detectInstalledTools()` result to check zoxide availability (do NOT
-  re-detect)
-- [ ] Add `z` as alias for `zoxide query --exclude $PWD --`
-- [ ] Call `zoxide add $PWD` after each successful `cd` to update frecency database
-- [ ] Add `zi` for interactive selection (`zoxide query -i`)
-- [ ] Remove duplicate `isZoxideInstalled()` function - use shared detection
-
-### Phase 5: Shell Convenience Features
+### Phase 4: Shell Convenience Features
 
 Based on kash/xonsh research, these features improve shell usability.
 
@@ -668,43 +658,32 @@ clam
 2. **Phase 1b** (Critical): Working directory state management and Claude Code sync
 3. **Phase 1c** (Critical): Input mode detection fixes (slash commands vs paths)
 4. **Phase 2**: Tool detection and startup display
-5. **Phase 3**: Command aliasing/rewriting for detected tools
-6. **Phase 4**: Zoxide integration
-7. **Phase 5**: Shell conveniences (auto-cd, typo prevention, exit codes, keybindings)
+5. **Phase 3**: Functional alias system - see
+   [separate spec](plan-2026-02-05-functional-alias-system.md)
+6. **Phase 4**: Shell conveniences (auto-cd, typo prevention, exit codes, keybindings)
 
-## Refactoring: Fix Code Duplication (Post-PR #5)
+## Refactoring: Code Duplication
 
-The initial implementation in PR #5 introduced code duplication that should be cleaned
-up:
+The initial implementation in PR #5 introduced some code duplication that will be
+addressed by the
+[Functional Alias System spec](plan-2026-02-05-functional-alias-system.md).
 
-### Current Issues
+### Already Addressed in PR #5
 
-1. **Duplicated exec pattern**: Both `modern-tools.ts` and `zoxide.ts` have:
-   ```typescript
-   import { exec as execCallback } from 'node:child_process';
-   import { promisify } from 'node:util';
-   const execPromise = promisify(execCallback);
-   ```
+1. **`shell/utils.ts`** created with shared utilities (`execPromise`,
+   `isCommandAvailable`)
 
-2. **Duplicated command detection**: `zoxide.ts` has `isZoxideInstalled()` which is
-   identical to calling `isCommandAvailable('zoxide')` in `modern-tools.ts`.
+2. **`zoxide.ts`** updated to use `isZoxideAvailable(installedTools)` instead of
+   re-detecting
 
-3. **Potential double-detection**: Zoxide availability may be checked twice at startup.
+### Deferred to Functional Alias System Spec
 
-### Required Changes
+The following will be addressed by implementing the functional alias system:
 
-1. **Create `shell/utils.ts`**: Extract shared utilities:
-   - `execPromise` - promisified exec
-   - `isCommandAvailable(cmd, timeout)` - generic command check
-
-2. **Update `modern-tools.ts`**: Import from utils, remove local execPromise.
-
-3. **Update `zoxide.ts`**:
-   - Remove `isZoxideInstalled()` function entirely
-   - Accept `installedTools: Map<string, boolean>` parameter in functions that need it
-   - Or export `isZoxideAvailable(installedTools)` that checks the map
-
-4. **Update callers**: Pass `installedTools` map to zoxide functions.
+- Consolidate `rewriteCommand()` and `rewriteZoxideCommand()` into single
+  `expandAlias()`
+- Move all alias definitions to one `ALIASES` object
+- Make zoxide `z`/`zi` regular callable aliases instead of special case
 
 ## Open Questions
 
@@ -816,6 +795,8 @@ This requires more sophisticated terminal handling:
 
 - [ANSI Color Output Spec](plan-2026-02-05-ansi-color-subprocess-output.md) - Related
   TTY work
+- [Functional Alias System](plan-2026-02-05-functional-alias-system.md) - Unified alias
+  system (Phase 3, split out for independent merging)
 
 ### Kash Reference Implementation
 
