@@ -1,6 +1,7 @@
 # Publishing (npm)
 
-This project uses [Changesets](https://github.com/changesets/changesets) for version management and tag-based releases with provenance attestation to npm.
+This project uses [Changesets](https://github.com/changesets/changesets) for version
+management and tag-based releases with provenance attestation to npm.
 
 For daily development workflow, see [development.md](development.md).
 
@@ -20,7 +21,7 @@ git tag v0.1.0
 git push --tags
 
 # 2. Build
-pnpm build
+bun run build
 
 # 3. Publish
 npm publish --access public
@@ -31,7 +32,7 @@ This will prompt for web-based authentication in your browser.
 ### 2. Configure NPM_TOKEN Secret
 
 1. Generate an npm access token at https://www.npmjs.com/settings/~/tokens
-   - Select "Automation" type for CI/CD use
+   - Select “Automation” type for CI/CD use
 2. Add the token as a repository secret:
    - Go to https://github.com/jlevy/clam/settings/secrets/actions
    - Add secret named `NPM_TOKEN` with the token value
@@ -39,11 +40,13 @@ This will prompt for web-based authentication in your browser.
 ### 3. Verify Repository Setup
 
 - Repository must be public for provenance attestation
-- Ensure the release workflow at `.github/workflows/release.yml` has `id-token: write` permission
+- Ensure the release workflow at `.github/workflows/release.yml` has `id-token: write`
+  permission
 
 ## During Development
 
-Merge PRs to `main` without creating changesets. Changesets are created only at release time.
+Merge PRs to `main` without creating changesets.
+Changesets are created only at release time.
 
 ## Release Workflow
 
@@ -76,7 +79,7 @@ Choose version bump:
 Run the interactive changeset command:
 
 ```bash
-pnpm changeset
+bun run changeset
 ```
 
 This prompts for package selection, bump type (patch/minor/major), and a summary.
@@ -93,7 +96,7 @@ git commit -m "chore: add changeset for vX.X.X"
 Run changesets to bump version and update CHANGELOG:
 
 ```bash
-pnpm changeset version
+bun run changeset version
 ```
 
 Review and commit:
@@ -123,9 +126,9 @@ npm view get-clam
 
 ```bash
 git checkout main && git pull
-pnpm changeset  # Interactive: select package, bump type, summary
+bun run changeset  # Interactive: select package, bump type, summary
 git add .changeset && git commit -m "chore: add changeset for v0.2.0"
-pnpm changeset version
+bun run changeset version
 git add . && git commit -m "chore: release get-clam v0.2.0"
 git push && git tag v0.2.0 && git push --tags
 ```
@@ -137,7 +140,8 @@ This project uses npm token-based publishing with provenance:
 - **NPM_TOKEN secret**: Repository secret containing npm automation token
 - **Provenance attestation**: `NPM_CONFIG_PROVENANCE=true` adds signed build provenance
 
-The release workflow (`.github/workflows/release.yml`) triggers on `v*` tags and publishes automatically.
+The release workflow (`.github/workflows/release.yml`) triggers on `v*` tags and
+publishes automatically.
 
 ## GitHub Releases
 
@@ -145,7 +149,8 @@ The release workflow automatically creates a GitHub Release when a tag is pushed
 
 - **Release name**: Matches the tag (e.g., `v0.2.0`)
 - **Release notes**: Initially extracted from CHANGELOG
-- **Pre-release flag**: Automatically set for versions containing `-` (e.g., `1.0.0-beta.1`)
+- **Pre-release flag**: Automatically set for versions containing `-` (e.g.,
+  `1.0.0-beta.1`)
 
 ## Troubleshooting
 
@@ -157,7 +162,7 @@ The release workflow automatically creates a GitHub Release when a tag is pushed
 **npm publish failing with 401/403?**
 
 - Verify `NPM_TOKEN` secret is configured in repository settings
-- Check the token hasn't expired
+- Check the token hasn’t expired
 - Ensure token has publish permissions for `get-clam`
 
 **First publish?**

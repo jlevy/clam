@@ -4,7 +4,9 @@ A shell-like interface for Claude Code and other agents.
 
 ## Overview
 
-`clam` is a terminal-based client for Claude Code that uses true terminal scrollback instead of TUI re-rendering. All output flows into your terminal's native scrollback buffer, giving you:
+`clam` is a terminal-based client for Claude Code that uses true terminal scrollback
+instead of TUI re-rendering.
+All output flows into your terminal’s native scrollback buffer, giving you:
 
 - **Instant scrolling** - Native terminal performance
 - **Preserved history** - Output remains after exiting
@@ -37,14 +39,14 @@ clam --cwd /path/to/project # Set working directory
 
 During a session, use slash commands:
 
-| Command            | Description                       |
-| ------------------ | --------------------------------- |
-| `/help`            | Show available commands           |
-| `/quit` or `/exit` | Exit clam                         |
-| `/status`          | Show session status               |
-| `/config`          | Show current configuration        |
-| `/edit`            | Open $EDITOR for multi-line input |
-| `/clear`           | Clear the terminal                |
+| Command | Description |
+| --- | --- |
+| `/help` | Show available commands |
+| `/quit` or `/exit` | Exit clam |
+| `/status` | Show session status |
+| `/config` | Show current configuration |
+| `/edit` | Open $EDITOR for multi-line input |
+| `/clear` | Clear the terminal |
 
 ## Multi-line Input
 
@@ -80,12 +82,12 @@ Configuration is stored in `~/.clam/`:
 
 ### Environment Variables
 
-| Variable                 | Description                               |
-| ------------------------ | ----------------------------------------- |
-| `CLAM_VERBOSE=1`         | Enable verbose output                     |
-| `CLAM_SHOW_TIMESTAMPS=1` | Show timestamps                           |
-| `CLAM_TRUNCATE_AFTER`    | Max lines before truncating (default: 10) |
-| `CLAM_AGENT_COMMAND`     | Agent command to spawn                    |
+| Variable | Description |
+| --- | --- |
+| `CLAM_VERBOSE=1` | Enable verbose output |
+| `CLAM_SHOW_TIMESTAMPS=1` | Show timestamps |
+| `CLAM_TRUNCATE_AFTER` | Max lines before truncating (default: 10) |
+| `CLAM_AGENT_COMMAND` | Agent command to spawn |
 
 ## Requirements
 
@@ -99,27 +101,30 @@ Configuration is stored in `~/.clam/`:
 1. Renders to ANSI-colored text in standard terminals
 2. Guarantees NO cursor positioning codes (true scrollback)
 
-See the [clam spike spec](docs/project/specs/active/plan-2026-02-03-clam-acp-client-spike.md) for full architecture details.
+See the
+[clam spike spec](docs/project/specs/active/plan-2026-02-03-clam-acp-client-spike.md)
+for full architecture details.
 
 ## Development
 
-This is a pnpm monorepo. To get started:
+This is a Bun monorepo.
+To get started:
 
 ```bash
 # Install dependencies
-pnpm install
+bun install
 
 # Build all packages
-pnpm build
+bun run build
 
 # Run tests
-pnpm test
+bun run test
 
 # Run type checking
-pnpm typecheck
+bun run typecheck
 
 # Run CLI in development
-pnpm clam
+bun run clam
 ```
 
 ## Project Structure

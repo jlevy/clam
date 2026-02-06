@@ -1,6 +1,7 @@
 # Changesets
 
-This project uses [Changesets](https://github.com/changesets/changesets) for version management.
+This project uses [Changesets](https://github.com/changesets/changesets) for version
+management.
 
 ## Quick Reference
 
@@ -9,7 +10,7 @@ This project uses [Changesets](https://github.com/changesets/changesets) for ver
 When making a change that should be included in a release:
 
 ```bash
-pnpm changeset
+bun run changeset
 ```
 
 Follow the prompts to describe your change and select the version bump type.
