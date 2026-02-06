@@ -169,7 +169,14 @@ export const colors = {
 /**
  * Prompt characters - easy to customize.
  */
-export const promptChars = {
+export const promptChars: {
+  nl: string;
+  shell: string;
+  slash: string;
+  input: string;
+  tool: string;
+  continuation: string;
+} = {
   /** Natural language input prompt character */
   nl: '\u25b6', // ▶
   /** Shell command input prompt character */
@@ -309,7 +316,15 @@ export function getColorForMode(mode: InputMode): (s: string) => string {
 /**
  * Status symbols with consistent styling.
  */
-export const symbols = {
+export const symbols: {
+  success: string;
+  error: string;
+  warning: string;
+  info: string;
+  arrow: string;
+  bullet: string;
+  separator: string;
+} = {
   success: pc.green('\u2713'), // ✓
   error: pc.red('\u2717'), // ✗
   warning: pc.yellow('\u26a0'), // ⚠
