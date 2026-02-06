@@ -31,139 +31,139 @@ export const colors = {
   // ═══════════════════════════════════════════════════════════════════════════
 
   /** User's prompt text - what the user typed - light pink to distinguish from output */
-  userPrompt: (s: string) => pc.magenta(s),
+  userPrompt: (s: string): string => pc.magenta(s),
 
   /** Agent's prose/text output - default readable color */
-  agentText: (s: string) => pc.reset(s),
+  agentText: (s: string): string => pc.reset(s),
 
   /** Agent's code blocks (```) - distinct from prose */
-  agentCode: (s: string) => pc.cyan(s),
+  agentCode: (s: string): string => pc.cyan(s),
 
   /** Agent's inline code (`) - subtle distinction */
-  agentInlineCode: (s: string) => pc.dim(pc.cyan(s)),
+  agentInlineCode: (s: string): string => pc.dim(pc.cyan(s)),
 
   /** Tool/command output - dim to distinguish from agent prose */
-  toolOutput: (s: string) => pc.dim(s),
+  toolOutput: (s: string): string => pc.dim(s),
 
   /** Input prompt indicator (the "> " waiting for input) - bold pink like cursor */
-  inputPrompt: (s: string) => pc.bold(pc.magenta(s)),
+  inputPrompt: (s: string): string => pc.bold(pc.magenta(s)),
 
   /** Input prompt after submission - dim to not compete with output */
-  inputPromptDim: (s: string) => pc.dim(pc.magenta(s)),
+  inputPromptDim: (s: string): string => pc.dim(pc.magenta(s)),
 
   /** Slash command text - purple/blue to distinguish from regular input */
-  slashCommand: (s: string) => pc.blue(s),
+  slashCommand: (s: string): string => pc.blue(s),
 
   /** Shell command text - bold white to distinguish from NL input */
-  shellCommand: (s: string) => pc.bold(pc.white(s)),
+  shellCommand: (s: string): string => pc.bold(pc.white(s)),
 
   /** Shell prompt character ($) - bold white */
-  shellPrompt: (s: string) => pc.bold(pc.white(s)),
+  shellPrompt: (s: string): string => pc.bold(pc.white(s)),
 
   /** Slash command prompt character (▶) - blue */
-  slashPrompt: (s: string) => pc.blue(s),
+  slashPrompt: (s: string): string => pc.blue(s),
 
   // ═══════════════════════════════════════════════════════════════════════════
   // SUBMITTED STATE COLORS (dimmed for scroll history)
   // ═══════════════════════════════════════════════════════════════════════════
 
   /** Shell prompt after submission - dim to not compete with output */
-  shellPromptDim: (s: string) => pc.dim(pc.white(s)),
+  shellPromptDim: (s: string): string => pc.dim(pc.white(s)),
 
   /** Slash prompt after submission - dim blue */
-  slashPromptDim: (s: string) => pc.dim(pc.blue(s)),
+  slashPromptDim: (s: string): string => pc.dim(pc.blue(s)),
 
   /** Shell command text after submission - dim */
-  shellCommandDim: (s: string) => pc.dim(pc.white(s)),
+  shellCommandDim: (s: string): string => pc.dim(pc.white(s)),
 
   /** Slash command text after submission - dim blue */
-  slashCommandDim: (s: string) => pc.dim(pc.blue(s)),
+  slashCommandDim: (s: string): string => pc.dim(pc.blue(s)),
 
   /** Streaming indicator while agent is thinking/responding */
-  streaming: (s: string) => pc.cyan(s),
+  streaming: (s: string): string => pc.cyan(s),
 
   // ═══════════════════════════════════════════════════════════════════════════
   // STATUS COLORS
   // ═══════════════════════════════════════════════════════════════════════════
 
   /** Success messages */
-  success: (s: string) => pc.green(s),
+  success: (s: string): string => pc.green(s),
 
   /** Error messages */
-  error: (s: string) => pc.red(s),
+  error: (s: string): string => pc.red(s),
 
   /** Informational/descriptive messages - italic to distinguish from content */
-  info: (s: string) => pc.italic(pc.cyan(s)),
+  info: (s: string): string => pc.italic(pc.cyan(s)),
 
   /** Warning messages */
-  warn: (s: string) => pc.yellow(s),
+  warn: (s: string): string => pc.yellow(s),
 
   /** Status messages - dim for non-critical info like "Connecting..." */
-  status: (s: string) => pc.gray(s),
+  status: (s: string): string => pc.gray(s),
 
   // ═══════════════════════════════════════════════════════════════════════════
   // PERMISSION PROMPT COLORS
   // ═══════════════════════════════════════════════════════════════════════════
 
   /** Permission prompt heading */
-  permissionHeading: (s: string) => pc.yellow(pc.bold(s)),
+  permissionHeading: (s: string): string => pc.yellow(pc.bold(s)),
 
   /** Permission tool/action name */
-  permissionTool: (s: string) => pc.cyan(s),
+  permissionTool: (s: string): string => pc.cyan(s),
 
   /** Permission command/details */
-  permissionCommand: (s: string) => pc.white(s),
+  permissionCommand: (s: string): string => pc.white(s),
 
   /** Allow option in permission prompt */
-  permissionAllow: (s: string) => pc.green(s),
+  permissionAllow: (s: string): string => pc.green(s),
 
   /** Deny option in permission prompt */
-  permissionDeny: (s: string) => pc.red(s),
+  permissionDeny: (s: string): string => pc.red(s),
 
   /** Option key/shortcut in permission prompt - bold white to not conflict with red/green options */
-  permissionKey: (s: string) => pc.bold(pc.white(s)),
+  permissionKey: (s: string): string => pc.bold(pc.white(s)),
 
   /** Box drawing characters for prompts */
-  permissionBox: (s: string) => pc.gray(s),
+  permissionBox: (s: string): string => pc.gray(s),
 
   // ═══════════════════════════════════════════════════════════════════════════
   // UI ELEMENT COLORS
   // ═══════════════════════════════════════════════════════════════════════════
 
   /** Tool/command names */
-  tool: (s: string) => pc.cyan(s),
+  tool: (s: string): string => pc.cyan(s),
 
   /** File paths */
-  path: (s: string) => pc.blue(s),
+  path: (s: string): string => pc.blue(s),
 
   /** Code/command text */
-  code: (s: string) => pc.cyan(pc.bold(s)),
+  code: (s: string): string => pc.cyan(pc.bold(s)),
 
   /** Section headers */
-  header: (s: string) => pc.bold(pc.white(s)),
+  header: (s: string): string => pc.bold(pc.white(s)),
 
   // ═══════════════════════════════════════════════════════════════════════════
   // TEXT STYLING
   // ═══════════════════════════════════════════════════════════════════════════
 
   /** Muted/secondary text */
-  muted: (s: string) => pc.gray(s),
+  muted: (s: string): string => pc.gray(s),
 
   /** Bold text */
-  bold: (s: string) => pc.bold(s),
+  bold: (s: string): string => pc.bold(s),
 
   /** Dim text */
-  dim: (s: string) => pc.dim(s),
+  dim: (s: string): string => pc.dim(s),
 
   // ═══════════════════════════════════════════════════════════════════════════
   // SPINNER COLORS
   // ═══════════════════════════════════════════════════════════════════════════
 
   /** Spinner wave icon - bold blue for visibility */
-  spinnerIcon: (s: string) => pc.bold(pc.blue(s)),
+  spinnerIcon: (s: string): string => pc.bold(pc.blue(s)),
 
   /** Spinner text (verbs, messages) - dim blue for subtlety */
-  spinnerText: (s: string) => pc.dim(pc.blue(s)),
+  spinnerText: (s: string): string => pc.dim(pc.blue(s)),
 };
 
 /**
@@ -191,8 +191,15 @@ export const promptChars = {
  *
  * NOTE: Defined before modeVisualConfig because it's referenced there.
  */
-const isTTY = process.stdout.isTTY ?? false;
-export const inputColors = {
+const isTTY: boolean = process.stdout.isTTY ?? false;
+export const inputColors: {
+  naturalLanguage: string;
+  slashCommand: string;
+  shell: string;
+  ambiguous: string;
+  nothing: string;
+  reset: string;
+} = {
   /** Natural language input - magenta */
   naturalLanguage: isTTY ? '\x1b[35m' : '',
   /** Slash command input - bold blue */
@@ -253,16 +260,16 @@ export const modeVisualConfig: Record<InputMode, ModeVisualConfig> = {
   },
   ambiguous: {
     char: promptChars.nl,
-    activePromptColor: pc.yellow,
-    submittedPromptColor: (s: string) => pc.dim(pc.yellow(s)),
-    textColor: pc.yellow,
+    activePromptColor: (s: string): string => pc.yellow(s),
+    submittedPromptColor: (s: string): string => pc.dim(pc.yellow(s)),
+    textColor: (s: string): string => pc.yellow(s),
     rawColor: inputColors.ambiguous,
   },
   nothing: {
     char: promptChars.nl,
-    activePromptColor: pc.red,
-    submittedPromptColor: (s: string) => pc.dim(pc.red(s)),
-    textColor: pc.red,
+    activePromptColor: (s: string): string => pc.red(s),
+    submittedPromptColor: (s: string): string => pc.dim(pc.red(s)),
+    textColor: (s: string): string => pc.red(s),
     rawColor: inputColors.nothing,
   },
 };

@@ -70,7 +70,7 @@ export interface ModeDetectorOptions {
  * These are commands that clam handles directly, not shell commands.
  * Add new slash commands here when implementing them.
  */
-export const KNOWN_SLASH_COMMANDS = new Set([
+export const KNOWN_SLASH_COMMANDS: Set<string> = new Set([
   'help',
   'quit',
   'exit',
