@@ -22,6 +22,7 @@ import {
   truncateLines,
 } from './formatting.js';
 import type { ExecResult } from './shell.js';
+import { createSpinner, type Spinner, SpinnerMode } from './spinner.js';
 
 /**
  * Tool execution status.
@@ -110,10 +111,8 @@ export function createOutputWriter(options: OutputWriterOptions = {}): OutputWri
   let thinkingChars = 0;
   // Track state for auto-separators between tools
   let _lastToolHeader = false;
-  // Track state for spinner
-  let spinnerInterval: ReturnType<typeof setInterval> | null = null;
-  const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
-  let spinnerIndex = 0;
+  // Track state for spinner (aquatic-themed)
+  let currentSpinner: Spinner | null = null;
   // Track whether last output ended with a newline (for clean formatting)
   let lastEndedWithNewline = true;
 
@@ -198,10 +197,9 @@ export function createOutputWriter(options: OutputWriterOptions = {}): OutputWri
     toolHeader(title: string, kind: string, status: ToolStatus): void {
       // TODO: Clam code upgrade point - becomes collapsible tool section
       // Stop spinner on first tool call
-      if (spinnerInterval) {
-        clearInterval(spinnerInterval);
-        spinnerInterval = null;
-        stream.write('\r\x1b[K');
+      if (currentSpinner) {
+        currentSpinner.stop();
+        currentSpinner = null;
       }
 
       // Ensure we're on a fresh line before tool header
@@ -388,10 +386,9 @@ export function createOutputWriter(options: OutputWriterOptions = {}): OutputWri
 
     streamChunk(text: string): void {
       // Stop spinner on first content
-      if (spinnerInterval) {
-        clearInterval(spinnerInterval);
-        spinnerInterval = null;
-        stream.write('\r\x1b[K');
+      if (currentSpinner) {
+        currentSpinner.stop();
+        currentSpinner = null;
       }
       // Agent text - default color (distinct from tool output)
       write(colors.agentText(text));
@@ -406,27 +403,30 @@ export function createOutputWriter(options: OutputWriterOptions = {}): OutputWri
       }
     },
 
-    spinnerStart(message = 'Thinking'): void {
+    spinnerStart(message?: string): void {
       // Stop any existing spinner
-      if (spinnerInterval) {
-        clearInterval(spinnerInterval);
+      if (currentSpinner) {
+        currentSpinner.stop();
       }
-      spinnerIndex = 0;
-      // Use \r to overwrite line in place (works in most terminals)
-      spinnerInterval = setInterval(() => {
-        const frame = spinnerFrames[spinnerIndex % spinnerFrames.length];
-        stream.write(`\r${colors.muted(`${frame} ${message}...`)}  `);
-        spinnerIndex++;
-      }, 80);
+
+      // Determine spinner mode:
+      // - No message or 'Thinking': Fun verbs (Claude Code is processing)
+      // - Custom message: Custom message mode (specific operation like connecting)
+      const mode =
+        message && message !== 'Thinking' ? SpinnerMode.CustomMessage : SpinnerMode.FunVerbs;
+
+      currentSpinner = createSpinner({
+        mode,
+        message,
+        write: (text) => stream.write(text),
+      });
+      currentSpinner.start();
     },
 
     spinnerStop(): void {
-      if (spinnerInterval) {
-        clearInterval(spinnerInterval);
-        spinnerInterval = null;
-        // Clear the spinner line using ANSI escape codes
-        // \r = return to start, \x1b[K = clear from cursor to end of line
-        stream.write('\r\x1b[K');
+      if (currentSpinner) {
+        currentSpinner.stop();
+        currentSpinner = null;
       }
     },
 
