@@ -3,6 +3,8 @@
  * Wave pattern: calm → ripple → waves → strong → waves → ripple → repeat
  */
 
+import { colors } from './formatting.js';
+
 /** Wave character frames for spinner animation */
 export const WAVE_FRAMES = ['─', '~', '≈', '≋', '≈', '~'] as const;
 
@@ -166,6 +168,10 @@ export interface SpinnerConfig {
   mode: SpinnerModeType;
   message?: string;
   write: (text: string) => void;
+  /** Color function for spinner icon (defaults to colors.spinnerIcon) */
+  iconColor?: (s: string) => string;
+  /** Color function for spinner text (defaults to colors.spinnerText) */
+  textColor?: (s: string) => string;
 }
 
 /** Spinner instance returned by createSpinner */
@@ -187,7 +193,13 @@ const TIMING = {
 
 /** Create a spinner with the specified mode */
 export function createSpinner(config: SpinnerConfig): Spinner {
-  const { mode, message = '', write } = config;
+  const {
+    mode,
+    message = '',
+    write,
+    iconColor = colors.spinnerIcon,
+    textColor = colors.spinnerText,
+  } = config;
 
   let intervalId: ReturnType<typeof setInterval> | null = null;
   let frameIndex = 0;
@@ -205,14 +217,15 @@ export function createSpinner(config: SpinnerConfig): Spinner {
 
   const renderFrame = () => {
     const frame = getNextFrame(frameIndex++);
+    const coloredFrame = iconColor(frame);
 
     switch (mode) {
       case SpinnerMode.Plain:
-        write(`\r${frame} `);
+        write(`\r${coloredFrame} `);
         break;
 
       case SpinnerMode.CustomMessage:
-        write(`\r${frame} ${message}...`);
+        write(`\r${coloredFrame} ${textColor(`${message}...`)}`);
         break;
 
       case SpinnerMode.FunVerbs:
@@ -223,28 +236,29 @@ export function createSpinner(config: SpinnerConfig): Spinner {
 
   const renderFunVerbFrame = () => {
     const frame = getNextFrame(frameIndex++);
+    const coloredFrame = iconColor(frame);
     let text = '';
 
     switch (animationPhase) {
       case 0: // Show verb without dots
-        text = `\r${frame} ${currentVerb}`;
+        text = `\r${coloredFrame} ${textColor(currentVerb)}`;
         break;
       case 1: // First dot
-        text = `\r${frame} ${currentVerb}.`;
+        text = `\r${coloredFrame} ${textColor(`${currentVerb}.`)}`;
         break;
       case 2: // Second dot
-        text = `\r${frame} ${currentVerb}..`;
+        text = `\r${coloredFrame} ${textColor(`${currentVerb}..`)}`;
         break;
       case 3: // Third dot (hold)
-        text = `\r${frame} ${currentVerb}...`;
+        text = `\r${coloredFrame} ${textColor(`${currentVerb}...`)}`;
         break;
       case 4: // Clear
-        text = `\r${frame} `;
+        text = `\r${coloredFrame} `;
         break;
       default: {
         // Typewriter phase
         const charsToShow = Math.min(typewriterIndex, currentVerb.length);
-        text = `\r${frame} ${currentVerb.slice(0, charsToShow)}`;
+        text = `\r${coloredFrame} ${textColor(currentVerb.slice(0, charsToShow))}`;
         break;
       }
     }

@@ -426,7 +426,7 @@ export function createOutputWriter(options: OutputWriterOptions = {}): OutputWri
       currentSpinner = createSpinner({
         mode,
         message,
-        write: (text) => stream.write(colors.muted(text)),
+        write: (text) => stream.write(text),
       });
       currentSpinner.start();
     },
