@@ -14,7 +14,12 @@ import { createModeDetector } from './lib/mode-detection.js';
 import { createOutputWriter, type PermissionOption } from './lib/output.js';
 import { createShellModule } from './lib/shell.js';
 import { formatPromptWithContext } from './lib/prompts.js';
-import { detectInstalledTools, formatToolStatus } from './lib/shell/index.js';
+import {
+  detectInstalledTools,
+  formatActiveAliases,
+  formatToolStatus,
+  type AbsolutePath,
+} from './lib/shell/index.js';
 import { installEmergencyCleanup } from './lib/tty/index.js';
 
 interface CliArgs {
@@ -220,8 +225,9 @@ async function main(): Promise<void> {
   const modeDetector = createModeDetector({ shell });
 
   // Detect and display modern tools, then enable command aliasing
+  let installedTools = new Map<string, AbsolutePath>();
   try {
-    const installedTools = await detectInstalledTools();
+    installedTools = await detectInstalledTools();
     shell.setInstalledTools(installedTools);
 
     const toolStatus = formatToolStatus(installedTools);
@@ -398,6 +404,22 @@ async function main(): Promise<void> {
 
   // Set late-bound reference for permission handling
   inputReaderRef = inputReader;
+
+  // Register /aliases command to show active aliases
+  inputReader.registerCommand({
+    name: 'aliases',
+    description: 'Show active command aliases',
+    execute: () => {
+      const aliasOutput = formatActiveAliases(installedTools);
+      if (aliasOutput) {
+        output.newline();
+        output.info(colors.bold('Active Aliases:'));
+        output.info(aliasOutput);
+      } else {
+        output.info('No aliases active (no modern tools detected)');
+      }
+    },
+  });
 
   // Handle process signals for graceful shutdown
   const cleanup = () => {

@@ -25,21 +25,21 @@ export {
   type ToolInfo,
 } from './modern-tools.js';
 export {
-  COMMAND_ALIASES,
-  rewriteCommand,
-  getAlias,
-  getActiveAliases,
-  formatAlias,
-  type CommandAlias,
-} from './command-aliases.js';
+  type AliasContext,
+  type AliasDefinition,
+  type AliasExpansion,
+  type AliasExpansionResult,
+} from './alias-types.js';
+export { ALIASES, getAliasNames, getAliasDefinition } from './alias-definitions.js';
 export {
-  isZoxideInstalled,
-  isZoxideAvailable,
-  zoxideQuery,
-  zoxideAdd,
-  detectZoxideCommand,
-  rewriteZoxideCommand,
-} from './zoxide.js';
+  expandAlias,
+  isAliasActive,
+  getActiveAliases,
+  formatActiveAliases,
+  formatAliasesCompact,
+  parseCommand,
+} from './alias-expander.js';
+export { isZoxideAvailable, zoxideAdd } from './zoxide.js';
 export {
   isDirectoryPath,
   formatExitCode,
