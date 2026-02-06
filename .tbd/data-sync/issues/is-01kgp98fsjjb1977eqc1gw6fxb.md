@@ -10,6 +10,6 @@ spec_path: docs/project/specs/active/plan-2026-02-05-fun-spinner-verbs.md
 status: open
 title: Polish animation timings and test terminal compatibility
 type: is
-updated_at: 2026-02-06T01:30:44.429Z
-version: 8
+updated_at: 2026-02-06T02:58:57.399Z
+version: 9
 ---
