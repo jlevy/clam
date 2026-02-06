@@ -33,8 +33,14 @@ let emergencyCleanupInstalled = false;
 /**
  * Run `stty sane` to restore terminal to a known good state.
  * This is the recommended recovery approach from xonsh.
+ * Only runs on Unix-like systems (Linux, macOS) - stty doesn't exist on Windows.
  */
 function runSttySane(): void {
+  // Skip on Windows - stty is a Unix command
+  if (process.platform === 'win32') {
+    return;
+  }
+
   try {
     // Use execSync with shell directly - stdio: 'inherit' ensures we use the real TTY
     execSync('stty sane 2>/dev/null || true', { stdio: 'inherit' });
