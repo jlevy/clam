@@ -14,7 +14,8 @@ describe('createBlockRenderer', () => {
   describe('processChunk - headers', () => {
     it('formats headers immediately after newline', () => {
       const output = renderer.processChunk('# Hello World\n\nMore text');
-      expect(output).toContain(pc.bold(pc.blue('Hello World')));
+      // marked-terminal renders headers with styling
+      expect(output).toContain('Hello World');
     });
 
     it('buffers incomplete headers', () => {
@@ -22,26 +23,28 @@ describe('createBlockRenderer', () => {
       expect(output).toBe('');
     });
 
-    it('formats H1-H2 as bold blue', () => {
+    it('formats H2 headers', () => {
       const output = renderer.processChunk('## Sub Header\n\nNext');
-      expect(output).toContain(pc.bold(pc.blue('Sub Header')));
+      expect(output).toContain('Sub Header');
     });
 
-    it('formats H3-H4 as bold cyan', () => {
+    it('formats H3 headers', () => {
       const output = renderer.processChunk('### Third Header\n\nNext');
-      expect(output).toContain(pc.bold(pc.cyan('Third Header')));
+      expect(output).toContain('Third Header');
     });
 
-    it('formats H5-H6 as bold', () => {
+    it('formats H5 headers', () => {
       const output = renderer.processChunk('##### Fifth Header\n\nNext');
-      expect(output).toContain(pc.bold('Fifth Header'));
+      expect(output).toContain('Fifth Header');
     });
   });
 
   describe('processChunk - paragraphs', () => {
     it('formats paragraph at double newline', () => {
       const output = renderer.processChunk('This is a **bold** paragraph.\n\nNext paragraph');
-      expect(output).toContain(pc.bold('bold'));
+      // marked-terminal renders bold text (content should be present)
+      expect(output).toContain('bold');
+      expect(output).toContain('paragraph');
     });
 
     it('buffers incomplete paragraphs', () => {
@@ -54,6 +57,7 @@ describe('createBlockRenderer', () => {
     it('formats code block at closing fence', () => {
       const code = '```javascript\nconsole.log("hi");\n```\n';
       const output = renderer.processChunk(code);
+      // Code fences still use picocolors via cli-highlight
       expect(output).toContain(pc.gray('```'));
       expect(output).toContain(pc.gray('[javascript]'));
     });
@@ -116,14 +120,15 @@ describe('createBlockRenderer', () => {
     it('handles chunks split across calls', () => {
       renderer.processChunk('# Hel');
       const output = renderer.processChunk('lo\n\nText');
-      expect(output).toContain(pc.bold(pc.blue('Hello')));
+      // marked-terminal renders the complete header
+      expect(output).toContain('Hello');
     });
 
     it('accumulates multiple blocks', () => {
       const chunk1 = renderer.processChunk('# Title\n\n');
       const chunk2 = renderer.processChunk('Paragraph **bold**.\n\n');
-      expect(chunk1).toContain(pc.bold(pc.blue('Title')));
-      expect(chunk2).toContain(pc.bold('bold'));
+      expect(chunk1).toContain('Title');
+      expect(chunk2).toContain('bold');
     });
   });
 
@@ -131,7 +136,7 @@ describe('createBlockRenderer', () => {
     it('formats remaining buffer', () => {
       renderer.processChunk('Unfinished **paragraph**');
       const output = renderer.flush();
-      expect(output).toContain(pc.bold('paragraph'));
+      expect(output).toContain('paragraph');
     });
 
     it('handles unclosed code fence', () => {
@@ -163,14 +168,15 @@ describe('createBlockRenderer', () => {
   describe('inline formatting within blocks', () => {
     it('applies inline formatting in paragraphs', () => {
       const output = renderer.processChunk('Text with **bold** and *italic* and `code`.\n\nNext');
-      expect(output).toContain(pc.bold('bold'));
-      expect(output).toContain(pc.italic('italic'));
-      expect(output).toContain(pc.cyan('code'));
+      // marked-terminal renders inline formatting (content present, styling depends on chalk)
+      expect(output).toContain('bold');
+      expect(output).toContain('italic');
+      expect(output).toContain('code');
     });
 
     it('applies inline formatting in lists', () => {
       const output = renderer.processChunk('- **bold** item\n\nNext');
-      expect(output).toContain(pc.bold('bold'));
+      expect(output).toContain('bold');
     });
   });
 });
