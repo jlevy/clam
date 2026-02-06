@@ -23,7 +23,7 @@ export default defineConfig([
     sourcemap: 'linked',
     target: 'node',
     minify: false,
-    banner: '"#!/usr/bin/env bun";',
+    banner: '#!/usr/bin/env bun',
     noExternal: ['picocolors'],
   },
 ]);
