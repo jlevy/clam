@@ -194,13 +194,11 @@ describe('ModeDetection', () => {
     });
 
     it('should return nothing for non-commands', () => {
-      // Single characters aren't real commands
-      expect(detector.detectModeSync('l')).toBe('nothing');
-      expect(detector.detectModeSync('g')).toBe('nothing');
-      expect(detector.detectModeSync('n')).toBe('nothing');
-
-      // Unknown command-like words
-      expect(detector.detectModeSync('notarealcmd')).toBe('nothing');
+      // Unknown command-like words (use gibberish that won't exist on any system)
+      // Note: Single letters like 'n' can be real commands (e.g., Node version manager)
+      expect(detector.detectModeSync('xyznotarealcmd')).toBe('nothing');
+      expect(detector.detectModeSync('notarealcommand123')).toBe('nothing');
+      expect(detector.detectModeSync('qwerty_fake_cmd')).toBe('nothing');
     });
 
     it('should detect real commands', () => {
