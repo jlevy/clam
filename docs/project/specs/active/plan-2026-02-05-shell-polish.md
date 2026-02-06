@@ -249,17 +249,49 @@ subprocess execution.**
 ```
 packages/clam/src/lib/
 ├── shell/
-│   ├── modern-tools.ts       # Tool detection and aliasing
+│   ├── utils.ts              # Shared utilities (execPromise, isCommandAvailable)
+│   ├── modern-tools.ts       # Tool detection registry and status display
 │   ├── modern-tools.test.ts  # Tests
-│   ├── tool-display.ts       # Startup display formatting
+│   ├── command-aliases.ts    # Alias definitions and rewriting
+│   ├── zoxide.ts             # Zoxide integration (uses detectInstalledTools results)
 │   └── index.ts              # Re-exports
 ├── tty/
-│   ├── tty-state.ts          # TTY state save/restore (tcgetattr/tcsetattr)
-│   ├── process-group.ts      # Process group management
-│   ├── terminal-control.ts   # Terminal control handoff (tcsetpgrp)
-│   ├── alternate-mode.ts     # Detect vim/less alternate mode
+│   ├── tty-manager.ts        # TTY state save/restore, stty sane
 │   └── index.ts              # Re-exports
 └── input.ts                  # Update to use tty module for subprocess handling
+```
+
+### Design Principle: No Duplicate Detection
+
+**IMPORTANT**: Tool detection must happen in ONE place only.
+
+- `modern-tools.ts` owns detection via `detectInstalledTools()` which returns
+  `Map<string, AbsolutePath>` (only installed tools are in the map)
+- Other modules (zoxide.ts, command-aliases.ts) consume the detection results
+- No module should re-implement `which` checks or duplicate the exec/promisify pattern
+
+**Shared utilities** (`shell/utils.ts`):
+
+```typescript
+// Branded type for type-safe absolute paths
+export type AbsolutePath = string & { readonly __brand: 'AbsolutePath' };
+
+export function asAbsolutePath(path: string): AbsolutePath;
+
+// Get command path (returns null if not found)
+export async function getCommandPath(command: string, timeout = 500): Promise<AbsolutePath | null>;
+
+// Convenience boolean check
+export async function isCommandAvailable(command: string, timeout = 500): Promise<boolean>;
+```
+
+**Consuming detection results** (not re-checking):
+
+```typescript
+// In zoxide.ts - consume from detectInstalledTools():
+export function isZoxideAvailable(installedTools: Map<string, AbsolutePath>): boolean {
+  return installedTools.has('zoxide');  // Presence in map = installed
+}
 ```
 
 ### Tool Detection API
@@ -287,9 +319,9 @@ export const MODERN_TOOLS: ToolInfo[] = [
   { name: 'fd', command: 'fd', replaces: 'find', description: 'Modern find' },
 ];
 
-export async function detectInstalledTools(): Promise<Map<string, boolean>>;
-export function getToolAliases(installed: Map<string, boolean>, config: ToolConfig): Map<string, string[]>;
-export function formatToolStatus(installed: Map<string, boolean>): string;
+// Returns map of tool name -> absolute path (only installed tools are in map)
+export async function detectInstalledTools(): Promise<Map<string, AbsolutePath>>;
+export function formatToolStatus(installed: Map<string, AbsolutePath>): string;
 ```
 
 ### TTY Management API
@@ -483,15 +515,55 @@ async function runInteractiveCommand(cmd: string, args: string[]): Promise<void>
 
 Priority: **HIGH** - This causes terminal corruption
 
-Start with Option A (simple approach using `stty sane`):
+**Status: IMPLEMENTED** (using spawnSync approach)
 
-- [ ] Pause keypress handler before spawning interactive subprocess
-- [ ] Disable raw mode before spawn: `process.stdin.setRawMode(false)`
-- [ ] Run `stty sane` after subprocess exits to restore terminal
-- [ ] Re-enable raw mode and keypress handler after subprocess
-- [ ] Add emergency `stty sane` on Clam exit (process.on('exit'), SIGINT, SIGTERM)
+#### The Problem
+
+When running interactive subprocesses like `bash` or `vim`, the child process calls
+`tcsetpgrp()` to become the foreground process group.
+If Node’s readline is also trying to read from stdin (via async event handlers), the
+parent process receives SIGTTIN and gets stopped:
+
+```
+▶ bash
+bash-5.2$
+[1]+  Stopped                 pnpm clam
+```
+
+#### Approaches Considered
+
+**Option A: Pause keypress handler** (originally proposed)
+- Remove keypress listener before spawn
+- Disable raw mode, run subprocess, run `stty sane`, re-enable
+- Problem: Requires coordination between input.ts and shell.ts
+
+**Option B: Proper Unix approach** (what xonsh does)
+- Create new process group for child (`os.setpgrp`)
+- Call `tcsetpgrp()` to give child foreground control
+- Block SIGTTIN/SIGTTOU during handoff
+- Problem: Node.js doesn’t expose `tcsetpgrp()` natively
+- See: https://github.com/nodejs/node/issues/5549
+
+**Option C: spawnSync** (implemented)
+- Use synchronous spawn which blocks the entire Node event loop
+- Prevents readline from competing for stdin during subprocess
+- Combined with TTY management for raw mode and `stty sane` restoration
+
+#### Implementation (Option C)
+
+Chose spawnSync because:
+- Requires no native dependencies (vs node-pty or ffi)
+- Works reliably across platforms
+- Appropriate for interactive commands where we’re waiting anyway
+- Simple and maintainable
+
+Code location: `packages/clam/src/lib/shell.ts` in the `exec()` function.
+
+- [x] Use spawnSync for interactive commands (captureOutput: false)
+- [x] Wrap with TTY management (disable raw mode, stty sane after)
+- [x] Add emergency `stty sane` on Clam exit (process.on('exit'), SIGINT, SIGTERM)
 - [ ] Test with `bash`, `vim`, `less`, `htop`
-- [ ] Handle Ctrl+C during subprocess (don’t let it kill Clam)
+- [x] Handle Ctrl+C during subprocess (spawnSync handles this naturally)
 
 ### Phase 1b: Working Directory State Management
 
@@ -534,24 +606,16 @@ Priority: **HIGH** - Correct routing of input
   ```
 - [ ] Write tests for tool detection
 
-### Phase 3: Command Aliasing/Rewriting
+### Phase 3: Functional Alias System
 
-- [ ] Implement alias registry mapping original command to replacement
-- [ ] Add command rewriting hook in shell execution path (before spawn)
-- [ ] Implement these aliases (only if tool detected in Phase 2):
-  - `ls` -> `eza --group-directories-first -F`
-  - `ll` -> `eza --group-directories-first -F -l`
-  - `cat` -> `bat --paging=never` (disable pager for non-interactive use)
-- [ ] Pass through original command if replacement tool not found
+**See separate spec:**
+[Functional Alias System](plan-2026-02-05-functional-alias-system.md)
 
-### Phase 4: Zoxide Integration
+This phase consolidates command aliasing and zoxide into a unified, functional system
+inspired by xonsh’s callable aliases.
+Moved to its own spec to allow the shell-polish base work to be merged independently.
 
-- [ ] Detect zoxide installation (via `which zoxide`)
-- [ ] Add `z` as alias for `zoxide query --exclude $PWD --`
-- [ ] Call `zoxide add $PWD` after each successful `cd` to update frecency database
-- [ ] Add `zi` for interactive selection (`zoxide query -i`)
-
-### Phase 5: Shell Convenience Features
+### Phase 4: Shell Convenience Features
 
 Based on kash/xonsh research, these features improve shell usability.
 
@@ -634,9 +698,32 @@ clam
 2. **Phase 1b** (Critical): Working directory state management and Claude Code sync
 3. **Phase 1c** (Critical): Input mode detection fixes (slash commands vs paths)
 4. **Phase 2**: Tool detection and startup display
-5. **Phase 3**: Command aliasing/rewriting for detected tools
-6. **Phase 4**: Zoxide integration
-7. **Phase 5**: Shell conveniences (auto-cd, typo prevention, exit codes, keybindings)
+5. **Phase 3**: Functional alias system - see
+   [separate spec](plan-2026-02-05-functional-alias-system.md)
+6. **Phase 4**: Shell conveniences (auto-cd, typo prevention, exit codes, keybindings)
+
+## Refactoring: Code Duplication
+
+The initial implementation in PR #5 introduced some code duplication that will be
+addressed by the
+[Functional Alias System spec](plan-2026-02-05-functional-alias-system.md).
+
+### Already Addressed in PR #5
+
+1. **`shell/utils.ts`** created with shared utilities (`execPromise`,
+   `isCommandAvailable`)
+
+2. **`zoxide.ts`** updated to use `isZoxideAvailable(installedTools)` instead of
+   re-detecting
+
+### Deferred to Functional Alias System Spec
+
+The following will be addressed by implementing the functional alias system:
+
+- Consolidate `rewriteCommand()` and `rewriteZoxideCommand()` into single
+  `expandAlias()`
+- Move all alias definitions to one `ALIASES` object
+- Make zoxide `z`/`zi` regular callable aliases instead of special case
 
 ## Open Questions
 
@@ -748,6 +835,8 @@ This requires more sophisticated terminal handling:
 
 - [ANSI Color Output Spec](plan-2026-02-05-ansi-color-subprocess-output.md) - Related
   TTY work
+- [Functional Alias System](plan-2026-02-05-functional-alias-system.md) - Unified alias
+  system (Phase 3, split out for independent merging)
 
 ### Kash Reference Implementation
 

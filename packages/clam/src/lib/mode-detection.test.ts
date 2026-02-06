@@ -25,12 +25,19 @@ import type { ShellModule } from './shell.js';
  * Create a mock shell module for testing.
  */
 function createMockShell(commands: Set<string>): ShellModule {
+  let cwd = '/home/user';
   return {
     which: vi.fn((cmd: string) => Promise.resolve(commands.has(cmd) ? `/usr/bin/${cmd}` : null)),
     isCommand: vi.fn((word: string) => Promise.resolve(commands.has(word))),
     exec: vi.fn(),
     getCompletions: vi.fn(() => Promise.resolve([])),
     clearCache: vi.fn(),
+    getCwd: vi.fn(() => cwd),
+    setCwd: vi.fn((path: string) => {
+      cwd = path;
+    }),
+    setInstalledTools: vi.fn(),
+    setAliasingEnabled: vi.fn(),
   };
 }
 
