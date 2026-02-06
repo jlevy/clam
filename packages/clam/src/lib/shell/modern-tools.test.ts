@@ -2,7 +2,7 @@
  * Tests for modern tool detection.
  */
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import {
   detectInstalledTools,
   formatToolStatus,
@@ -98,7 +98,7 @@ describe('Modern Tools', () => {
       const bat = details.find((d) => d.name === 'bat');
 
       expect(eza?.available).toBe(true);
-      expect(eza?.path).toBe('/usr/bin/eza');
+      expect(eza?.path).toBe(asAbsolutePath('/usr/bin/eza'));
       expect(eza?.replaces).toBe('ls');
       expect(bat?.available).toBe(false);
       expect(bat?.path).toBeUndefined();

@@ -2,7 +2,7 @@
  * Tests for zoxide integration.
  */
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import { type AbsolutePath, asAbsolutePath } from './utils.js';
 import {
   buildZCommand,

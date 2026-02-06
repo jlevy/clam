@@ -2,7 +2,7 @@
  * Tests for command aliasing.
  */
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import {
   COMMAND_ALIASES,
   formatAlias,

@@ -2,7 +2,7 @@
  * Tests for prompts module.
  */
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import { formatPromptWithContext } from './prompts.js';
 
 describe('formatPromptWithContext', () => {
