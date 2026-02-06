@@ -1,4 +1,6 @@
 ---
+close_reason: Created alias-expander.ts with expandAlias(), parseCommand(), getActiveAliases(), format helpers
+closed_at: 2026-02-06T04:01:50.286Z
 created_at: 2026-02-06T02:40:41.523Z
 dependencies:
   - target: is-01kgrd5dsv20n9theby2j69v03
@@ -13,9 +15,9 @@ labels: []
 parent_id: is-01kgrd51jx6f82xharhgk4gn1h
 priority: 2
 spec_path: docs/project/specs/active/plan-2026-02-05-functional-alias-system.md
-status: open
+status: closed
 title: Create alias-expander.ts with expansion logic
 type: is
-updated_at: 2026-02-06T02:41:07.495Z
-version: 4
+updated_at: 2026-02-06T05:43:25.789Z
+version: 7
 ---

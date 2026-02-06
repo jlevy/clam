@@ -10,6 +10,8 @@ child_order_hints:
   - is-01kgrd62v9eg0fyb2c7gke6eja
   - is-01kgrd634traws8rj4p0ns4rph
   - is-01kgrd63ct6pd8h36gzhzm4ngp
+close_reason: "Core implementation complete: alias-types.ts, alias-definitions.ts, alias-expander.ts, shell.ts integration, old modules removed. clam-mbco remains for /aliases UI feature."
+closed_at: 2026-02-06T04:09:29.226Z
 created_at: 2026-02-06T02:40:29.275Z
 dependencies: []
 id: is-01kgrd51jx6f82xharhgk4gn1h
@@ -17,9 +19,9 @@ kind: epic
 labels: []
 priority: 2
 spec_path: docs/project/specs/active/plan-2026-02-05-functional-alias-system.md
-status: open
+status: closed
 title: "Spec: Functional Alias System"
 type: is
-updated_at: 2026-02-06T02:41:03.897Z
-version: 11
+updated_at: 2026-02-06T05:43:25.767Z
+version: 13
 ---
