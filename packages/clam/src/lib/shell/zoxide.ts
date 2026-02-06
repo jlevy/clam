@@ -10,7 +10,7 @@
  * - Automatic directory tracking after cd
  */
 
-import { execPromise, isCommandAvailable } from './utils.js';
+import { execPromise, isCommandAvailable, type AbsolutePath } from './utils.js';
 
 /**
  * Check if zoxide is installed.
@@ -24,8 +24,8 @@ export async function isZoxideInstalled(): Promise<boolean> {
  * Check if zoxide is available from pre-detected tools map.
  * Use this instead of isZoxideInstalled() when you have the detection results.
  */
-export function isZoxideAvailable(installedTools: Map<string, boolean>): boolean {
-  return installedTools.get('zoxide') ?? false;
+export function isZoxideAvailable(installedTools: Map<string, AbsolutePath>): boolean {
+  return installedTools.has('zoxide');
 }
 
 /**

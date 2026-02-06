@@ -10,6 +10,7 @@ import {
   getActiveAliases,
   formatAlias,
 } from './command-aliases.js';
+import { asAbsolutePath, type AbsolutePath } from './utils.js';
 
 describe('Command Aliases', () => {
   describe('COMMAND_ALIASES', () => {
@@ -28,19 +29,14 @@ describe('Command Aliases', () => {
   });
 
   describe('rewriteCommand', () => {
-    const allToolsInstalled = new Map([
-      ['eza', true],
-      ['bat', true],
-      ['rg', true],
-      ['fd', true],
+    const allToolsInstalled = new Map<string, AbsolutePath>([
+      ['eza', asAbsolutePath('/usr/bin/eza')],
+      ['bat', asAbsolutePath('/usr/bin/bat')],
+      ['rg', asAbsolutePath('/usr/bin/rg')],
+      ['fd', asAbsolutePath('/usr/bin/fd')],
     ]);
 
-    const noToolsInstalled = new Map([
-      ['eza', false],
-      ['bat', false],
-      ['rg', false],
-      ['fd', false],
-    ]);
+    const noToolsInstalled = new Map<string, AbsolutePath>();
 
     it('should rewrite ls to eza when installed', () => {
       const result = rewriteCommand('ls', allToolsInstalled);
@@ -94,9 +90,9 @@ describe('Command Aliases', () => {
   });
 
   describe('getAlias', () => {
-    const installedTools = new Map([
-      ['eza', true],
-      ['bat', false],
+    const installedTools = new Map<string, AbsolutePath>([
+      ['eza', asAbsolutePath('/usr/bin/eza')],
+      // 'bat' not installed
     ]);
 
     it('should return alias when tool is installed', () => {
@@ -118,11 +114,10 @@ describe('Command Aliases', () => {
 
   describe('getActiveAliases', () => {
     it('should return only aliases with installed tools', () => {
-      const installedTools = new Map([
-        ['eza', true],
-        ['bat', true],
-        ['rg', false],
-        ['fd', false],
+      const installedTools = new Map<string, AbsolutePath>([
+        ['eza', asAbsolutePath('/usr/bin/eza')],
+        ['bat', asAbsolutePath('/usr/bin/bat')],
+        // 'rg' and 'fd' not installed
       ]);
 
       const active = getActiveAliases(installedTools);
@@ -135,7 +130,7 @@ describe('Command Aliases', () => {
     });
 
     it('should return empty array when no tools installed', () => {
-      const noTools = new Map<string, boolean>();
+      const noTools = new Map<string, AbsolutePath>();
       const active = getActiveAliases(noTools);
       expect(active).toHaveLength(0);
     });

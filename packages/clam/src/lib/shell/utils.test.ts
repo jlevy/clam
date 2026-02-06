@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { execPromise, isCommandAvailable } from './utils.js';
+import {
+  execPromise,
+  isCommandAvailable,
+  getCommandPath,
+  asAbsolutePath,
+  type AbsolutePath,
+} from './utils.js';
 
 describe('shell/utils', () => {
   describe('execPromise', () => {
@@ -14,9 +20,35 @@ describe('shell/utils', () => {
     });
   });
 
+  describe('asAbsolutePath', () => {
+    it('should brand a string as AbsolutePath', () => {
+      const path: AbsolutePath = asAbsolutePath('/usr/bin/ls');
+      expect(path).toBe('/usr/bin/ls');
+      // The branded type is still usable as a string
+      expect(path.startsWith('/')).toBe(true);
+    });
+  });
+
+  describe('getCommandPath', () => {
+    it('should return absolute path for commands that exist', async () => {
+      const path = await getCommandPath('ls');
+      expect(path).toBeTruthy();
+      expect(path).toMatch(/^\/.*ls$/);
+    });
+
+    it('should return null for commands that do not exist', async () => {
+      const path = await getCommandPath('nonexistent_command_xyz123');
+      expect(path).toBeNull();
+    });
+
+    it('should respect timeout parameter', async () => {
+      const path = await getCommandPath('ls', 100);
+      expect(path).toBeTruthy();
+    });
+  });
+
   describe('isCommandAvailable', () => {
     it('should return true for commands that exist', async () => {
-      // 'echo' is a shell builtin available everywhere
       const result = await isCommandAvailable('ls');
       expect(result).toBe(true);
     });
@@ -27,7 +59,6 @@ describe('shell/utils', () => {
     });
 
     it('should respect timeout parameter', async () => {
-      // Very short timeout should still work for simple commands
       const result = await isCommandAvailable('ls', 100);
       expect(result).toBe(true);
     });

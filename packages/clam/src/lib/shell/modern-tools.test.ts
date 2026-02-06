@@ -10,6 +10,7 @@ import {
   getToolDetails,
   getModernAlternatives,
 } from './modern-tools.js';
+import { asAbsolutePath, type AbsolutePath } from './utils.js';
 
 describe('Modern Tools', () => {
   describe('MODERN_TOOLS', () => {
@@ -34,26 +35,28 @@ describe('Modern Tools', () => {
   });
 
   describe('detectInstalledTools', () => {
-    it('should return a map of tool availability', async () => {
+    it('should return a map of tool paths', async () => {
       const installed = await detectInstalledTools();
       expect(installed).toBeInstanceOf(Map);
-      expect(installed.size).toBe(MODERN_TOOLS.length);
+      // Only installed tools are in the map now
     });
 
     it('should detect common tools like ls alternative', async () => {
       const installed = await detectInstalledTools();
-      // We just check that the map has entries - actual availability depends on system
-      expect(installed.has('eza')).toBe(true);
-      expect(installed.has('bat')).toBe(true);
+      // We just check that the detection ran - actual availability depends on system
+      // If eza is installed, it will be in the map with its path
+      if (installed.has('eza')) {
+        expect(installed.get('eza')).toMatch(/eza/);
+      }
     });
   });
 
   describe('formatToolStatus', () => {
     it('should format tool status with check marks', () => {
-      const installed = new Map([
-        ['eza', true],
-        ['bat', true],
-        ['rg', false],
+      const installed = new Map<string, AbsolutePath>([
+        ['eza', asAbsolutePath('/usr/bin/eza')],
+        ['bat', asAbsolutePath('/usr/bin/bat')],
+        // 'rg' not installed - not in map
       ]);
 
       const status = formatToolStatus(installed);
@@ -64,10 +67,10 @@ describe('Modern Tools', () => {
     });
 
     it('should show only installed tools when option set', () => {
-      const installed = new Map([
-        ['eza', true],
-        ['bat', false],
-        ['rg', true],
+      const installed = new Map<string, AbsolutePath>([
+        ['eza', asAbsolutePath('/usr/bin/eza')],
+        ['rg', asAbsolutePath('/usr/bin/rg')],
+        // 'bat' not installed - not in map
       ]);
 
       const status = formatToolStatus(installed, { showOnlyInstalled: true });
@@ -77,7 +80,7 @@ describe('Modern Tools', () => {
     });
 
     it('should return empty string when no tools match', () => {
-      const installed = new Map<string, boolean>();
+      const installed = new Map<string, AbsolutePath>();
       const status = formatToolStatus(installed, { showOnlyInstalled: true });
       expect(status).toBe('');
     });
@@ -85,9 +88,9 @@ describe('Modern Tools', () => {
 
   describe('getToolDetails', () => {
     it('should return detailed tool information', () => {
-      const installed = new Map([
-        ['eza', true],
-        ['bat', false],
+      const installed = new Map<string, AbsolutePath>([
+        ['eza', asAbsolutePath('/usr/bin/eza')],
+        // 'bat' not installed
       ]);
 
       const details = getToolDetails(installed);
@@ -95,16 +98,18 @@ describe('Modern Tools', () => {
       const bat = details.find((d) => d.name === 'bat');
 
       expect(eza?.available).toBe(true);
+      expect(eza?.path).toBe('/usr/bin/eza');
       expect(eza?.replaces).toBe('ls');
       expect(bat?.available).toBe(false);
+      expect(bat?.path).toBeUndefined();
     });
   });
 
   describe('getModernAlternatives', () => {
     it('should find alternatives for ls', () => {
-      const installed = new Map([
-        ['eza', true],
-        ['bat', true],
+      const installed = new Map<string, AbsolutePath>([
+        ['eza', asAbsolutePath('/usr/bin/eza')],
+        ['bat', asAbsolutePath('/usr/bin/bat')],
       ]);
 
       const alternatives = getModernAlternatives('ls', installed);
@@ -113,9 +118,9 @@ describe('Modern Tools', () => {
     });
 
     it('should return empty array when no alternatives installed', () => {
-      const installed = new Map([
-        ['eza', false],
-        ['bat', true],
+      const installed = new Map<string, AbsolutePath>([
+        // 'eza' not installed
+        ['bat', asAbsolutePath('/usr/bin/bat')],
       ]);
 
       const alternatives = getModernAlternatives('ls', installed);
@@ -123,9 +128,9 @@ describe('Modern Tools', () => {
     });
 
     it('should return empty array for commands with no alternatives', () => {
-      const installed = new Map([
-        ['eza', true],
-        ['bat', true],
+      const installed = new Map<string, AbsolutePath>([
+        ['eza', asAbsolutePath('/usr/bin/eza')],
+        ['bat', asAbsolutePath('/usr/bin/bat')],
       ]);
 
       const alternatives = getModernAlternatives('vim', installed);

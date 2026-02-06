@@ -8,7 +8,7 @@
  * Based on kash's modern tool detection system.
  */
 
-import { isCommandAvailable } from './utils.js';
+import { getCommandPath, type AbsolutePath } from './utils.js';
 
 /**
  * Information about a modern CLI tool.
@@ -92,20 +92,22 @@ export const MODERN_TOOLS: ToolInfo[] = [
  * Detect which modern tools are installed.
  * Runs checks in parallel for speed.
  *
- * @returns Map of tool name to availability
+ * @returns Map of tool name to absolute path (only includes installed tools)
  */
-export async function detectInstalledTools(): Promise<Map<string, boolean>> {
-  const results = new Map<string, boolean>();
+export async function detectInstalledTools(): Promise<Map<string, AbsolutePath>> {
+  const results = new Map<string, AbsolutePath>();
 
   // Run all checks in parallel
   const checks = MODERN_TOOLS.map(async (tool) => {
-    const available = await isCommandAvailable(tool.command);
-    return { name: tool.name, available };
+    const path = await getCommandPath(tool.command);
+    return { name: tool.name, path };
   });
 
   const resolved = await Promise.all(checks);
-  for (const { name, available } of resolved) {
-    results.set(name, available);
+  for (const { name, path } of resolved) {
+    if (path) {
+      results.set(name, path);
+    }
   }
 
   return results;
@@ -116,12 +118,12 @@ export async function detectInstalledTools(): Promise<Map<string, boolean>> {
  *
  * Example output: "Modern tools: ✔ eza ✔ bat ✔ rg ✗ dust"
  *
- * @param installed - Map of tool name to availability
+ * @param installed - Map of tool name to path (presence indicates availability)
  * @param options - Formatting options
  * @returns Formatted status string
  */
 export function formatToolStatus(
-  installed: Map<string, boolean>,
+  installed: Map<string, AbsolutePath>,
   options: { showOnlyInstalled?: boolean } = {}
 ): string {
   const { showOnlyInstalled = false } = options;
@@ -129,7 +131,7 @@ export function formatToolStatus(
   const parts: string[] = [];
 
   for (const tool of MODERN_TOOLS) {
-    const available = installed.get(tool.name) ?? false;
+    const available = installed.has(tool.name);
 
     if (showOnlyInstalled && !available) {
       continue;
@@ -149,18 +151,20 @@ export function formatToolStatus(
 /**
  * Get detailed tool info for help display.
  *
- * @param installed - Map of tool name to availability
- * @returns Array of tool status objects
+ * @param installed - Map of tool name to path (presence indicates availability)
+ * @returns Array of tool status objects with path if available
  */
-export function getToolDetails(installed: Map<string, boolean>): {
+export function getToolDetails(installed: Map<string, AbsolutePath>): {
   name: string;
   available: boolean;
+  path?: AbsolutePath;
   replaces?: string;
   description: string;
 }[] {
   return MODERN_TOOLS.map((tool) => ({
     name: tool.name,
-    available: installed.get(tool.name) ?? false,
+    available: installed.has(tool.name),
+    path: installed.get(tool.name),
     replaces: tool.replaces,
     description: tool.description,
   }));
@@ -170,14 +174,12 @@ export function getToolDetails(installed: Map<string, boolean>): {
  * Get tools that can alias a specific command.
  *
  * @param command - Traditional command (e.g., 'ls')
- * @param installed - Map of tool name to availability
+ * @param installed - Map of tool name to path (presence indicates availability)
  * @returns Array of available modern tools that replace this command
  */
 export function getModernAlternatives(
   command: string,
-  installed: Map<string, boolean>
+  installed: Map<string, AbsolutePath>
 ): ToolInfo[] {
-  return MODERN_TOOLS.filter(
-    (tool) => tool.replaces === command && (installed.get(tool.name) ?? false)
-  );
+  return MODERN_TOOLS.filter((tool) => tool.replaces === command && installed.has(tool.name));
 }
