@@ -12,7 +12,10 @@ import { colors } from './lib/formatting.js';
 import { createInputReader } from './lib/input.js';
 import { createModeDetector } from './lib/mode-detection.js';
 import { createOutputWriter, type PermissionOption } from './lib/output.js';
+import { formatPromptWithContext } from './lib/prompts.js';
+import { detectInstalledTools, formatToolStatus } from './lib/shell/index.js';
 import { createShellModule } from './lib/shell.js';
+import { installEmergencyCleanup } from './lib/tty/index.js';
 
 interface CliArgs {
   help: boolean;
@@ -118,6 +121,10 @@ function showVersion(output: ReturnType<typeof createOutputWriter>): void {
  * Main entry point.
  */
 async function main(): Promise<void> {
+  // Install emergency terminal cleanup handlers first
+  // This ensures terminal is restored even if clam crashes
+  installEmergencyCleanup();
+
   const args = parseArgs();
   const config = loadConfig(args.cwd);
 
@@ -202,11 +209,28 @@ async function main(): Promise<void> {
 
   output.writeLine(colors.status('Type /help for commands, /quit to exit'));
   output.writeLine(colors.status('Shell commands run directly, natural language goes to Claude'));
-  output.newline();
 
   // Create shell module and mode detector
   const shell = createShellModule({ cwd });
   const modeDetector = createModeDetector({ shell });
+
+  // Detect and display modern tools, then enable command aliasing
+  try {
+    const installedTools = await detectInstalledTools();
+    shell.setInstalledTools(installedTools);
+
+    const toolStatus = formatToolStatus(installedTools);
+    if (toolStatus) {
+      output.writeLine(colors.muted(toolStatus));
+    }
+  } catch {
+    // Ignore errors detecting tools
+  }
+
+  output.newline();
+
+  // Session cwd is fixed at connection time - this is where Claude's tools execute
+  const sessionCwd = cwd;
 
   // Create input reader
   const inputReader = createInputReader({
@@ -298,11 +322,15 @@ async function main(): Promise<void> {
         return;
       }
 
-      // Send prompt to ACP
+      // Send prompt to ACP with working directory context
       if (acpClient.isConnected()) {
         output.spinnerStart();
         try {
-          await acpClient.prompt(text);
+          // Get user's current working directory from shell
+          const userCwd = shell.getCwd();
+          // Format prompt with cwd context so Claude knows where the user is
+          const promptWithContext = formatPromptWithContext(text, { sessionCwd, userCwd });
+          await acpClient.prompt(promptWithContext);
         } catch (error) {
           output.spinnerStop();
           const msg = error instanceof Error ? error.message : String(error);

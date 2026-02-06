@@ -29,6 +29,7 @@ import {
 import type { InputMode, ModeDetector } from './mode-detection.js';
 import { isExplicitShell, stripShellTrigger, suggestCommand } from './mode-detection.js';
 import type { OutputWriter } from './output.js';
+import { createCommandTimer, formatExitCode, isDirectoryPath } from './shell/index.js';
 import type { ShellModule } from './shell.js';
 
 /** Check if stdout is a TTY for cursor control sequences */
@@ -933,10 +934,25 @@ export class InputReader {
           continue;
         }
 
-        // Check for slash commands
+        // Check for slash commands - but only if it's a known command
+        // Absolute paths like /usr/bin/ls should go to shell, not be treated as slash commands
         if (trimmed.startsWith('/')) {
-          await this.handleSlashCommand(trimmed);
-          continue;
+          const withoutSlash = trimmed.slice(1);
+          const spaceIndex = withoutSlash.indexOf(' ');
+          const commandName = spaceIndex === -1 ? withoutSlash : withoutSlash.slice(0, spaceIndex);
+
+          // Check if this is a registered slash command or ACP command
+          const { isAcpCommand } = this.options;
+          const isLocalCommand = this.commands.has(commandName);
+          const isAcp = isAcpCommand?.(commandName) ?? false;
+
+          if (isLocalCommand || isAcp) {
+            // It's a known command - handle as slash command
+            await this.handleSlashCommand(trimmed);
+            continue;
+          }
+          // Not a known command - fall through to mode detection
+          // This allows absolute paths like /usr/bin/ls to be executed as shell commands
         }
 
         // Check for shell commands using mode detection
@@ -948,10 +964,30 @@ export class InputReader {
 
           if (mode === 'shell') {
             // Route shell command directly - use stdio inherit for real TTY (colors work)
-            const command = isExplicitShell(trimmed) ? stripShellTrigger(trimmed) : trimmed;
+            let command = isExplicitShell(trimmed) ? stripShellTrigger(trimmed) : trimmed;
+
+            // Auto-cd: If input is just a directory path, convert to "cd <path>"
+            if (isDirectoryPath(command)) {
+              command = `cd ${command}`;
+            }
+
+            // Time command execution
+            const timer = createCommandTimer();
+            timer.start();
+
             try {
-              await shell.exec(command, { captureOutput: false });
+              const result = await shell.exec(command, { captureOutput: false });
+              timer.stop();
+
+              // Display exit code and timing for non-zero exits or long commands
+              const exitInfo = formatExitCode(result.exitCode);
+              const timeInfo = timer.format();
+              if (exitInfo || timeInfo) {
+                const parts = [exitInfo, timeInfo].filter(Boolean);
+                output.info(colors.muted(parts.join(' ')));
+              }
             } catch (error) {
+              timer.stop();
               if (error instanceof Error) {
                 output.error(`Shell error: ${error.message}`);
               }
@@ -964,9 +1000,22 @@ export class InputReader {
             const confirmed = await this.confirmShellCommand(trimmed);
             if (confirmed) {
               // User confirmed - execute as shell command with real TTY (colors work)
+              const timer = createCommandTimer();
+              timer.start();
+
               try {
-                await shell.exec(trimmed, { captureOutput: false });
+                const result = await shell.exec(trimmed, { captureOutput: false });
+                timer.stop();
+
+                // Display exit code and timing for non-zero exits or long commands
+                const exitInfo = formatExitCode(result.exitCode);
+                const timeInfo = timer.format();
+                if (exitInfo || timeInfo) {
+                  const parts = [exitInfo, timeInfo].filter(Boolean);
+                  output.info(colors.muted(parts.join(' ')));
+                }
               } catch (error) {
+                timer.stop();
                 if (error instanceof Error) {
                   output.error(`Shell error: ${error.message}`);
                 }

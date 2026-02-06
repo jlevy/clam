@@ -9,10 +9,14 @@
  * Used by mode detection to identify shell commands.
  */
 
-import { exec as execCallback, spawn } from 'node:child_process';
+import { exec as execCallback, spawn, spawnSync } from 'node:child_process';
 import { promisify } from 'node:util';
 
 import { getColorEnv } from './shell/color-env.js';
+import { rewriteCommand } from './shell/command-aliases.js';
+import type { AbsolutePath } from './shell/utils.js';
+import { detectZoxideCommand, rewriteZoxideCommand, zoxideAdd } from './shell/zoxide.js';
+import { withTtyManagement } from './tty/index.js';
 
 const execPromise = promisify(execCallback);
 
@@ -34,6 +38,18 @@ export interface ShellModule {
 
   /** Clear the which cache */
   clearCache(): void;
+
+  /** Get the current working directory */
+  getCwd(): string;
+
+  /** Set the current working directory */
+  setCwd(path: string): void;
+
+  /** Set installed tools for command aliasing */
+  setInstalledTools(tools: Map<string, AbsolutePath>): void;
+
+  /** Enable or disable command aliasing */
+  setAliasingEnabled(enabled: boolean): void;
 }
 
 /**
@@ -118,10 +134,72 @@ function shellEscape(str: string): string {
  */
 export function createShellModule(options: ShellModuleOptions = {}): ShellModule {
   const whichTimeout = options.whichTimeout ?? 500;
-  const defaultCwd = options.cwd ?? process.cwd();
+
+  // Track current working directory - mutable state that persists across commands
+  let currentCwd = options.cwd ?? process.cwd();
+
+  // Command aliasing state
+  let installedTools = new Map<string, AbsolutePath>();
+  let aliasingEnabled = true;
 
   // Cache which results to avoid repeated lookups
   const whichCache = new Map<string, string | null>();
+
+  /**
+   * Get the current working directory.
+   */
+  function getCwd(): string {
+    return currentCwd;
+  }
+
+  /**
+   * Set the current working directory.
+   */
+  function setCwd(path: string): void {
+    currentCwd = path;
+  }
+
+  /**
+   * Set installed tools for command aliasing.
+   */
+  function setInstalledTools(tools: Map<string, AbsolutePath>): void {
+    installedTools = tools;
+  }
+
+  /**
+   * Enable or disable command aliasing.
+   */
+  function setAliasingEnabled(enabled: boolean): void {
+    aliasingEnabled = enabled;
+  }
+
+  /**
+   * Detect if a command is a cd command and extract the target directory.
+   * Returns the target directory if it's a cd command, null otherwise.
+   */
+  function detectCdCommand(command: string): string | null {
+    const trimmed = command.trim();
+    // Match: cd, cd -, cd ~, cd /path, cd path, cd "path with spaces"
+    const cdMatch = /^cd(?:\s+(.*))?$/.exec(trimmed);
+    if (!cdMatch) return null;
+
+    const target = cdMatch[1]?.trim() ?? '';
+    if (!target || target === '') {
+      // cd with no args goes to home directory
+      return process.env.HOME ?? '/';
+    }
+    if (target === '-') {
+      // cd - goes to previous directory (not tracked here, bash will handle it)
+      return null; // Let bash handle it, we'll query pwd after
+    }
+    if (target === '~') {
+      return process.env.HOME ?? '/';
+    }
+    if (target.startsWith('~/')) {
+      return (process.env.HOME ?? '') + target.slice(1);
+    }
+    return target;
+  }
 
   async function which(command: string): Promise<string | null> {
     // Check cache first
@@ -163,45 +241,169 @@ export function createShellModule(options: ShellModuleOptions = {}): ShellModule
   }
 
   async function exec(command: string, execOptions: ExecOptions = {}): Promise<ExecResult> {
-    return new Promise((resolve, reject) => {
-      // Build environment: start with process.env or color env, then overlay user env
-      const baseEnv = execOptions.forceColor ? getColorEnv() : process.env;
-      const env = { ...baseEnv, ...execOptions.env };
+    // Use explicit cwd from options, or fall back to tracked current working directory
+    const effectiveCwd = execOptions.cwd ?? currentCwd;
 
-      const proc = spawn('bash', ['-c', command], {
-        cwd: execOptions.cwd ?? defaultCwd,
-        env,
-        stdio: execOptions.captureOutput ? 'pipe' : 'inherit',
+    // Check for zoxide commands (z, zi) and rewrite them
+    const zoxideType = detectZoxideCommand(command);
+    let workingCommand = command;
+
+    if (zoxideType && installedTools.has('zoxide')) {
+      // Rewrite z/zi to actual zoxide commands
+      workingCommand = rewriteZoxideCommand(command, effectiveCwd);
+    }
+
+    // Apply command aliasing (e.g., ls -> eza)
+    const aliasedCommand = rewriteCommand(workingCommand, installedTools, aliasingEnabled);
+
+    // For interactive commands (captureOutput: false), use TTY management
+    // to properly save/restore terminal state around subprocess execution
+    const isInteractive = !execOptions.captureOutput;
+
+    // Detect if this is a cd command (or z command that becomes cd)
+    // We'll need to update our tracked cwd after and call zoxide add
+    const isCdCommand = workingCommand.trim().startsWith('cd') || zoxideType !== null;
+
+    // Build environment: start with process.env or color env, then overlay user env
+    const baseEnv = execOptions.forceColor ? getColorEnv() : process.env;
+    const env = { ...baseEnv, ...execOptions.env } as NodeJS.ProcessEnv;
+
+    // For cd commands, we need to capture the new working directory after the command
+    // We append "; pwd" to get the resulting directory, but only if captureOutput is true
+    // For interactive mode, we'll query pwd separately after the command completes
+    const finalCommand =
+      isCdCommand && execOptions.captureOutput ? `${aliasedCommand} && pwd` : aliasedCommand;
+
+    let result: ExecResult;
+
+    if (isInteractive) {
+      // For interactive commands, use spawnSync with TTY management.
+      //
+      // WHY SPAWNSYNC: When running interactive subprocesses like bash or vim,
+      // the child process calls tcsetpgrp() to become the foreground process
+      // group. If Node's readline is also trying to read from stdin (via async
+      // event handlers), the parent process receives SIGTTIN and gets stopped.
+      //
+      // The proper Unix solution (what xonsh does) would be:
+      // 1. Create new process group for child (os.setpgrp)
+      // 2. Call tcsetpgrp() to give child foreground control
+      // 3. Block SIGTTIN/SIGTTOU during handoff
+      // 4. Return terminal to parent after child exits
+      //
+      // However, Node.js doesn't expose tcsetpgrp() natively. The 'detached'
+      // option only calls setsid(), which creates a new session but doesn't
+      // make the child the foreground process group.
+      // See: https://github.com/nodejs/node/issues/5549
+      //
+      // SOLUTION: Use spawnSync which blocks the entire Node event loop.
+      // This prevents readline from competing for stdin during subprocess
+      // execution. It's a "sledgehammer" approach but:
+      // - Requires no native dependencies (vs node-pty or ffi)
+      // - Works reliably across platforms
+      // - Is appropriate for interactive commands where we're waiting anyway
+      //
+      // The TTY management wrapper handles raw mode and stty sane restoration.
+      result = await withTtyManagement(() => {
+        const syncResult = spawnSync('bash', ['-c', finalCommand], {
+          cwd: effectiveCwd,
+          env,
+          stdio: 'inherit',
+          // No timeout for interactive commands - user controls duration
+        });
+
+        return Promise.resolve({
+          stdout: '',
+          stderr: '',
+          exitCode: syncResult.status ?? 0,
+          signal: syncResult.signal ?? undefined,
+        });
       });
+    } else {
+      // For non-interactive commands (captureOutput: true), use async spawn
+      result = await new Promise((resolve, reject) => {
+        const proc = spawn('bash', ['-c', finalCommand], {
+          cwd: effectiveCwd,
+          env,
+          stdio: 'pipe',
+        });
 
-      let stdout = '';
-      let stderr = '';
+        let stdout = '';
+        let stderr = '';
 
-      if (execOptions.captureOutput) {
         proc.stdout?.on('data', (data: Buffer) => {
           stdout += data.toString();
         });
         proc.stderr?.on('data', (data: Buffer) => {
           stderr += data.toString();
         });
+
+        const timeout = execOptions.timeout
+          ? setTimeout(() => proc.kill('SIGTERM'), execOptions.timeout)
+          : null;
+
+        proc.on('close', (code, signal) => {
+          if (timeout) clearTimeout(timeout);
+          resolve({
+            stdout,
+            stderr,
+            exitCode: code ?? 0,
+            signal: signal ?? undefined,
+          });
+        });
+
+        proc.on('error', reject);
+      });
+    }
+
+    // Update tracked cwd after successful cd command
+    if (isCdCommand && result.exitCode === 0) {
+      if (execOptions.captureOutput) {
+        // For captured output mode, we appended "&& pwd" - extract the new cwd
+        const lines = result.stdout.trim().split('\n');
+        const newCwd = lines[lines.length - 1];
+        if (newCwd?.startsWith('/')) {
+          currentCwd = newCwd;
+          // Remove the pwd output from stdout to not confuse callers
+          result.stdout = lines.slice(0, -1).join('\n');
+        }
+      } else {
+        // For interactive mode, query the new cwd separately
+        try {
+          const { stdout } = await execPromise('pwd', { cwd: effectiveCwd, timeout: 500 });
+          // Actually, pwd will return the directory where we started, not where cd went
+          // For cd commands in interactive mode, we need a different approach
+          // Use bash -c 'cd <target> && pwd' to get the resulting directory
+          const cdTarget = detectCdCommand(command);
+          if (cdTarget) {
+            const { stdout: newCwdOutput } = await execPromise(
+              `cd ${shellEscape(cdTarget)} && pwd`,
+              { cwd: effectiveCwd, timeout: 500 }
+            );
+            const newCwd = newCwdOutput.trim();
+            if (newCwd?.startsWith('/')) {
+              currentCwd = newCwd;
+            }
+          } else {
+            // cd - or similar - query the bash's OLDPWD isn't reliable here
+            // For now, use the current effective cwd
+            currentCwd = stdout.trim();
+          }
+        } catch {
+          // Ignore errors querying pwd
+        }
       }
 
-      const timeout = execOptions.timeout
-        ? setTimeout(() => proc.kill('SIGTERM'), execOptions.timeout)
-        : null;
-
-      proc.on('close', (code, signal) => {
-        if (timeout) clearTimeout(timeout);
-        resolve({
-          stdout,
-          stderr,
-          exitCode: code ?? 0,
-          signal: signal ?? undefined,
+      // If zoxide is installed, add the new directory to zoxide's database
+      // This enables zoxide to learn frequently visited directories
+      if (installedTools.has('zoxide')) {
+        // Run in background, don't wait for it
+        zoxideAdd(currentCwd).catch(() => {
+          // Ignore errors
         });
-      });
+      }
+    }
 
-      proc.on('error', reject);
-    });
+    return result;
   }
 
   async function getCompletions(partial: string, cursorPos: number): Promise<string[]> {
@@ -239,6 +441,10 @@ export function createShellModule(options: ShellModuleOptions = {}): ShellModule
     exec,
     getCompletions,
     clearCache,
+    getCwd,
+    setCwd,
+    setInstalledTools,
+    setAliasingEnabled,
   };
 }
 
