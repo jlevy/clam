@@ -43,13 +43,15 @@ jobs:
         id: version
         run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
-      - name: Extract changelog for this version
+      - name: Generate release notes
         id: changelog
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          CHANGELOG=$(awk "/^## ${VERSION//./\\.}$/,/^## [0-9]/" packages/clam/CHANGELOG.md | head -n -1)
-          if [ -z "$CHANGELOG" ]; then
-            CHANGELOG="Release v${VERSION}"
+          # Try CHANGELOG first, fall back to generated notes from commits
+          CHANGELOG=$(awk "/^## ${VERSION//./\\.}$/,/^## [0-9]/" packages/clam/CHANGELOG.md 2>/dev/null | head -n -1 || true)
+          if [ -z "$CHANGELOG" ] || [ "$CHANGELOG" = "" ]; then
+            # Generate from conventional commits
+            CHANGELOG=$(./scripts/generate-release-notes.sh "v${VERSION}" 2>/dev/null || echo "Release v${VERSION}")
           fi
           echo "body<<EOF" >> $GITHUB_OUTPUT
           echo "$CHANGELOG" >> $GITHUB_OUTPUT

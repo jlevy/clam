@@ -148,9 +148,48 @@ publishes automatically.
 The release workflow automatically creates a GitHub Release when a tag is pushed:
 
 - **Release name**: Matches the tag (e.g., `v0.2.0`)
-- **Release notes**: Initially extracted from CHANGELOG
+- **Release notes**: Auto-generated from conventional commits (or CHANGELOG if present)
 - **Pre-release flag**: Automatically set for versions containing `-` (e.g.,
   `1.0.0-beta.1`)
+
+### Release Notes Format
+
+Release notes follow the [tbd release-notes-guidelines](https://github.com/jlevy/tbd)
+format:
+
+```markdown
+## What's Changed
+
+### Features
+- **scope**: Description of new capability
+
+### Fixes
+- **scope**: Description of bug fix
+
+### Refactoring
+- **scope**: Internal improvement (if user-visible)
+
+### Documentation
+- Notable doc improvements
+
+**Full commit history**: [compare link]
+```
+
+### Writing Good Commits for Release Notes
+
+Use conventional commit format for automatic categorization:
+
+| Prefix | Section | Example |
+| --- | --- | --- |
+| `feat:` | Features | `feat(shell): add zoxide integration` |
+| `fix:` | Fixes | `fix(cli): handle empty input gracefully` |
+| `refactor:` | Refactoring | `refactor(completion): simplify scoring` |
+| `docs:` | Documentation | `docs: update publishing guide` |
+
+The `(scope)` is optional but recommended - it becomes **bold** in release notes.
+
+Commits without these prefixes (e.g., `chore:`, `test:`, `ci:`) are excluded from
+release notes as internal-only changes.
 
 ## Troubleshooting
 
