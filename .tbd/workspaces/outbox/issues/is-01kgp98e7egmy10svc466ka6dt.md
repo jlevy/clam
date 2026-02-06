@@ -1,6 +1,4 @@
 ---
-close_reason: Implemented plain spinner mode
-closed_at: 2026-02-05T09:48:37.522Z
 created_at: 2026-02-05T06:53:57.357Z
 dependencies:
   - target: is-01kgp98f8zzf59bc9pgm8385yq
@@ -11,9 +9,9 @@ labels: []
 parent_id: is-01kgp97yh8ba9qbs7bxve5ry0p
 priority: 2
 spec_path: docs/project/specs/active/plan-2026-02-05-fun-spinner-verbs.md
-status: closed
+status: open
 title: Implement plain spinner mode (animated characters only)
 type: is
-updated_at: 2026-02-05T11:28:54.534Z
-version: 5
+updated_at: 2026-02-06T04:13:38.836Z
+version: 12
 ---
