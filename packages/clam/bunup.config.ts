@@ -1,5 +1,9 @@
 import { defineConfig } from 'bunup';
 
+// Skip bundling picocolors on Windows due to Bun bundler bug with Windows paths
+// See: https://github.com/oven-sh/bun/issues/15007
+const isWindows = process.platform === 'win32';
+
 export default defineConfig([
   // Library entry point
   {
@@ -13,7 +17,7 @@ export default defineConfig([
     minify: false,
   },
   // CLI binary - ESM entry
-  // Bundle picocolors for faster startup
+  // Bundle picocolors for faster startup (except on Windows where it causes crashes)
   {
     name: 'bin',
     entry: ['src/bin.ts'],
@@ -24,6 +28,6 @@ export default defineConfig([
     target: 'node',
     minify: false,
     banner: '#!/usr/bin/env bun',
-    noExternal: ['picocolors'],
+    noExternal: isWindows ? [] : ['picocolors'],
   },
 ]);
