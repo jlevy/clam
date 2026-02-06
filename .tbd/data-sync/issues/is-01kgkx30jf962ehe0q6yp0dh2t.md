@@ -11,6 +11,6 @@ priority: 1
 status: closed
 title: Fix temp file not cleaned up on error in input.ts:253
 type: is
-updated_at: 2026-02-04T09:25:42.973Z
-version: 2
+updated_at: 2026-02-06T01:30:44.101Z
+version: 9
 ---

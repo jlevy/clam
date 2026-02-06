@@ -18,6 +18,6 @@ priority: 1
 status: open
 title: "Epic: Complete clam ACP Client Implementation"
 type: is
-updated_at: 2026-02-04T07:54:20.372Z
-version: 10
+updated_at: 2026-02-06T01:30:44.005Z
+version: 17
 ---

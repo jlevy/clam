@@ -11,6 +11,6 @@ priority: 2
 status: closed
 title: Add partial command rejection for incomplete single-word inputs
 type: is
-updated_at: 2026-02-04T09:51:35.054Z
-version: 3
+updated_at: 2026-02-06T01:30:44.065Z
+version: 10
 ---

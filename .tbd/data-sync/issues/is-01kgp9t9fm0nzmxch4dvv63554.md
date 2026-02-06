@@ -12,6 +12,6 @@ spec_path: docs/project/specs/active/plan-2026-02-05-better-shell-completions.md
 status: closed
 title: Add recency scoring using command history
 type: is
-updated_at: 2026-02-05T08:44:37.112Z
-version: 3
+updated_at: 2026-02-06T01:30:44.550Z
+version: 10
 ---

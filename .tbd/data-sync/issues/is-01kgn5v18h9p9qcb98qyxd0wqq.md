@@ -11,7 +11,7 @@ priority: 2
 status: closed
 title: NL mode should support multiline input
 type: is
-updated_at: 2026-02-04T20:39:47.616Z
-version: 2
+updated_at: 2026-02-06T01:30:44.265Z
+version: 9
 ---
 When input is detected as NL, pressing Enter should allow multiline input (e.g., Shift+Enter to continue, or double-Enter to submit). Currently it submits immediately on Enter.

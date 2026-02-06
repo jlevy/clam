@@ -11,6 +11,6 @@ priority: 3
 status: closed
 title: Remove unused variables _inCodeBlock and _streamBuffer in output.ts
 type: is
-updated_at: 2026-02-04T09:30:29.160Z
-version: 3
+updated_at: 2026-02-06T01:30:44.129Z
+version: 10
 ---

@@ -11,7 +11,7 @@ priority: 2
 status: open
 title: Add 'nothing' to InputMode type
 type: is
-updated_at: 2026-02-04T22:43:34.582Z
-version: 2
+updated_at: 2026-02-06T01:30:44.294Z
+version: 9
 ---
 Extend InputMode type to include 'nothing' for clearly invalid input

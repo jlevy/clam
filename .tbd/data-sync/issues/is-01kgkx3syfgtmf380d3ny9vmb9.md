@@ -11,6 +11,6 @@ priority: 3
 status: closed
 title: Read version from package.json instead of hardcoding in bin.ts:100
 type: is
-updated_at: 2026-02-04T09:30:23.557Z
-version: 3
+updated_at: 2026-02-06T01:30:44.123Z
+version: 10
 ---

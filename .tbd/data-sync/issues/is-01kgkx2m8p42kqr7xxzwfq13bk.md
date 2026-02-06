@@ -11,6 +11,6 @@ priority: 0
 status: closed
 title: Fix shell injection vulnerability in input.ts:224-228 (EDITOR env var)
 type: is
-updated_at: 2026-02-04T09:24:53.498Z
-version: 3
+updated_at: 2026-02-06T01:30:44.083Z
+version: 10
 ---

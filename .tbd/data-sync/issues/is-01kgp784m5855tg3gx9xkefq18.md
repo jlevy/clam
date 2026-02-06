@@ -8,6 +8,6 @@ priority: 2
 status: open
 title: Port kash tldr_standard_commands.sh recipe snippets data file
 type: is
-updated_at: 2026-02-05T06:18:50.372Z
-version: 1
+updated_at: 2026-02-06T01:30:44.336Z
+version: 8
 ---

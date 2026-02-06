@@ -16,6 +16,6 @@ spec_path: docs/project/specs/active/plan-2026-02-05-better-shell-completions.md
 status: closed
 title: Implement scoring algorithm in completion/scoring.ts
 type: is
-updated_at: 2026-02-05T07:19:41.523Z
-version: 5
+updated_at: 2026-02-06T01:30:44.473Z
+version: 12
 ---

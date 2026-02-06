@@ -12,6 +12,6 @@ priority: 2
 status: closed
 title: History navigation shows pink color - need to store input mode with history entries
 type: is
-updated_at: 2026-02-05T10:40:10.993Z
-version: 3
+updated_at: 2026-02-06T01:30:44.690Z
+version: 10
 ---

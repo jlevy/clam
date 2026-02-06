@@ -1,4 +1,6 @@
 ---
+close_reason: Implemented in inline-formatter.ts
+closed_at: 2026-02-05T10:52:25.260Z
 created_at: 2026-02-05T07:09:23.332Z
 dependencies:
   - target: is-01kgpa4pqrkfmeqdvf9pdg8x2t
@@ -11,9 +13,9 @@ labels: []
 parent_id: is-01kgp8xwtyc11ty7sph6n94j8s
 priority: 2
 spec_path: docs/project/specs/active/plan-2026-02-04-streaming-markdown-rendering.md
-status: open
+status: closed
 title: Implement InlineFormatter for bold, italic, inline code using picocolors
 type: is
-updated_at: 2026-02-05T07:10:03.870Z
-version: 3
+updated_at: 2026-02-06T01:30:44.579Z
+version: 11
 ---

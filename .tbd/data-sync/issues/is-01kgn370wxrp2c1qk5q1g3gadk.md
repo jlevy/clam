@@ -10,6 +10,6 @@ priority: 2
 status: closed
 title: Add tests for real-time input coloring
 type: is
-updated_at: 2026-02-05T07:06:43.888Z
-version: 3
+updated_at: 2026-02-06T01:30:44.194Z
+version: 10
 ---

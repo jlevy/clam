@@ -11,6 +11,6 @@ priority: 2
 status: closed
 title: Add tests for bin.ts, config.ts, and formatting.ts
 type: is
-updated_at: 2026-02-04T10:21:08.495Z
-version: 3
+updated_at: 2026-02-06T01:30:44.148Z
+version: 10
 ---

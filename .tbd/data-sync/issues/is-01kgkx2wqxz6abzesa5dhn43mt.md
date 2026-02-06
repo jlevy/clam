@@ -11,6 +11,6 @@ priority: 1
 status: closed
 title: Fix potential infinite loop on EOF in permissions.ts:157-158
 type: is
-updated_at: 2026-02-04T09:27:13.189Z
-version: 2
+updated_at: 2026-02-06T01:30:44.095Z
+version: 9
 ---

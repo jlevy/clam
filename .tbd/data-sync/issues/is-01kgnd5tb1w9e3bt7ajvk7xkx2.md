@@ -9,7 +9,7 @@ priority: 2
 status: open
 title: Implement user confirmation flow for ambiguous mode
 type: is
-updated_at: 2026-02-04T22:43:11.328Z
-version: 1
+updated_at: 2026-02-06T01:30:44.288Z
+version: 8
 ---
 When mode is 'ambiguous', prompt user: 'Run as command? [y/N]' or show menu with options

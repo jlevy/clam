@@ -9,6 +9,6 @@ spec_path: docs/project/specs/active/plan-2026-02-04-automatic-input-suggestions
 status: open
 title: Implement @ menu trigger for file/entity mentions
 type: is
-updated_at: 2026-02-04T20:05:14.907Z
-version: 1
+updated_at: 2026-02-06T01:30:44.213Z
+version: 8
 ---

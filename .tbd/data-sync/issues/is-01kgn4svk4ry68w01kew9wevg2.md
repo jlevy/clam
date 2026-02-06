@@ -23,6 +23,6 @@ priority: 1
 status: closed
 title: Input coloring bugfixes epic
 type: is
-updated_at: 2026-02-04T22:42:12.970Z
-version: 10
+updated_at: 2026-02-06T01:30:44.220Z
+version: 17
 ---

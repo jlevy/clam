@@ -9,6 +9,6 @@ spec_path: docs/project/specs/active/plan-2026-02-05-shell-polish.md
 status: open
 title: Command aliasing/rewriting for modern tools
 type: is
-updated_at: 2026-02-05T09:39:40.368Z
-version: 1
+updated_at: 2026-02-06T01:30:44.710Z
+version: 8
 ---

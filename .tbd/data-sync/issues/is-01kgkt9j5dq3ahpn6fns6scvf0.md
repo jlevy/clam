@@ -11,6 +11,6 @@ priority: 2
 status: closed
 title: Enable up/down arrow history navigation
 type: is
-updated_at: 2026-02-04T10:12:29.668Z
-version: 2
+updated_at: 2026-02-06T01:30:44.039Z
+version: 9
 ---

@@ -15,8 +15,8 @@ priority: 2
 status: open
 title: "Enhanced mode detection: ambiguous and nothing modes"
 type: is
-updated_at: 2026-02-04T22:43:23.181Z
-version: 7
+updated_at: 2026-02-06T01:30:44.271Z
+version: 14
 ---
 Add two new detection modes to improve UX:
 1. 'ambiguous' - For words like 'who', 'date' that are both shell commands AND English

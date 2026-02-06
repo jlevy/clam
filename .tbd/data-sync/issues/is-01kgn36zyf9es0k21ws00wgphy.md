@@ -12,6 +12,6 @@ priority: 2
 status: closed
 title: Implement recolorLine() method with ANSI escape codes and cursor position handling
 type: is
-updated_at: 2026-02-05T07:06:43.865Z
-version: 4
+updated_at: 2026-02-06T01:30:44.166Z
+version: 11
 ---

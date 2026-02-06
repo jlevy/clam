@@ -12,6 +12,6 @@ priority: 1
 status: closed
 title: Command completions only show recommended commands, not actual bash/PATH commands
 type: is
-updated_at: 2026-02-05T10:07:02.648Z
-version: 3
+updated_at: 2026-02-06T01:30:44.784Z
+version: 10
 ---

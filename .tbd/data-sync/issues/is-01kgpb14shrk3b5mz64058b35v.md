@@ -13,6 +13,6 @@ spec_path: docs/project/specs/active/plan-2026-02-05-ansi-color-subprocess-outpu
 status: closed
 title: Update subprocess execution to use color env by default
 type: is
-updated_at: 2026-02-05T08:20:28.904Z
-version: 4
+updated_at: 2026-02-06T01:30:44.678Z
+version: 11
 ---

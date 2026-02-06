@@ -11,6 +11,6 @@ spec_path: docs/project/specs/active/plan-2026-02-05-ansi-color-subprocess-outpu
 status: closed
 title: Implement ANSI color output for subprocess commands
 type: is
-updated_at: 2026-02-05T08:20:39.010Z
-version: 2
+updated_at: 2026-02-06T01:30:44.661Z
+version: 9
 ---

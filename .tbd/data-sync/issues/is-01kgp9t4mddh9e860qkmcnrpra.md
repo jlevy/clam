@@ -12,6 +12,6 @@ spec_path: docs/project/specs/active/plan-2026-02-05-better-shell-completions.md
 status: closed
 title: Ensure completion menu doesn't corrupt terminal scrollback
 type: is
-updated_at: 2026-02-05T08:42:32.543Z
-version: 3
+updated_at: 2026-02-06T01:30:44.540Z
+version: 10
 ---

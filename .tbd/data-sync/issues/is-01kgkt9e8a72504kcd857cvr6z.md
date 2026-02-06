@@ -11,6 +11,6 @@ priority: 2
 status: closed
 title: Persist command history to ~/.clam/code/history
 type: is
-updated_at: 2026-02-04T10:12:29.290Z
-version: 2
+updated_at: 2026-02-06T01:30:44.032Z
+version: 9
 ---

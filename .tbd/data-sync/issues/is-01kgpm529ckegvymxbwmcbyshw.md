@@ -12,6 +12,6 @@ priority: 2
 status: closed
 title: Extra newline appears before prompt after accepting completion
 type: is
-updated_at: 2026-02-05T10:40:10.877Z
-version: 3
+updated_at: 2026-02-06T01:30:44.791Z
+version: 10
 ---

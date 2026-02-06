@@ -30,6 +30,6 @@ spec_path: docs/project/specs/active/plan-2026-02-05-better-shell-completions.md
 status: open
 title: "Spec: Unified Completion System"
 type: is
-updated_at: 2026-02-05T07:03:42.627Z
-version: 21
+updated_at: 2026-02-06T01:30:44.436Z
+version: 28
 ---

@@ -14,6 +14,6 @@ spec_path: docs/project/specs/active/plan-2026-02-05-better-shell-completions.md
 status: closed
 title: Implement InputState types and updateInputState() in input/state.ts
 type: is
-updated_at: 2026-02-05T07:08:42.914Z
-version: 4
+updated_at: 2026-02-06T01:30:44.447Z
+version: 11
 ---

@@ -18,6 +18,6 @@ spec_path: docs/project/specs/active/plan-2026-02-05-better-shell-completions.md
 status: in_progress
 title: Integrate completion system with existing input handler
 type: is
-updated_at: 2026-02-05T08:24:56.350Z
-version: 6
+updated_at: 2026-02-06T01:30:44.523Z
+version: 13
 ---

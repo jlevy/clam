@@ -9,6 +9,6 @@ spec_path: docs/project/specs/active/plan-2026-02-04-fun-spinner-verbs.md
 status: open
 title: Implement fun aquatic spinner verbs
 type: is
-updated_at: 2026-02-05T06:24:44.464Z
-version: 1
+updated_at: 2026-02-06T01:30:44.354Z
+version: 8
 ---

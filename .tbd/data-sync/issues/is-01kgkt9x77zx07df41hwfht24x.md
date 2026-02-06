@@ -15,6 +15,6 @@ priority: 2
 status: closed
 title: Create shell module (lib/shell.ts) with which, exec, getCompletions
 type: is
-updated_at: 2026-02-04T09:41:46.066Z
-version: 6
+updated_at: 2026-02-06T01:30:44.046Z
+version: 13
 ---

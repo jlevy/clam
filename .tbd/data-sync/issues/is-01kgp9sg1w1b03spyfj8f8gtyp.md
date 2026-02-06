@@ -14,6 +14,6 @@ spec_path: docs/project/specs/active/plan-2026-02-05-better-shell-completions.md
 status: closed
 title: Implement input renderer with syntax coloring in input/renderer.ts
 type: is
-updated_at: 2026-02-05T07:25:07.128Z
-version: 4
+updated_at: 2026-02-06T01:30:44.460Z
+version: 11
 ---

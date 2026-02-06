@@ -13,6 +13,6 @@ priority: 2
 status: closed
 title: Integrate shell mode with input - route commands, add coloring
 type: is
-updated_at: 2026-02-04T09:49:52.529Z
-version: 4
+updated_at: 2026-02-06T01:30:44.058Z
+version: 11
 ---

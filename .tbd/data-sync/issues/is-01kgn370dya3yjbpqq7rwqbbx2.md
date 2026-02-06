@@ -12,6 +12,6 @@ priority: 2
 status: closed
 title: Skip input recoloring when completion menu is visible
 type: is
-updated_at: 2026-02-05T07:06:43.876Z
-version: 4
+updated_at: 2026-02-06T01:30:44.181Z
+version: 11
 ---

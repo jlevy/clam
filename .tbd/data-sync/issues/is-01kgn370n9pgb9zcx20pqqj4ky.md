@@ -12,6 +12,6 @@ priority: 2
 status: closed
 title: Add TTY detection guard to recolorLine() for non-interactive mode
 type: is
-updated_at: 2026-02-05T07:06:43.881Z
-version: 4
+updated_at: 2026-02-06T01:30:44.187Z
+version: 11
 ---

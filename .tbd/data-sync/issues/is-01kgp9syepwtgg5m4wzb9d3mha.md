@@ -14,6 +14,6 @@ spec_path: docs/project/specs/active/plan-2026-02-05-better-shell-completions.md
 status: closed
 title: Implement EntityCompleter for @ file mentions in completers/entity-completer.ts
 type: is
-updated_at: 2026-02-05T08:19:25.784Z
-version: 4
+updated_at: 2026-02-06T01:30:44.517Z
+version: 11
 ---

@@ -11,6 +11,6 @@ priority: 2
 status: closed
 title: Add file path tab completion for @path/to/file mentions
 type: is
-updated_at: 2026-02-04T10:24:44.503Z
-version: 3
+updated_at: 2026-02-06T01:30:44.025Z
+version: 10
 ---
