@@ -103,7 +103,7 @@ export interface OutputWriter {
 export function createOutputWriter(options: OutputWriterOptions = {}): OutputWriter {
   const stream = options.stream ?? process.stdout;
   const config = options.config ?? {};
-  const truncateAfter = config.truncateAfter ?? 10;
+  const truncateAfter = config.truncateAfter ?? 5;
   const verbose = config.verbose ?? false;
   const showTimestamps = config.showTimestamps ?? false;
 
@@ -273,25 +273,21 @@ export function createOutputWriter(options: OutputWriterOptions = {}): OutputWri
       //   a = allow once     A = allow always
       //   d = deny once      D = deny always
       //
-      // Box drawing with semantic colors for clear visual separation
+      // Left-border-only layout with YAML-like key: value formatting
 
-      // Ensure we're on a fresh line before permission box
+      // Ensure we're on a fresh line before permission prompt
       ensureNewline();
 
-      const box = colors.permissionBox;
+      const border = colors.permissionBox('\u2502  ');
 
       writeLine('');
-      writeLine(
-        box('\u250c\u2500') +
-          colors.permissionHeading(' Permission Required ') +
-          box('\u2500'.repeat(40))
-      );
-      writeLine(box('\u2502'));
-      writeLine(box('\u2502  ') + colors.muted('Tool:    ') + colors.permissionTool(tool));
+      writeLine(colors.permissionHeading(' Permission Required'));
+      writeLine(border);
+      writeLine(border + colors.muted('tool: ') + colors.permissionTool(tool));
       if (command) {
-        writeLine(box('\u2502  ') + colors.muted('Command: ') + colors.permissionCommand(command));
+        writeLine(border + colors.muted('command: ') + colors.permissionCommand(command));
       }
-      writeLine(box('\u2502'));
+      writeLine(border);
 
       // Map options to letter shortcuts based on kind
       const optionKeys: { key: string; option: PermissionOption }[] = [];
@@ -327,7 +323,7 @@ export function createOutputWriter(options: OutputWriterOptions = {}): OutputWri
 
         if (allowOnce && allowAlways) {
           writeLine(
-            box('\u2502  ') +
+            border +
               colors.permissionKey(`[${allowOnce.key}]`) +
               ' ' +
               colors.permissionAllow(allowOnce.option.name.padEnd(16)) +
@@ -338,7 +334,7 @@ export function createOutputWriter(options: OutputWriterOptions = {}): OutputWri
         }
         if (denyOnce && denyAlways) {
           writeLine(
-            box('\u2502  ') +
+            border +
               colors.permissionKey(`[${denyOnce.key}]`) +
               ' ' +
               colors.permissionDeny(denyOnce.option.name.padEnd(16)) +
@@ -352,18 +348,11 @@ export function createOutputWriter(options: OutputWriterOptions = {}): OutputWri
         for (const { key, option } of optionKeys) {
           const isAllow = option.kind.startsWith('allow');
           const colorFn = isAllow ? colors.permissionAllow : colors.permissionDeny;
-          writeLine(
-            `${box('\u2502  ')}${colors.permissionKey(`[${key}]`)} ${colorFn(option.name)}`
-          );
+          writeLine(`${border}${colors.permissionKey(`[${key}]`)} ${colorFn(option.name)}`);
         }
       }
 
-      writeLine(box('\u2502'));
-      writeLine(
-        box(
-          '\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518'
-        )
-      );
+      writeLine(border);
       // Build prompt from actual available keys
       const keyList = optionKeys.map((o) => o.key).join('/');
       write(colors.bold(`Choice (${keyList}): `));
