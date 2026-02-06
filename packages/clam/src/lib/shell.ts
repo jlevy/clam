@@ -11,11 +11,10 @@
 
 import { exec as execCallback, spawn, spawnSync } from 'node:child_process';
 import { promisify } from 'node:util';
-
+import { expandAlias } from './shell/alias-expander.js';
 import { getColorEnv } from './shell/color-env.js';
-import { rewriteCommand } from './shell/command-aliases.js';
 import type { AbsolutePath } from './shell/utils.js';
-import { detectZoxideCommand, rewriteZoxideCommand, zoxideAdd } from './shell/zoxide.js';
+import { zoxideAdd } from './shell/zoxide.js';
 import { withTtyManagement } from './tty/index.js';
 
 const execPromise = promisify(execCallback);
@@ -244,25 +243,21 @@ export function createShellModule(options: ShellModuleOptions = {}): ShellModule
     // Use explicit cwd from options, or fall back to tracked current working directory
     const effectiveCwd = execOptions.cwd ?? currentCwd;
 
-    // Check for zoxide commands (z, zi) and rewrite them
-    const zoxideType = detectZoxideCommand(command);
-    let workingCommand = command;
-
-    if (zoxideType && installedTools.has('zoxide')) {
-      // Rewrite z/zi to actual zoxide commands
-      workingCommand = rewriteZoxideCommand(command, effectiveCwd);
-    }
-
-    // Apply command aliasing (e.g., ls -> eza)
-    const aliasedCommand = rewriteCommand(workingCommand, installedTools, aliasingEnabled);
+    // Single alias expansion replaces both rewriteCommand() and rewriteZoxideCommand()
+    const { command: aliasedCommand } = await expandAlias(
+      command,
+      installedTools,
+      effectiveCwd,
+      aliasingEnabled
+    );
 
     // For interactive commands (captureOutput: false), use TTY management
     // to properly save/restore terminal state around subprocess execution
     const isInteractive = !execOptions.captureOutput;
 
-    // Detect if this is a cd command (or z command that becomes cd)
-    // We'll need to update our tracked cwd after and call zoxide add
-    const isCdCommand = workingCommand.trim().startsWith('cd') || zoxideType !== null;
+    // Detect if the expanded command is a cd (for cwd tracking).
+    // This catches both explicit cd commands AND z/zi aliases that expand to cd.
+    const isCdCommand = aliasedCommand.trim().startsWith('cd');
 
     // Build environment: start with process.env or color env, then overlay user env
     const baseEnv = execOptions.forceColor ? getColorEnv() : process.env;
@@ -373,7 +368,7 @@ export function createShellModule(options: ShellModuleOptions = {}): ShellModule
           // Actually, pwd will return the directory where we started, not where cd went
           // For cd commands in interactive mode, we need a different approach
           // Use bash -c 'cd <target> && pwd' to get the resulting directory
-          const cdTarget = detectCdCommand(command);
+          const cdTarget = detectCdCommand(aliasedCommand);
           if (cdTarget) {
             const { stdout: newCwdOutput } = await execPromise(
               `cd ${shellEscape(cdTarget)} && pwd`,

@@ -97,14 +97,14 @@ describe('OutputWriter', () => {
       expect(result).not.toContain('more lines');
     });
 
-    it('should truncate output exceeding default limit (10 lines)', () => {
+    it('should truncate output exceeding default limit (5 lines)', () => {
       const lines = Array.from({ length: 15 }, (_, i) => `line${i + 1}`).join('\n');
       output.toolOutput(lines);
       const result = mock.getOutput();
       expect(result).toContain('line1');
-      expect(result).toContain('line10');
-      expect(result).not.toContain('line11');
-      expect(result).toContain('5 more lines');
+      expect(result).toContain('line5');
+      expect(result).not.toContain('line6');
+      expect(result).toContain('10 more lines');
     });
 
     it('should respect custom truncateAfter option', () => {

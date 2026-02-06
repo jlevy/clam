@@ -71,12 +71,18 @@ describe('ModeDetection', () => {
       expect(detector.detectModeSync('!echo hello')).toBe('shell');
     });
 
-    it('should detect shell operators', () => {
+    it('should detect shell operators with real commands', () => {
       expect(detector.detectModeSync('cat file | grep foo')).toBe('shell');
       expect(detector.detectModeSync('echo hello > file.txt')).toBe('shell');
-      expect(detector.detectModeSync('cmd1 && cmd2')).toBe('shell');
-      expect(detector.detectModeSync('cmd1 || cmd2')).toBe('shell');
+      expect(detector.detectModeSync('ls && pwd')).toBe('shell');
+      expect(detector.detectModeSync('ls || echo fail')).toBe('shell');
       expect(detector.detectModeSync('echo $(whoami)')).toBe('shell');
+    });
+
+    it('should return nothing for shell operators with invalid commands', () => {
+      // If first word isn't a real command, it's invalid even with shell operators
+      expect(detector.detectModeSync('fakecmd && ls')).toBe('nothing');
+      expect(detector.detectModeSync('notreal | grep foo')).toBe('nothing');
     });
 
     it('should detect environment variables', () => {
@@ -174,13 +180,30 @@ describe('ModeDetection', () => {
       expect(detector.detectModeSync('when will')).toBe('nl');
     });
 
-    it('should detect single characters as potential shell commands', () => {
-      // Single characters could be the start of commands
-      expect(detector.detectModeSync('l')).toBe('shell');
-      expect(detector.detectModeSync('g')).toBe('shell');
-      expect(detector.detectModeSync('n')).toBe('shell');
+    it('should detect structural NL phrases (kash algorithm)', () => {
+      // 3+ words with at least one word > 3 chars → NL
+      expect(detector.detectModeSync('add a file')).toBe('nl');
+      expect(detector.detectModeSync('fix this bug')).toBe('nl');
+      expect(detector.detectModeSync("don't do that")).toBe('nl');
+      expect(detector.detectModeSync('go to the store')).toBe('nl');
+      expect(detector.detectModeSync('is this a question?')).toBe('nl');
 
-      // Command-like words
+      // 2-word commands should still be shell (not caught by structural NL)
+      expect(detector.detectModeSync('git status')).toBe('shell');
+      expect(detector.detectModeSync('ls -la')).toBe('shell');
+    });
+
+    it('should return nothing for non-commands', () => {
+      // Single characters aren't real commands
+      expect(detector.detectModeSync('l')).toBe('nothing');
+      expect(detector.detectModeSync('g')).toBe('nothing');
+      expect(detector.detectModeSync('n')).toBe('nothing');
+
+      // Unknown command-like words
+      expect(detector.detectModeSync('notarealcmd')).toBe('nothing');
+    });
+
+    it('should detect real commands', () => {
       expect(detector.detectModeSync('ls')).toBe('shell');
       expect(detector.detectModeSync('git')).toBe('shell');
     });
@@ -233,6 +256,14 @@ describe('ModeDetection', () => {
       // First word not valid, but rest has NL words → probably NL, not typo
       expect(await detector.detectMode('fix this bug')).toBe('nl');
       expect(await detector.detectMode('update the code')).toBe('nl');
+    });
+
+    it('should handle structural NL with async validation', async () => {
+      // "add a file" → sync: structural-nl → async: which("add") → null → NL
+      expect(await detector.detectMode('add a file')).toBe('nl');
+
+      // "git push origin main" → sync: structural-nl → async: which("git") → found → shell
+      expect(await detector.detectMode('git push origin main')).toBe('shell');
     });
   });
 

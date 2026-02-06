@@ -2,28 +2,61 @@
  * Mode Detection - Input mode detection for clam.
  *
  * DESIGN PHILOSOPHY:
- * We do NOT try to enumerate all of English. That's impossible and unnecessary.
- * Instead, we rely on two layers:
+ * Sync and async detection produce the SAME result. Both use cached `which` lookups
+ * to check if a command exists. The cache is populated on first lookup (sync uses
+ * spawnSync, async uses spawn). This ensures coloring matches execution behavior.
  *
- * 1. SYNC DETECTION (detectModeSync) - For real-time coloring UX
- *    - Definitive patterns: shell operators (|, >, &&), builtins (cd, export), $vars
- *    - Conflict words: AMBIGUOUS_COMMANDS (words that ARE shell commands AND English)
- *    - Common NL: NL_ONLY_WORDS (obvious NL phrases like "yes please")
- *    - Fallback: command-like pattern → tentatively shell
+ * If `which` lookups prove too slow during typing, we could preload the cache with
+ * common commands on startup. But `which` is typically <10ms, so this is likely unnecessary.
  *
- * 2. ASYNC DETECTION (detectMode) - For accuracy before execution
- *    - Uses `which` to verify if first word is actually a command
- *    - If `which` returns null → NL (not a command)
- *    - This catches everything sync detection misses
+ * KEY RULES (in priority order):
+ * - Definitive patterns: shell operators (|, >, &&), builtins (cd, export), $vars
+ * - AMBIGUOUS_COMMANDS: words that are both commands AND English (go, make, test)
+ *   - With NL words after → NL ("go to the store")
+ *   - Alone or with non-NL words → shell or ambiguous
+ * - `which` lookup: if first word is a real command → shell
+ * - Structural NL: 3+ word phrases that don't start with a command → NL
+ * - Fallback: command-like pattern → tentative shell (catches typos)
  *
  * MANAGING COMPLEXITY:
  * - Word lists are TEST-DRIVEN: add words only when tests require them
  * - Test cases live in mode-detection-cases.ts and mode-detection.test.ts
  * - When a phrase is misclassified, add a test case FIRST, then fix
- * - Some sync flicker is acceptable - async validation ensures correctness
  */
 
+import { spawnSync } from 'node:child_process';
+
 import { isShellBuiltin, type ShellModule } from './shell.js';
+
+// =============================================================================
+// CACHED `which` LOOKUP
+// =============================================================================
+
+/** Cache for `which` results: command -> exists */
+const whichCache = new Map<string, boolean>();
+
+/**
+ * Check if a command exists using `which`, with caching.
+ * Uses spawnSync for synchronous lookup. Fast (~5-10ms) and cached.
+ *
+ * TODO: Could preload cache at shell startup by scanning PATH directories.
+ * Probably not necessary since `which` is fast enough.
+ */
+function isShellCommand(command: string): boolean {
+  const cached = whichCache.get(command);
+  if (cached !== undefined) {
+    return cached;
+  }
+
+  const result = spawnSync('which', [command], {
+    encoding: 'utf8',
+    timeout: 1000, // 1 second timeout, just in case
+  });
+
+  const isCmd = result.status === 0;
+  whichCache.set(command, isCmd);
+  return isCmd;
+}
 
 /**
  * Input mode types.
@@ -160,6 +193,7 @@ const SAFE_NL_COMMANDS = new Set([
   'which', // /usr/bin/which - more commonly "which one"
   'where', // zsh builtin - more commonly "where is"
   'what', // zsh alias sometimes - more commonly "what is"
+  'go', // Go language - but also "go to the store"
 ]);
 
 /**
@@ -290,6 +324,66 @@ const NL_ONLY_WORDS = new Set([
  */
 function stripTrailingPunctuation(word: string): string {
   return word.replace(/[.,!?;:'"]+$/, '');
+}
+
+// =============================================================================
+// STRUCTURAL NL DETECTION (ported from kash)
+// =============================================================================
+// Uses multi-factor heuristics to detect natural language without needing
+// exhaustive word lists. This catches phrases like "add a file" that aren't
+// in any word list but are structurally NL.
+//
+// Reference: repos/kash/src/kash/xonsh_custom/command_nl_utils.py
+// =============================================================================
+
+/** Pattern for text containing only word characters, spaces, and inner punctuation
+ * Inner punctuation chars: hyphen, straight/curly apostrophes, en/em dash */
+const ONLY_WORDS_RE = /^[\w\s\-'\u2019\u2018\u2013\u2014]*$/;
+
+/** Outer punctuation: sentence-level, gets stripped for word analysis */
+const OUTER_PUNCT_RE = /[.,'""\u201C\u201D\u2018\u2019:;!?()]/g;
+
+/**
+ * Strip all outer punctuation from text for word analysis.
+ */
+function stripAllPunct(text: string): string {
+  return text.replace(OUTER_PUNCT_RE, '');
+}
+
+/**
+ * Check if input looks like natural language based on structural heuristics.
+ * Ported from kash's `looks_like_nl()` algorithm.
+ *
+ * Criteria:
+ * 1. At least one word > 3 characters
+ * 2. 3+ words (stricter than kash's 2-word relaxation to avoid false positives
+ *    like "git status" which looks structurally similar to "hello world")
+ * 3. Only word chars, spaces, and inner punctuation (no shell-like tokens)
+ * 4. No words starting with - (flags like -f, --verbose)
+ * 5. No words containing . (filenames like file.txt, path.js)
+ * 6. No words containing = (assignments like FOO=bar)
+ *
+ * For 2-word phrases, existing detection rules (all-nl-words, question-sentence,
+ * etc.) handle them. The structural check adds value for 3+ word phrases that
+ * don't match existing word lists (e.g., "add a file", "fix this bug").
+ */
+function looksLikeNl(text: string): boolean {
+  // Strip outer punctuation first (?, !, ., quotes, etc.)
+  const withoutPunct = stripAllPunct(text);
+
+  // After stripping outer punct, must be only word characters
+  // (no shell operators, dots, equals, etc.)
+  const isOnlyWordChars = ONLY_WORDS_RE.test(withoutPunct);
+  if (!isOnlyWordChars) return false;
+
+  const words = withoutPunct.split(/\s+/).filter((w) => w.length > 0);
+
+  // Skip if any word looks like a flag (-f, --verbose)
+  if (words.some((w) => w.startsWith('-'))) return false;
+
+  const oneLongerWord = words.some((w) => w.length > 3);
+
+  return oneLongerWord && words.length >= 3;
 }
 
 /**
@@ -424,13 +518,16 @@ const DETECTION_RULES: {
   {
     name: 'absolute-path',
     test: (_input, trimmed, firstWord) => {
-      // /bin/ls, /usr/bin/grep, etc. - treat as shell (will be validated by which)
+      // /bin/ls, /usr/bin/grep, etc. - treat as shell command
+      // Note: `which` doesn't work for absolute paths. We assume if it looks like
+      // an absolute path to an executable, the user wants to run it. Execution
+      // will fail with a proper error if the file doesn't exist.
       if (trimmed.startsWith('/') && ABSOLUTE_PATH_PATTERN.test(firstWord)) {
         return 'shell';
       }
       return null;
     },
-    definitive: false, // Needs async validation via which
+    definitive: true,
   },
   {
     name: 'unknown-slash',
@@ -445,9 +542,13 @@ const DETECTION_RULES: {
   },
   {
     name: 'shell-operators',
-    // Has shell operators like |, >, &&, etc. - likely shell, but validate first word async
-    test: (_input, trimmed) => (SHELL_OPERATORS.test(trimmed) ? 'shell' : null),
-    definitive: false, // Validate first word is a real command
+    // Has shell operators like |, >, &&, etc. - check if first word is a real command
+    test: (_input, trimmed, firstWord) => {
+      if (!SHELL_OPERATORS.test(trimmed)) return null;
+      // If first word is a command, it's shell. Otherwise it's invalid (nothing).
+      return isShellCommand(firstWord) ? 'shell' : 'nothing';
+    },
+    definitive: true,
   },
   {
     name: 'env-variables',
@@ -519,9 +620,31 @@ const DETECTION_RULES: {
     definitive: true,
   },
   {
+    name: 'which-lookup',
+    // Check if first word is a real command using cached `which` lookup.
+    // This is the primary way we detect shell commands - accurate and fast with caching.
+    test: (_input, _trimmed, firstWord) => {
+      if (!COMMAND_LIKE_PATTERN.test(firstWord)) return null;
+      return isShellCommand(firstWord) ? 'shell' : null;
+    },
+    definitive: true, // `which` is authoritative
+  },
+  {
+    name: 'structural-nl',
+    // Structural NL detection: multi-word input that looks like natural language.
+    // Only fires if first word is NOT a real command (checked above via `which`).
+    // Catches: "add a file", "fix this bug", "hello world", "don't do that"
+    test: (_input, trimmed) => (looksLikeNl(trimmed) ? 'nl' : null),
+    definitive: true, // If it's not a command and looks like NL, it's NL
+  },
+  {
     name: 'command-like',
-    test: (_input, _trimmed, firstWord) => (COMMAND_LIKE_PATTERN.test(firstWord) ? 'shell' : null),
-    definitive: false, // Tentative - needs async which validation
+    // Fallback: first word looks like a command but `which` didn't find it.
+    // Could be a typo (gti → git) or a command not in PATH.
+    // Treat as 'nothing' so we can show a helpful error with suggestions.
+    test: (_input, _trimmed, firstWord) =>
+      COMMAND_LIKE_PATTERN.test(firstWord) ? 'nothing' : null,
+    definitive: true,
   },
   {
     name: 'fallback-nl',
@@ -552,7 +675,7 @@ function applyRules(input: string): { mode: InputMode; definitive: boolean; rule
  * Create a mode detector instance.
  */
 export function createModeDetector(options: ModeDetectorOptions): ModeDetector {
-  const { shell, enabled = true } = options;
+  const { enabled = true } = options;
 
   function detectModeSync(input: string): InputMode {
     // If disabled, always return natural language
@@ -562,68 +685,10 @@ export function createModeDetector(options: ModeDetectorOptions): ModeDetector {
     return mode;
   }
 
-  async function detectMode(input: string): Promise<InputMode> {
-    // If disabled, always return natural language
-    if (!enabled) return 'nl';
-
-    const { mode, definitive, rule } = applyRules(input);
-
-    // If detection is definitive, return immediately
-    if (definitive) return mode;
-
-    // Non-definitive detection (command-like or absolute-path) needs which validation
-    if (mode === 'shell') {
-      const trimmed = input.trim();
-      const words = trimmed.split(/\s+/);
-      const firstWord = words[0] ?? '';
-      const isCmd = await shell.isCommand(firstWord);
-
-      if (isCmd) {
-        return 'shell';
-      }
-
-      // Command not found - determine if this is 'nothing' (invalid) or 'nl' (natural language)
-      // If has shell operators → clearly trying to run shell, so 'nothing'
-      if (SHELL_OPERATORS.test(trimmed)) {
-        return 'nothing';
-      }
-
-      // If has env var syntax → clearly trying to run shell, so 'nothing'
-      if (trimmed.includes('$')) {
-        return 'nothing';
-      }
-
-      // Check if rest of words look like NL (suggests user query, not typo)
-      // e.g., "fix this bug" → rest has NL words → 'nl'
-      // e.g., "gti status" → rest has no NL words → 'nothing'
-      if (words.length > 1) {
-        const restWords = words.slice(1);
-        const restLooksLikeNL = restWords.some((w) =>
-          NL_ONLY_WORDS.has(stripTrailingPunctuation(w.toLowerCase()))
-        );
-        if (restLooksLikeNL) {
-          return 'nl';
-        }
-      }
-
-      // Single word or no NL words in rest → likely typo or unknown command → 'nothing'
-      // Exception: if the single word is in NL_ONLY_WORDS (sync should have caught this, but just in case)
-      if (words.length === 1 && NL_ONLY_WORDS.has(firstWord.toLowerCase())) {
-        return 'nl';
-      }
-
-      return 'nothing';
-    }
-
-    // For absolute-path rule, check if path exists and is executable
-    if (rule === 'absolute-path') {
-      const trimmed = input.trim();
-      const firstWord = trimmed.split(/\s+/)[0] ?? '';
-      const isCmd = await shell.isCommand(firstWord);
-      return isCmd ? 'shell' : 'ambiguous';
-    }
-
-    return mode;
+  function detectMode(input: string): Promise<InputMode> {
+    // Sync and async now produce identical results (both use cached `which` lookups).
+    // Async version kept for API compatibility.
+    return Promise.resolve(detectModeSync(input));
   }
 
   return {
@@ -680,8 +745,11 @@ export function stripNLTrigger(input: string): string {
 // =============================================================================
 
 /**
- * Common shell commands for typo suggestions.
+ * Common shell commands for typo suggestions and sync detection.
  * These are frequently used commands that users might mistype.
+ * Also used by 'known-command' rule to sync-detect commands like "git", "npm", etc.
+ *
+ * TODO: Replace with cached `which` results for better accuracy.
  */
 const COMMON_COMMANDS = [
   'ls',

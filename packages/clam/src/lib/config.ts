@@ -19,7 +19,7 @@ export interface ClamCodeConfig {
   /** Working directory for sessions (default: cwd) */
   cwd?: string;
 
-  /** Maximum lines to show for tool output before truncating (default: 10) */
+  /** Maximum lines to show for tool output before truncating (default: 5) */
   truncateAfter?: number;
 
   /** Show timestamps on tool outputs */
@@ -30,12 +30,16 @@ export interface ClamCodeConfig {
 
   /** Agent command to spawn (default: claude-code-acp) */
   agentCommand?: string;
+
+  /** Require double-Enter to submit NL input (default: false) */
+  doubleEnterForNl?: boolean;
 }
 
 const DEFAULT_CONFIG: ClamCodeConfig = {
-  truncateAfter: 10,
+  truncateAfter: 3,
   showTimestamps: false,
   verbose: false,
+  doubleEnterForNl: false,
   // agentCommand is undefined by default - uses embedded adapter
 };
 
@@ -110,6 +114,9 @@ export function loadConfig(cwd?: string): ClamCodeConfig {
         if (typeof obj.verbose === 'boolean') {
           fileConfig.verbose = obj.verbose;
         }
+        if (typeof obj.doubleEnterForNl === 'boolean') {
+          fileConfig.doubleEnterForNl = obj.doubleEnterForNl;
+        }
         if (typeof obj.agentCommand === 'string' && obj.agentCommand.length > 0) {
           fileConfig.agentCommand = obj.agentCommand;
         }
@@ -144,6 +151,9 @@ export function loadConfig(cwd?: string): ClamCodeConfig {
   if (process.env.CLAM_CODE_AGENT_COMMAND) {
     config.agentCommand = process.env.CLAM_CODE_AGENT_COMMAND;
   }
+  if (process.env.CLAM_CODE_DOUBLE_ENTER_FOR_NL === '1') {
+    config.doubleEnterForNl = true;
+  }
 
   return config;
 }
@@ -154,7 +164,7 @@ export function loadConfig(cwd?: string): ClamCodeConfig {
 export function formatConfig(config: ClamCodeConfig): string[] {
   return [
     `cwd: ${config.cwd ?? process.cwd()}`,
-    `truncateAfter: ${config.truncateAfter ?? 10}`,
+    `truncateAfter: ${config.truncateAfter ?? 5}`,
     `showTimestamps: ${config.showTimestamps ?? false}`,
     `verbose: ${config.verbose ?? false}`,
     `agentCommand: ${config.agentCommand ?? 'claude-code-acp'}`,

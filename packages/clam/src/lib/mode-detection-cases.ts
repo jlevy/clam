@@ -322,6 +322,21 @@ export const NL_PHRASE_CASES: TestCategory = {
     { input: 'this is great', expected: 'nl', reason: 'Statement with NL words' },
     { input: 'I think we should', expected: 'nl', reason: 'Statement with NL words' },
     { input: 'that looks good', expected: 'nl', reason: 'Statement with NL words' },
+
+    // Structural NL detection (kash algorithm) - caught by word count/length heuristics
+    { input: 'add a file', expected: 'nl', reason: 'Structural NL: 3 words, "file" > 3 chars' },
+    { input: 'fix this bug', expected: 'nl', reason: 'Structural NL: 3 words, has long word' },
+    { input: "don't do that", expected: 'nl', reason: 'Structural NL: apostrophe is inner punct' },
+    {
+      input: 'is this a question?',
+      expected: 'nl',
+      reason: 'Structural NL: 4 words after punct strip',
+    },
+    {
+      input: 'go to the store',
+      expected: 'nl',
+      reason: 'Structural NL: 4 words, "store" > 3 chars',
+    },
   ],
 };
 

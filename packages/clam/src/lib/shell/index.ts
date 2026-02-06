@@ -2,6 +2,21 @@
  * Shell utilities - color environment, command flags, and subprocess execution.
  */
 
+export { ALIASES, getAliasDefinition, getAliasNames } from './alias-definitions.js';
+export {
+  expandAlias,
+  formatActiveAliases,
+  formatAliasesCompact,
+  getActiveAliases,
+  isAliasActive,
+  parseCommand,
+} from './alias-expander.js';
+export type {
+  AliasContext,
+  AliasDefinition,
+  AliasExpansion,
+  AliasExpansionResult,
+} from './alias-types.js';
 export {
   addColorFlags,
   COLOR_ALWAYS_COMMANDS,
@@ -9,14 +24,6 @@ export {
   shouldForceColor,
 } from './color-commands.js';
 export { COLOR_FORCING_ENV, getColorEnv } from './color-env.js';
-export {
-  COMMAND_ALIASES,
-  type CommandAlias,
-  formatAlias,
-  getActiveAliases,
-  getAlias,
-  rewriteCommand,
-} from './command-aliases.js';
 export {
   type CommandTimer,
   createCommandTimer,
@@ -39,11 +46,4 @@ export {
   getCommandPath,
   isCommandAvailable,
 } from './utils.js';
-export {
-  detectZoxideCommand,
-  isZoxideAvailable,
-  isZoxideInstalled,
-  rewriteZoxideCommand,
-  zoxideAdd,
-  zoxideQuery,
-} from './zoxide.js';
+export { isZoxideAvailable, zoxideAdd } from './zoxide.js';

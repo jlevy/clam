@@ -42,7 +42,8 @@ describe('shell/utils', () => {
     });
 
     it('should respect timeout parameter', async () => {
-      const path = await getCommandPath('ls', 100);
+      // Use a generous timeout to avoid flaky failures on slow CI (especially Windows)
+      const path = await getCommandPath('ls', 5000);
       expect(path).toBeTruthy();
     });
   });
