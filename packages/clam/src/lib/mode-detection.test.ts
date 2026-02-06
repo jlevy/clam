@@ -71,12 +71,18 @@ describe('ModeDetection', () => {
       expect(detector.detectModeSync('!echo hello')).toBe('shell');
     });
 
-    it('should detect shell operators', () => {
+    it('should detect shell operators with real commands', () => {
       expect(detector.detectModeSync('cat file | grep foo')).toBe('shell');
       expect(detector.detectModeSync('echo hello > file.txt')).toBe('shell');
-      expect(detector.detectModeSync('cmd1 && cmd2')).toBe('shell');
-      expect(detector.detectModeSync('cmd1 || cmd2')).toBe('shell');
+      expect(detector.detectModeSync('ls && pwd')).toBe('shell');
+      expect(detector.detectModeSync('ls || echo fail')).toBe('shell');
       expect(detector.detectModeSync('echo $(whoami)')).toBe('shell');
+    });
+
+    it('should return nothing for shell operators with invalid commands', () => {
+      // If first word isn't a real command, it's invalid even with shell operators
+      expect(detector.detectModeSync('fakecmd && ls')).toBe('nothing');
+      expect(detector.detectModeSync('notreal | grep foo')).toBe('nothing');
     });
 
     it('should detect environment variables', () => {
@@ -187,13 +193,17 @@ describe('ModeDetection', () => {
       expect(detector.detectModeSync('ls -la')).toBe('shell');
     });
 
-    it('should detect single characters as potential shell commands', () => {
-      // Single characters could be the start of commands
-      expect(detector.detectModeSync('l')).toBe('shell');
-      expect(detector.detectModeSync('g')).toBe('shell');
-      expect(detector.detectModeSync('n')).toBe('shell');
+    it('should return nothing for non-commands', () => {
+      // Single characters aren't real commands
+      expect(detector.detectModeSync('l')).toBe('nothing');
+      expect(detector.detectModeSync('g')).toBe('nothing');
+      expect(detector.detectModeSync('n')).toBe('nothing');
 
-      // Command-like words
+      // Unknown command-like words
+      expect(detector.detectModeSync('notarealcmd')).toBe('nothing');
+    });
+
+    it('should detect real commands', () => {
       expect(detector.detectModeSync('ls')).toBe('shell');
       expect(detector.detectModeSync('git')).toBe('shell');
     });

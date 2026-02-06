@@ -39,7 +39,7 @@ export interface ClamCodeConfig {
 }
 
 const DEFAULT_CONFIG: ClamCodeConfig = {
-  truncateAfter: 5,
+  truncateAfter: 3,
   showTimestamps: false,
   verbose: false,
   markdownRendering: true,
