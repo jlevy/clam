@@ -10,21 +10,22 @@
  * - Automatic directory tracking after cd
  */
 
-import { exec as execCallback } from 'node:child_process';
-import { promisify } from 'node:util';
-
-const execPromise = promisify(execCallback);
+import { execPromise, isCommandAvailable } from './utils.js';
 
 /**
  * Check if zoxide is installed.
+ * Prefer using detectInstalledTools() result when available to avoid duplicate checks.
  */
 export async function isZoxideInstalled(): Promise<boolean> {
-  try {
-    await execPromise('which zoxide', { timeout: 500 });
-    return true;
-  } catch {
-    return false;
-  }
+  return isCommandAvailable('zoxide');
+}
+
+/**
+ * Check if zoxide is available from pre-detected tools map.
+ * Use this instead of isZoxideInstalled() when you have the detection results.
+ */
+export function isZoxideAvailable(installedTools: Map<string, boolean>): boolean {
+  return installedTools.get('zoxide') ?? false;
 }
 
 /**

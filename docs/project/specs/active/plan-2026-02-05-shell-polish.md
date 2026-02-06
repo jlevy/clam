@@ -249,17 +249,56 @@ subprocess execution.**
 ```
 packages/clam/src/lib/
 ├── shell/
-│   ├── modern-tools.ts       # Tool detection and aliasing
+│   ├── utils.ts              # Shared utilities (execPromise, isCommandAvailable)
+│   ├── modern-tools.ts       # Tool detection registry and status display
 │   ├── modern-tools.test.ts  # Tests
-│   ├── tool-display.ts       # Startup display formatting
+│   ├── command-aliases.ts    # Alias definitions and rewriting
+│   ├── zoxide.ts             # Zoxide integration (uses detectInstalledTools results)
 │   └── index.ts              # Re-exports
 ├── tty/
-│   ├── tty-state.ts          # TTY state save/restore (tcgetattr/tcsetattr)
-│   ├── process-group.ts      # Process group management
-│   ├── terminal-control.ts   # Terminal control handoff (tcsetpgrp)
-│   ├── alternate-mode.ts     # Detect vim/less alternate mode
+│   ├── tty-manager.ts        # TTY state save/restore, stty sane
 │   └── index.ts              # Re-exports
 └── input.ts                  # Update to use tty module for subprocess handling
+```
+
+### Design Principle: No Duplicate Detection
+
+**IMPORTANT**: Tool detection must happen in ONE place only.
+
+- `modern-tools.ts` owns detection via `detectInstalledTools()` which returns
+  `Map<string, boolean>`
+- Other modules (zoxide.ts, command-aliases.ts) consume the detection results
+- No module should re-implement `which` checks or duplicate the exec/promisify pattern
+
+**Shared utilities** (`shell/utils.ts`):
+
+```typescript
+// Shared exec helper - single source of truth
+import { exec as execCallback } from 'node:child_process';
+import { promisify } from 'node:util';
+
+export const execPromise = promisify(execCallback);
+
+export async function isCommandAvailable(command: string, timeout = 500): Promise<boolean> {
+  try {
+    await execPromise(`which ${command}`, { timeout });
+    return true;
+  } catch {
+    return false;
+  }
+}
+```
+
+**Consuming detection results** (not re-checking):
+
+```typescript
+// In zoxide.ts - WRONG (duplicates detection):
+export async function isZoxideInstalled(): Promise<boolean> { ... }
+
+// CORRECT - consume from detectInstalledTools():
+export function isZoxideAvailable(installedTools: Map<string, boolean>): boolean {
+  return installedTools.get('zoxide') ?? false;
+}
 ```
 
 ### Tool Detection API
@@ -546,10 +585,12 @@ Priority: **HIGH** - Correct routing of input
 
 ### Phase 4: Zoxide Integration
 
-- [ ] Detect zoxide installation (via `which zoxide`)
+- [ ] Use `detectInstalledTools()` result to check zoxide availability (do NOT
+  re-detect)
 - [ ] Add `z` as alias for `zoxide query --exclude $PWD --`
 - [ ] Call `zoxide add $PWD` after each successful `cd` to update frecency database
 - [ ] Add `zi` for interactive selection (`zoxide query -i`)
+- [ ] Remove duplicate `isZoxideInstalled()` function - use shared detection
 
 ### Phase 5: Shell Convenience Features
 
@@ -637,6 +678,40 @@ clam
 5. **Phase 3**: Command aliasing/rewriting for detected tools
 6. **Phase 4**: Zoxide integration
 7. **Phase 5**: Shell conveniences (auto-cd, typo prevention, exit codes, keybindings)
+
+## Refactoring: Fix Code Duplication (Post-PR #5)
+
+The initial implementation in PR #5 introduced code duplication that should be cleaned
+up:
+
+### Current Issues
+
+1. **Duplicated exec pattern**: Both `modern-tools.ts` and `zoxide.ts` have:
+   ```typescript
+   import { exec as execCallback } from 'node:child_process';
+   import { promisify } from 'node:util';
+   const execPromise = promisify(execCallback);
+   ```
+
+2. **Duplicated command detection**: `zoxide.ts` has `isZoxideInstalled()` which is
+   identical to calling `isCommandAvailable('zoxide')` in `modern-tools.ts`.
+
+3. **Potential double-detection**: Zoxide availability may be checked twice at startup.
+
+### Required Changes
+
+1. **Create `shell/utils.ts`**: Extract shared utilities:
+   - `execPromise` - promisified exec
+   - `isCommandAvailable(cmd, timeout)` - generic command check
+
+2. **Update `modern-tools.ts`**: Import from utils, remove local execPromise.
+
+3. **Update `zoxide.ts`**:
+   - Remove `isZoxideInstalled()` function entirely
+   - Accept `installedTools: Map<string, boolean>` parameter in functions that need it
+   - Or export `isZoxideAvailable(installedTools)` that checks the map
+
+4. **Update callers**: Pass `installedTools` map to zoxide functions.
 
 ## Open Questions
 

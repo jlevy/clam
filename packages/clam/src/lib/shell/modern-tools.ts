@@ -8,10 +8,7 @@
  * Based on kash's modern tool detection system.
  */
 
-import { exec as execCallback } from 'node:child_process';
-import { promisify } from 'node:util';
-
-const execPromise = promisify(execCallback);
+import { isCommandAvailable } from './utils.js';
 
 /**
  * Information about a modern CLI tool.
@@ -90,18 +87,6 @@ export const MODERN_TOOLS: ToolInfo[] = [
     category: 'other',
   },
 ];
-
-/**
- * Check if a command is available via `which`.
- */
-async function isCommandAvailable(command: string, timeout = 500): Promise<boolean> {
-  try {
-    await execPromise(`which ${command}`, { timeout });
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 /**
  * Detect which modern tools are installed.

@@ -8,9 +8,27 @@ import {
   rewriteZoxideCommand,
   buildZCommand,
   buildZiCommand,
+  isZoxideAvailable,
 } from './zoxide.js';
 
 describe('Zoxide Integration', () => {
+  describe('isZoxideAvailable', () => {
+    it('should return true when zoxide is in the map', () => {
+      const tools = new Map([['zoxide', true]]);
+      expect(isZoxideAvailable(tools)).toBe(true);
+    });
+
+    it('should return false when zoxide is not installed', () => {
+      const tools = new Map([['zoxide', false]]);
+      expect(isZoxideAvailable(tools)).toBe(false);
+    });
+
+    it('should return false when zoxide is not in the map', () => {
+      const tools = new Map<string, boolean>();
+      expect(isZoxideAvailable(tools)).toBe(false);
+    });
+  });
+
   describe('detectZoxideCommand', () => {
     it('should detect z command', () => {
       expect(detectZoxideCommand('z foo')).toBe('z');

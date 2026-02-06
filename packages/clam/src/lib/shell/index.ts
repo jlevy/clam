@@ -2,6 +2,7 @@
  * Shell utilities - color environment, command flags, and subprocess execution.
  */
 
+export { execPromise, isCommandAvailable } from './utils.js';
 export { COLOR_FORCING_ENV, getColorEnv } from './color-env.js';
 export {
   COLOR_ALWAYS_COMMANDS,
@@ -27,6 +28,7 @@ export {
 } from './command-aliases.js';
 export {
   isZoxideInstalled,
+  isZoxideAvailable,
   zoxideQuery,
   zoxideAdd,
   detectZoxideCommand,
