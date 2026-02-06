@@ -292,6 +292,66 @@ function stripTrailingPunctuation(word: string): string {
   return word.replace(/[.,!?;:'"]+$/, '');
 }
 
+// =============================================================================
+// STRUCTURAL NL DETECTION (ported from kash)
+// =============================================================================
+// Uses multi-factor heuristics to detect natural language without needing
+// exhaustive word lists. This catches phrases like "add a file" that aren't
+// in any word list but are structurally NL.
+//
+// Reference: repos/kash/src/kash/xonsh_custom/command_nl_utils.py
+// =============================================================================
+
+/** Pattern for text containing only word characters, spaces, and inner punctuation
+ * Inner punctuation chars: hyphen, straight/curly apostrophes, en/em dash */
+const ONLY_WORDS_RE = /^[\w\s\-'\u2019\u2018\u2013\u2014]*$/;
+
+/** Outer punctuation: sentence-level, gets stripped for word analysis */
+const OUTER_PUNCT_RE = /[.,'""\u201C\u201D\u2018\u2019:;!?()]/g;
+
+/**
+ * Strip all outer punctuation from text for word analysis.
+ */
+function stripAllPunct(text: string): string {
+  return text.replace(OUTER_PUNCT_RE, '');
+}
+
+/**
+ * Check if input looks like natural language based on structural heuristics.
+ * Ported from kash's `looks_like_nl()` algorithm.
+ *
+ * Criteria:
+ * 1. At least one word > 3 characters
+ * 2. 3+ words (stricter than kash's 2-word relaxation to avoid false positives
+ *    like "git status" which looks structurally similar to "hello world")
+ * 3. Only word chars, spaces, and inner punctuation (no shell-like tokens)
+ * 4. No words starting with - (flags like -f, --verbose)
+ * 5. No words containing . (filenames like file.txt, path.js)
+ * 6. No words containing = (assignments like FOO=bar)
+ *
+ * For 2-word phrases, existing detection rules (all-nl-words, question-sentence,
+ * etc.) handle them. The structural check adds value for 3+ word phrases that
+ * don't match existing word lists (e.g., "add a file", "fix this bug").
+ */
+function looksLikeNl(text: string): boolean {
+  // Strip outer punctuation first (?, !, ., quotes, etc.)
+  const withoutPunct = stripAllPunct(text);
+
+  // After stripping outer punct, must be only word characters
+  // (no shell operators, dots, equals, etc.)
+  const isOnlyWordChars = ONLY_WORDS_RE.test(withoutPunct);
+  if (!isOnlyWordChars) return false;
+
+  const words = withoutPunct.split(/\s+/).filter((w) => w.length > 0);
+
+  // Skip if any word looks like a flag (-f, --verbose)
+  if (words.some((w) => w.startsWith('-'))) return false;
+
+  const oneLongerWord = words.some((w) => w.length > 3);
+
+  return oneLongerWord && words.length >= 3;
+}
+
 /**
  * Check if all words in input are natural language words.
  * Strips trailing punctuation to handle "do?" matching "do".
@@ -519,6 +579,19 @@ const DETECTION_RULES: {
     definitive: true,
   },
   {
+    name: 'structural-nl',
+    // Structural NL detection (ported from kash): multi-word input that looks like
+    // natural language based on word count, word length, and character set analysis.
+    // Catches: "add a file", "fix this bug", "hello world", "don't do that"
+    // Skips: "ls -la" (words too short), "cd .." (too few words)
+    //
+    // Definitive for sync (shows NL coloring), but async validation can override
+    // if first word IS a valid command (e.g., "git push origin main" → shell).
+    // Some brief NL-colored flicker for real commands is acceptable - async handles it.
+    test: (_input, trimmed) => (looksLikeNl(trimmed) ? 'nl' : null),
+    definitive: false,
+  },
+  {
     name: 'command-like',
     test: (_input, _trimmed, firstWord) => (COMMAND_LIKE_PATTERN.test(firstWord) ? 'shell' : null),
     definitive: false, // Tentative - needs async which validation
@@ -613,6 +686,18 @@ export function createModeDetector(options: ModeDetectorOptions): ModeDetector {
       }
 
       return 'nothing';
+    }
+
+    // For structural-nl rule, check if first word is actually a command
+    // This handles "git push origin main" → looks like NL structurally but `git` is a command
+    if (rule === 'structural-nl' && mode === 'nl') {
+      const trimmed = input.trim();
+      const firstWord = trimmed.split(/\s+/)[0] ?? '';
+      const isCmd = await shell.isCommand(firstWord);
+      if (isCmd) {
+        return 'shell';
+      }
+      return 'nl';
     }
 
     // For absolute-path rule, check if path exists and is executable

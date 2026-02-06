@@ -1,15 +1,17 @@
 # Feature: Functional Alias System
 
-**Date:** 2026-02-05 (last updated 2026-02-05)
+**Date:** 2026-02-05 (last updated 2026-02-06)
 
 **Author:** Claude (with research from xonsh codebase)
 
-**Status:** Draft
+**Status:** Ready for Implementation
+
+**Reviewed:** 2026-02-06 (senior engineering review applied)
 
 ## Overview
 
 A unified, functional alias system for Clam that consolidates command aliasing and
-zoxide integration into a single, type-safe architecture inspired by
+zoxide integration into a single architecture inspired by
 [xonsh’s callable aliases](https://xon.sh/api/_autosummary/cmd/xonsh.aliases.html).
 
 This replaces the current fragmented approach (separate `command-aliases.ts` and
@@ -18,12 +20,11 @@ and one `expandAlias()` function.
 
 ## Goals
 
+- **Unified expansion path**: One function replaces two sequential rewrite calls
 - **Readable configuration**: All aliases defined in one file, easy to understand
-- **Type-safe**: TypeScript ensures expansions are valid at compile time
 - **Flexible**: String for simple aliases, functions for complex behavior (e.g., zoxide)
 - **Testable**: Pure functions, easy to unit test
 - **Self-documenting**: Each alias has a description for help output
-- **Future-extensible**: Users could have `~/.clam/aliases.ts` in future versions
 
 ## Non-Goals
 
@@ -32,6 +33,7 @@ and one `expandAlias()` function.
 - Alias persistence/editing through the shell itself
 - Complex alias chains or recursive alias expansion
 - Windows-specific alias handling
+- A sync expansion API (all expansion goes through a single async path)
 
 ## Background
 
@@ -41,35 +43,39 @@ The shell-polish PR introduced command aliasing with this structure:
 
 ```
 packages/clam/src/lib/shell/
-├── command-aliases.ts    # COMMAND_ALIASES array, rewriteCommand()
-├── zoxide.ts             # z/zi handling, rewriteZoxideCommand()
-└── shell.ts              # Calls both rewrite functions separately
+├── command-aliases.ts    # COMMAND_ALIASES array (6 aliases), rewriteCommand()
+├── zoxide.ts             # z/zi handling, rewriteZoxideCommand(), zoxideAdd()
+└── shell.ts              # Calls both rewrite functions separately in exec()
 ```
+
+**Current aliases** (command-aliases.ts): ls, ll, la, cat, grep, find
 
 **Problems with current approach:**
 
-1. **Fragmented definitions**: Aliases split across two files
+1. **Fragmented definitions**: Aliases split across two files with different data models
 2. **Two rewrite functions**: `rewriteCommand()` and `rewriteZoxideCommand()` called
-   separately
-3. **Special-case zoxide**: Zoxide commands treated differently from other aliases
-4. **Hard to extend**: Adding new aliases requires understanding multiple code paths
+   separately in sequence in `shell.ts exec()`
+3. **Special-case zoxide**: Zoxide commands use `detectZoxideCommand()` + conditional
+   rewriting, a completely different code path from other aliases
+4. **Hard to extend**: Adding a new dynamic alias requires understanding both modules
 
 ### Xonsh Inspiration
 
 Xonsh provides a powerful alias system where aliases can be:
 
 - **Strings**: `aliases['ll'] = 'ls -la'`
-- **Lists**: `aliases['ll'] = ['ls', '-la']`
 - **Callables**: `aliases['z'] = lambda args, stdin=None: zoxide_jump(args)`
 
-This pattern unifies simple string substitution with complex programmatic behavior.
+The key insight from xonsh is that the `Aliases` class (a `MutableMapping`) normalizes
+all alias types on assignment, and `eval_alias()` handles recursive expansion with cycle
+detection. We adopt the polymorphic expansion pattern (string vs callable) while
+deliberately not adopting xonsh’s complexity (recursive expansion, decorator aliases,
+`ExecAlias`, `PartialEvalAlias`, signature-adaptive dispatch via `run_alias_by_params`).
 
-**Key xonsh code references:**
+**Key xonsh code references** (checked out in `attic/xonsh/`):
 
-- [aliases.py](https://github.com/xonsh/xonsh/blob/main/xonsh/aliases.py) - FuncAlias,
-  ExecAlias implementation
-- [xonsh aliases API](https://xon.sh/api/_autosummary/cmd/xonsh.aliases.html) - Callable
-  alias documentation
+- `xonsh/aliases.py` - `Aliases` class, `FuncAlias`, `ExecAlias`, `eval_alias()`
+- `xonsh/cli_utils.py` - `ArgParserAlias` for structured CLI-style aliases
 
 ## Design
 
@@ -82,7 +88,7 @@ packages/clam/src/lib/shell/
 ├── alias-expander.ts     # expandAlias() function and helpers
 ├── alias-expander.test.ts # Comprehensive tests
 ├── zoxide.ts             # Reduced to just zoxideAdd() for post-cd tracking
-└── index.ts              # Re-exports
+└── index.ts              # Re-exports (updated)
 ```
 
 ### Type Definitions
@@ -97,32 +103,30 @@ packages/clam/src/lib/shell/
 export interface AliasContext {
   /** Original command name (e.g., 'z', 'ls') */
   command: string;
-  /** Arguments after the command, already split */
+  /** Arguments after the command, split on whitespace */
   args: string[];
+  /** Raw argument string (everything after command name, preserves quoting) */
+  argsStr: string;
   /** Current working directory */
   cwd: string;
-  /** Environment variables */
-  env: NodeJS.ProcessEnv;
 }
 
 /**
  * An alias expansion can be:
  * - A string: "eza --group-directories-first" (args appended automatically)
- * - An array: ["eza", "--group-directories-first"] (joined, args appended)
- * - A function: receives context, returns command (handles args itself)
+ * - A function: receives context, returns command string (handles args itself)
  */
 export type AliasExpansion =
   | string
-  | string[]
-  | ((ctx: AliasContext) => string | string[] | Promise<string | string[]>);
+  | ((ctx: AliasContext) => string | Promise<string>);
 
 /**
  * Definition of a single alias.
  */
 export interface AliasDefinition {
-  /** The expansion - string, array, or function */
+  /** The expansion - string or function */
   expansion: AliasExpansion;
-  /** Tool that must be installed (checked against detected tools) */
+  /** Tool that must be installed (checked against detected tools map) */
   requires?: string;
   /** Human-readable description for help output */
   description: string;
@@ -141,6 +145,17 @@ export interface AliasExpansionResult {
 }
 ```
 
+**Design decisions on types:**
+
+- **No `string[]` expansion type**: Not used by any alias.
+  If needed later, trivial to add.
+- **No `env` in AliasContext**: No current alias needs environment variables.
+  Add when a real use case appears.
+- **`argsStr` included**: Callable aliases get both the parsed `args` array and the raw
+  `argsStr` string. This avoids losing quoting information when args are split.
+- **No sync API**: All expansion goes through one async `expandAlias()`. Avoids the
+  footgun of a sync version that silently skips callable aliases.
+
 ### Alias Definitions
 
 All aliases in one readable file:
@@ -152,24 +167,23 @@ import type { AliasDefinition } from './alias-types.js';
 
 /**
  * All alias definitions in one place.
- * Simple, readable, easy to extend.
  *
  * To add a new alias:
  * 1. Add entry to ALIASES object
  * 2. If it requires a tool, add `requires: 'toolname'`
+ *    (tool name must match a key from detectInstalledTools())
  * 3. For simple substitution, use a string
  * 4. For dynamic behavior, use a function
  */
 export const ALIASES: Record<string, AliasDefinition> = {
   // ═══════════════════════════════════════════════════════════════════════════
-  // Modern Tool Substitutions
-  // These replace traditional Unix commands with modern alternatives
+  // Modern Tool Substitutions (migrated from command-aliases.ts)
   // ═══════════════════════════════════════════════════════════════════════════
 
   ls: {
     expansion: 'eza --group-directories-first -F',
     requires: 'eza',
-    description: 'List with eza (icons, colors, git status)',
+    description: 'List with eza (colors, git status)',
   },
 
   ll: {
@@ -184,22 +198,10 @@ export const ALIASES: Record<string, AliasDefinition> = {
     description: 'List all (including hidden) with eza',
   },
 
-  tree: {
-    expansion: 'eza --tree',
-    requires: 'eza',
-    description: 'Tree view with eza',
-  },
-
   cat: {
     expansion: 'bat --paging=never',
     requires: 'bat',
     description: 'Cat with syntax highlighting via bat',
-  },
-
-  less: {
-    expansion: 'bat --paging=always',
-    requires: 'bat',
-    description: 'Pager with syntax highlighting via bat',
   },
 
   grep: {
@@ -212,6 +214,22 @@ export const ALIASES: Record<string, AliasDefinition> = {
     expansion: 'fd',
     requires: 'fd',
     description: 'Fast find with fd',
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // New aliases (not in current command-aliases.ts)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  tree: {
+    expansion: 'eza --tree',
+    requires: 'eza',
+    description: 'Tree view with eza',
+  },
+
+  less: {
+    expansion: 'bat --paging=always',
+    requires: 'bat',
+    description: 'Pager with syntax highlighting via bat',
   },
 
   du: {
@@ -227,8 +245,8 @@ export const ALIASES: Record<string, AliasDefinition> = {
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // Zoxide - Smart Directory Jumping
-  // These are callable aliases that generate dynamic commands
+  // Zoxide - Smart Directory Jumping (migrated from zoxide.ts)
+  // These are callable aliases that generate dynamic cd commands
   // ═══════════════════════════════════════════════════════════════════════════
 
   z: {
@@ -237,7 +255,10 @@ export const ALIASES: Record<string, AliasDefinition> = {
         // z with no args goes home (like cd with no args)
         return 'cd ~';
       }
-      // Query zoxide for best match, excluding current directory
+      // Query zoxide for best match, excluding current directory.
+      // Note: args are passed after -- to prevent injection. The double quotes
+      // around $() protect against word splitting. Shell metacharacters in args
+      // are a known limitation (same as current zoxide.ts implementation).
       const query = args.join(' ');
       return `cd "$(zoxide query --exclude "${cwd}" -- ${query})"`;
     },
@@ -325,8 +346,9 @@ export function parseCommand(command: string): { cmdName: string; args: string[]
 
   const cmdName = trimmed.slice(0, spaceIdx);
   const argsStr = trimmed.slice(spaceIdx + 1);
-  // Simple split on whitespace - doesn't handle quoted strings
-  // For complex cases, the callable alias handles its own arg parsing
+  // Simple split on whitespace. Doesn't handle quoted strings, but that's fine:
+  // string aliases pass argsStr through verbatim (preserving quoting), and
+  // callable aliases can use argsStr directly if they need the raw string.
   const args = argsStr.split(/\s+/).filter(Boolean);
 
   return { cmdName, args, argsStr };
@@ -335,16 +357,25 @@ export function parseCommand(command: string): { cmdName: string; args: string[]
 /**
  * Expand an alias if one matches the command.
  *
+ * This is the single entry point for all alias expansion. It replaces both
+ * rewriteCommand() and rewriteZoxideCommand() from the old architecture.
+ *
  * @param command - The full command string (e.g., "ls -la /tmp")
  * @param installedTools - Map of tool name to path (from detectInstalledTools)
  * @param cwd - Current working directory
+ * @param enabled - Whether aliasing is enabled (false = always return original)
  * @returns Expansion result with the command to execute
  */
 export async function expandAlias(
   command: string,
   installedTools: Map<string, AbsolutePath>,
-  cwd: string
+  cwd: string,
+  enabled = true
 ): Promise<AliasExpansionResult> {
+  if (!enabled) {
+    return { command, wasExpanded: false };
+  }
+
   const { cmdName, args, argsStr } = parseCommand(command);
 
   // No command to expand
@@ -364,27 +395,21 @@ export async function expandAlias(
     return { command, wasExpanded: false };
   }
 
-  const ctx: AliasContext = {
-    command: cmdName,
-    args,
-    cwd,
-    env: process.env,
-  };
-
   const expansion = def.expansion;
   let expandedCommand: string;
 
   if (typeof expansion === 'string') {
-    // Simple string expansion: append original args
+    // Simple string expansion: append original args (raw string, preserves quoting)
     expandedCommand = argsStr ? `${expansion} ${argsStr}` : expansion;
-  } else if (Array.isArray(expansion)) {
-    // Array expansion: join and append args
-    const base = expansion.join(' ');
-    expandedCommand = argsStr ? `${base} ${argsStr}` : base;
   } else if (typeof expansion === 'function') {
     // Callable expansion: function handles args itself
-    const result = await expansion(ctx);
-    expandedCommand = Array.isArray(result) ? result.join(' ') : result;
+    const ctx: AliasContext = {
+      command: cmdName,
+      args,
+      argsStr,
+      cwd,
+    };
+    expandedCommand = await expansion(ctx);
   } else {
     // Unknown expansion type, return original
     return { command, wasExpanded: false };
@@ -395,42 +420,6 @@ export async function expandAlias(
     wasExpanded: true,
     aliasName: cmdName,
   };
-}
-
-/**
- * Synchronous version for cases where async isn't needed.
- * Only works with string/array expansions, not callable.
- */
-export function expandAliasSync(
-  command: string,
-  installedTools: Map<string, AbsolutePath>
-): AliasExpansionResult {
-  const { cmdName, argsStr } = parseCommand(command);
-
-  if (!cmdName) {
-    return { command, wasExpanded: false };
-  }
-
-  const def = ALIASES[cmdName];
-  if (!def || !isAliasActive(def, installedTools)) {
-    return { command, wasExpanded: false };
-  }
-
-  const expansion = def.expansion;
-
-  if (typeof expansion === 'string') {
-    const expandedCommand = argsStr ? `${expansion} ${argsStr}` : expansion;
-    return { command: expandedCommand, wasExpanded: true, aliasName: cmdName };
-  }
-
-  if (Array.isArray(expansion)) {
-    const base = expansion.join(' ');
-    const expandedCommand = argsStr ? `${base} ${argsStr}` : base;
-    return { command: expandedCommand, wasExpanded: true, aliasName: cmdName };
-  }
-
-  // Callable expansion requires async
-  return { command, wasExpanded: false };
 }
 
 /**
@@ -446,9 +435,7 @@ export function formatActiveAliases(
     const expansionStr =
       typeof def.expansion === 'function'
         ? '(dynamic)'
-        : typeof def.expansion === 'string'
-          ? def.expansion
-          : def.expansion.join(' ');
+        : def.expansion;
 
     lines.push(`  ${name.padEnd(8)} -> ${expansionStr}`);
     if (def.description) {
@@ -472,9 +459,7 @@ export function formatAliasesCompact(
     const target =
       typeof def.expansion === 'function'
         ? '(fn)'
-        : typeof def.expansion === 'string'
-          ? def.expansion.split(' ')[0]
-          : def.expansion[0];
+        : def.expansion.split(' ')[0];
     parts.push(`${name}->${target}`);
   }
 
@@ -484,41 +469,60 @@ export function formatAliasesCompact(
 
 ### Integration with Shell
 
-Update `shell.ts` to use the new system:
+Update `shell.ts` to use the new system.
+This shows the full exec() changes needed, not just the alias call:
 
 ```typescript
-// In shell.ts exec() method
+// In shell.ts - updated imports
+import { expandAlias } from './shell/alias-expander.js';
+import { zoxideAdd } from './shell/zoxide.js';
+// Remove: import { rewriteCommand } from './shell/command-aliases.js';
+// Remove: import { detectZoxideCommand, rewriteZoxideCommand, ... } from './shell/zoxide.js';
 
-import { expandAlias } from './alias-expander.js';
-import { zoxideAdd } from './zoxide.js';
+// In exec() method - the key change is replacing two sequential rewrites with one call:
 
-async exec(command: string, options?: ExecOptions): Promise<ExecResult> {
-  // Expand aliases before execution
-  const { command: expandedCommand, wasExpanded } = await expandAlias(
+async function exec(command: string, execOptions: ExecOptions = {}): Promise<ExecResult> {
+  const effectiveCwd = execOptions.cwd ?? currentCwd;
+
+  // Single alias expansion replaces both rewriteCommand() and rewriteZoxideCommand()
+  const { command: expandedCommand, wasExpanded, aliasName } = await expandAlias(
     command,
-    this.installedTools,
-    this.cwd
+    installedTools,
+    effectiveCwd,
+    aliasingEnabled
   );
 
-  if (wasExpanded) {
-    // Optionally log the expansion for debugging
-    // console.debug(`Alias: ${command} -> ${expandedCommand}`);
-  }
+  // Detect if the expanded command is a cd (for cwd tracking).
+  // This catches both explicit cd commands AND z/zi aliases that expand to cd.
+  const isCdCommand = expandedCommand.trim().startsWith('cd') || (!wasExpanded && command.trim().startsWith('cd'));
 
-  // Execute the expanded command
-  const result = await this.executeCommand(expandedCommand, options);
+  // ... rest of exec() remains unchanged (env setup, interactive/non-interactive
+  // execution, cwd tracking via && pwd, zoxide add after cd) ...
 
-  // If this was a successful cd, update zoxide database
-  if (result.exitCode === 0 && this.isZoxideAvailable) {
-    const cdMatch = expandedCommand.match(/^cd\s+(.+)/);
-    if (cdMatch) {
-      await zoxideAdd(this.cwd);
-    }
+  // The only structural change: remove the detectZoxideCommand() + rewriteZoxideCommand()
+  // block and the rewriteCommand() call. Everything else (cwd tracking, && pwd append,
+  // interactive vs non-interactive, zoxideAdd) stays as-is.
+
+  // If this was a successful cd, update zoxide database (same as current code)
+  if (isCdCommand && result.exitCode === 0 && installedTools.has('zoxide')) {
+    zoxideAdd(currentCwd).catch(() => {});
   }
 
   return result;
 }
 ```
+
+**Key integration details:**
+
+- `expandAlias()` accepts `enabled` parameter, replacing the separate `aliasingEnabled`
+  check that `rewriteCommand()` had
+- `isCdCommand` detection now works on the expanded command, which catches z/zi aliases
+  that expand to `cd "$(zoxide query ...)"`. This simplifies the current logic that
+  checks both `zoxideType !== null` and `workingCommand.startsWith('cd')`
+- The `&& pwd` append, cwd tracking, interactive/non-interactive branching, and
+  `zoxideAdd()` call all remain unchanged
+- The `detectCdCommand()` helper in shell.ts is still needed for the interactive cwd
+  tracking path
 
 ### Reduced Zoxide Module
 
@@ -549,29 +553,36 @@ export async function zoxideAdd(dir: string): Promise<void> {
 }
 ```
 
+Removed from zoxide.ts: `isZoxideInstalled()`, `zoxideQuery()`, `buildZCommand()`,
+`buildZiCommand()`, `detectZoxideCommand()`, `rewriteZoxideCommand()`. All of this
+behavior is now handled by the z/zi callable aliases in alias-definitions.ts.
+
 ## Implementation Plan
 
-### Phase 1: Create New Alias Infrastructure
+### Phase 1: Create New Alias Infrastructure (additive, no breaking changes)
 
 - [ ] Create `lib/shell/alias-types.ts` with type definitions
-- [ ] Create `lib/shell/alias-definitions.ts` with all aliases migrated from current
-  code
+- [ ] Create `lib/shell/alias-definitions.ts` with all aliases (6 migrated + 4 new)
 - [ ] Create `lib/shell/alias-expander.ts` with expansion logic
-- [ ] Add comprehensive unit tests for all expansion types
+- [ ] Add comprehensive unit tests (`alias-expander.test.ts`)
 
 ### Phase 2: Integrate and Replace
 
 - [ ] Update `shell.ts` to use `expandAlias()` instead of separate rewrite functions
-- [ ] Update `index.ts` exports
-- [ ] Verify zoxide `z` and `zi` work correctly with callable aliases
-- [ ] Ensure `zoxide add` still called after successful cd
+- [ ] Remove `detectZoxideCommand()` and `rewriteZoxideCommand()` calls from shell.ts
+- [ ] Remove `rewriteCommand()` call from shell.ts
+- [ ] Update `isCdCommand` detection to work on expanded command
+- [ ] Verify `aliasingEnabled` flag works via `expandAlias()`'s `enabled` param
+- [ ] Ensure `zoxideAdd()` still called after successful cd
 
-### Phase 3: Cleanup
+### Phase 3: Cleanup and Exports
 
-- [ ] Remove `command-aliases.ts` (replaced by alias-definitions.ts)
+- [ ] Remove `command-aliases.ts` (replaced by alias-definitions.ts + alias-expander.ts)
 - [ ] Simplify `zoxide.ts` to only contain `zoxideAdd()` and `isZoxideAvailable()`
-- [ ] Remove old `rewriteCommand()` and `rewriteZoxideCommand()` calls
-- [ ] Update `/help` or add `/aliases` command to show active aliases
+- [ ] Update `shell/index.ts` exports (remove old, add new)
+- [ ] Remove old tests (`command-aliases.test.ts`, `zoxide.test.ts`) after verifying new
+  tests cover all scenarios
+- [ ] Run full test suite and verify no regressions
 
 ## Testing Strategy
 
@@ -580,21 +591,53 @@ export async function zoxideAdd(dir: string): Promise<void> {
 ```typescript
 // alias-expander.test.ts
 
+import { describe, expect, it } from 'vitest';
+import { expandAlias, getActiveAliases, formatActiveAliases, parseCommand } from './alias-expander.js';
+import { asAbsolutePath, type AbsolutePath } from './utils.js';
+
+describe('parseCommand', () => {
+  it('parses command with no args', () => {
+    const result = parseCommand('ls');
+    expect(result).toEqual({ cmdName: 'ls', args: [], argsStr: '' });
+  });
+
+  it('parses command with args', () => {
+    const result = parseCommand('ls -la /tmp');
+    expect(result.cmdName).toBe('ls');
+    expect(result.args).toEqual(['-la', '/tmp']);
+    expect(result.argsStr).toBe('-la /tmp');
+  });
+
+  it('handles empty string', () => {
+    const result = parseCommand('');
+    expect(result.cmdName).toBe('');
+  });
+
+  it('preserves raw args string', () => {
+    const result = parseCommand('cat "file with spaces.txt"');
+    expect(result.argsStr).toBe('"file with spaces.txt"');
+  });
+});
+
 describe('expandAlias', () => {
-  const allTools = new Map([
-    ['eza', '/usr/bin/eza'],
-    ['bat', '/usr/bin/bat'],
-    ['rg', '/usr/bin/rg'],
-    ['zoxide', '/usr/bin/zoxide'],
+  const allTools = new Map<string, AbsolutePath>([
+    ['eza', asAbsolutePath('/usr/bin/eza')],
+    ['bat', asAbsolutePath('/usr/bin/bat')],
+    ['rg', asAbsolutePath('/usr/bin/rg')],
+    ['fd', asAbsolutePath('/usr/bin/fd')],
+    ['zoxide', asAbsolutePath('/usr/bin/zoxide')],
+    ['dust', asAbsolutePath('/usr/bin/dust')],
+    ['duf', asAbsolutePath('/usr/bin/duf')],
   ]);
 
-  const noTools = new Map();
+  const noTools = new Map<string, AbsolutePath>();
 
   describe('string expansion', () => {
     it('expands ls to eza with flags', async () => {
       const result = await expandAlias('ls', allTools, '/home/user');
       expect(result.wasExpanded).toBe(true);
       expect(result.command).toBe('eza --group-directories-first -F');
+      expect(result.aliasName).toBe('ls');
     });
 
     it('preserves arguments after expansion', async () => {
@@ -602,8 +645,19 @@ describe('expandAlias', () => {
       expect(result.command).toBe('eza --group-directories-first -F -la /tmp');
     });
 
+    it('preserves quoted arguments', async () => {
+      const result = await expandAlias('cat "file with spaces.txt"', allTools, '/home/user');
+      expect(result.command).toBe('bat --paging=never "file with spaces.txt"');
+    });
+
     it('returns original when tool not installed', async () => {
       const result = await expandAlias('ls', noTools, '/home/user');
+      expect(result.wasExpanded).toBe(false);
+      expect(result.command).toBe('ls');
+    });
+
+    it('returns original when disabled', async () => {
+      const result = await expandAlias('ls', allTools, '/home/user', false);
       expect(result.wasExpanded).toBe(false);
       expect(result.command).toBe('ls');
     });
@@ -614,7 +668,9 @@ describe('expandAlias', () => {
       const result = await expandAlias('z projects', allTools, '/home/user');
       expect(result.wasExpanded).toBe(true);
       expect(result.command).toContain('zoxide query');
+      expect(result.command).toContain('--exclude');
       expect(result.command).toContain('projects');
+      expect(result.command).toContain('/home/user');
     });
 
     it('expands z without args to cd ~', async () => {
@@ -625,6 +681,40 @@ describe('expandAlias', () => {
     it('expands zi to interactive mode', async () => {
       const result = await expandAlias('zi', allTools, '/home/user');
       expect(result.command).toContain('zoxide query -i');
+    });
+
+    it('expands zi with query to filtered interactive', async () => {
+      const result = await expandAlias('zi projects', allTools, '/home/user');
+      expect(result.command).toContain('zoxide query -i');
+      expect(result.command).toContain('projects');
+    });
+
+    it('does not expand z when zoxide not installed', async () => {
+      const result = await expandAlias('z projects', noTools, '/home/user');
+      expect(result.wasExpanded).toBe(false);
+      expect(result.command).toBe('z projects');
+    });
+  });
+
+  describe('new aliases', () => {
+    it('expands tree to eza --tree', async () => {
+      const result = await expandAlias('tree src/', allTools, '/home/user');
+      expect(result.command).toBe('eza --tree src/');
+    });
+
+    it('expands less to bat with paging', async () => {
+      const result = await expandAlias('less file.txt', allTools, '/home/user');
+      expect(result.command).toBe('bat --paging=always file.txt');
+    });
+
+    it('expands du to dust', async () => {
+      const result = await expandAlias('du', allTools, '/home/user');
+      expect(result.command).toBe('dust');
+    });
+
+    it('expands df to duf', async () => {
+      const result = await expandAlias('df', allTools, '/home/user');
+      expect(result.command).toBe('duf');
     });
   });
 
@@ -639,38 +729,66 @@ describe('expandAlias', () => {
       const result = await expandAlias('', allTools, '/home/user');
       expect(result.wasExpanded).toBe(false);
     });
+
+    it('handles whitespace-only command', async () => {
+      const result = await expandAlias('   ', allTools, '/home/user');
+      expect(result.wasExpanded).toBe(false);
+    });
   });
 });
 
 describe('getActiveAliases', () => {
   it('returns only aliases with installed tools', () => {
-    const tools = new Map([['eza', '/usr/bin/eza']]);
+    const tools = new Map<string, AbsolutePath>([
+      ['eza', asAbsolutePath('/usr/bin/eza')],
+    ]);
     const active = getActiveAliases(tools);
 
     expect(active.has('ls')).toBe(true);
     expect(active.has('ll')).toBe(true);
-    expect(active.has('cat')).toBe(false); // bat not installed
-    expect(active.has('z')).toBe(false);   // zoxide not installed
+    expect(active.has('tree')).toBe(true);
+    expect(active.has('cat')).toBe(false);  // bat not installed
+    expect(active.has('z')).toBe(false);    // zoxide not installed
+  });
+
+  it('returns empty map when no tools installed', () => {
+    const active = getActiveAliases(new Map());
+    expect(active.size).toBe(0);
   });
 });
 
 describe('formatActiveAliases', () => {
-  it('formats aliases for display', () => {
-    const tools = new Map([['eza', '/usr/bin/eza']]);
+  it('formats string aliases with expansion', () => {
+    const tools = new Map<string, AbsolutePath>([
+      ['eza', asAbsolutePath('/usr/bin/eza')],
+    ]);
     const output = formatActiveAliases(tools);
 
     expect(output).toContain('ls');
     expect(output).toContain('eza');
   });
+
+  it('formats callable aliases as (dynamic)', () => {
+    const tools = new Map<string, AbsolutePath>([
+      ['zoxide', asAbsolutePath('/usr/bin/zoxide')],
+    ]);
+    const output = formatActiveAliases(tools);
+
+    expect(output).toContain('z');
+    expect(output).toContain('(dynamic)');
+  });
 });
 ```
 
-### Integration Tests
+### Regression Coverage
 
-- Run `ls` and verify eza output (when installed)
-- Run `z projectname` and verify directory change
-- Run `cat file.txt` and verify bat syntax highlighting
-- Verify aliases don’t apply when tools missing
+The new test suite must cover all scenarios from the existing tests:
+
+- From `command-aliases.test.ts`: rewriting with installed tools, argument preservation,
+  tool availability checks, disabled flag, empty/whitespace commands, getAlias,
+  formatAlias
+- From `zoxide.test.ts`: z with args, z without args (cd ~), zi, zi with query,
+  non-zoxide commands passed through, isZoxideAvailable
 
 ### Manual Testing
 
@@ -678,50 +796,97 @@ describe('formatActiveAliases', () => {
 # Start clam
 pnpm clam
 
-# Test basic aliases
+# Test migrated aliases (same behavior as before)
 > ls              # Should use eza if installed
 > ll              # Should show long format
 > cat package.json # Should have syntax highlighting
+> grep TODO src/  # Should use rg
 
-# Test zoxide
+# Test new aliases
+> tree src/       # Should use eza --tree
+> less file.txt   # Should use bat with paging
+> du              # Should use dust
+> df              # Should use duf
+
+# Test zoxide (same behavior as before)
 > z clam          # Should jump to matching directory
 > zi              # Should show interactive picker
 
-# Test when tool missing
-> # (uninstall eza temporarily)
+# Test fallback when tool missing
+> # (with tool not installed)
 > ls              # Should fall back to regular ls
 ```
 
 ## Migration Guide
 
-### Before (PR #5)
+### Before (current code)
 
 ```typescript
-// shell.ts
-const rewritten = rewriteCommand(command, this.installedTools);
-const zoxideCmd = rewriteZoxideCommand(rewritten, this.cwd);
-await this.executeCommand(zoxideCmd);
+// shell.ts exec()
+const zoxideType = detectZoxideCommand(command);
+let workingCommand = command;
+if (zoxideType && installedTools.has('zoxide')) {
+  workingCommand = rewriteZoxideCommand(command, effectiveCwd);
+}
+const aliasedCommand = rewriteCommand(workingCommand, installedTools, aliasingEnabled);
+const isCdCommand = workingCommand.trim().startsWith('cd') || zoxideType !== null;
+// ... execute aliasedCommand
 ```
 
-### After (This Spec)
+### After (this spec)
 
 ```typescript
-// shell.ts
-const { command: expanded } = await expandAlias(command, this.installedTools, this.cwd);
-await this.executeCommand(expanded);
+// shell.ts exec()
+const { command: expandedCommand } = await expandAlias(
+  command, installedTools, effectiveCwd, aliasingEnabled
+);
+const isCdCommand = expandedCommand.trim().startsWith('cd');
+// ... execute expandedCommand
 ```
+
+The two-function pipeline collapses to a single call.
+The `isCdCommand` detection simplifies because z/zi aliases expand to
+`cd "$(zoxide query ...)"`, which starts with `cd`.
 
 ## Comparison: Before vs After
 
 | Aspect | Before (PR #5) | After (This Spec) |
 | --- | --- | --- |
 | Files | `command-aliases.ts` + `zoxide.ts` | `alias-types.ts` + `alias-definitions.ts` + `alias-expander.ts` |
-| Alias storage | Array + separate zoxide module | Single `ALIASES` object |
+| Alias storage | Array of 6 + separate zoxide module | Single `ALIASES` object (12 entries) |
 | Zoxide | Special case, separate code path | Regular callable alias |
 | Expansion | Two functions called in sequence | Single `expandAlias()` |
-| Adding alias | Modify array + update rewriter | Add entry to ALIASES |
-| Type safety | Partial | Full (expansion types checked) |
-| Testability | Coupled to implementation | Pure functions, easy to mock |
+| Adding alias | Modify array + possibly update rewriter | Add entry to ALIASES |
+| cd detection | Check zoxide type OR cd prefix | Check cd prefix (z/zi already expanded) |
+
+## Decisions (Resolved Open Questions)
+
+1. **Quoted argument handling**: Callable aliases receive both `args: string[]` (split)
+   and `argsStr: string` (raw).
+   String aliases use `argsStr` for pass-through, preserving quoting.
+   Callable aliases can choose which to use.
+   This is sufficient for our use cases.
+
+2. **Alias chaining**: Not supported.
+   No recursive expansion.
+   An alias expands once.
+   This avoids the complexity of cycle detection (which xonsh handles via `seen_tokens`
+   set). If needed in future, xonsh’s `eval_alias` shows how to do it.
+
+3. **Platform differences**: Not addressed in this spec.
+   All current aliases use the same flags on all platforms.
+   If platform-specific behavior is needed, the callable alias pattern already supports
+   it (the function can check `process.platform`). Cross that bridge when we get there.
+
+## Known Limitations
+
+- **Shell injection in zoxide args**: The z/zi callable aliases interpolate query args
+  into shell command strings.
+  The `--` separator prevents flag injection, and the double quotes around `$(...)`
+  prevent word splitting, but shell metacharacters in directory queries could
+  theoretically cause issues.
+  This is the same behavior as the current `zoxide.ts` implementation and is acceptable
+  for a local shell tool.
 
 ## Future Enhancements
 
@@ -747,27 +912,15 @@ export const userAliases: Record<string, AliasDefinition> = {
 /alias remove ...  # Remove alias
 ```
 
-## Open Questions
-
-1. **Quoted argument handling**: The simple `split(/\s+/)` doesn’t handle quoted
-   strings. For most aliases this is fine since args are passed through.
-   Should callable aliases receive raw args string instead of parsed array?
-
-2. **Alias chaining**: Should `alias1 -> alias2 -> command` be supported?
-   Currently not planned - adds complexity.
-
-3. **Platform differences**: Some tools have different flags on macOS vs Linux.
-   Handle in alias definition or separate platform config?
-
 ## References
 
 ### Xonsh Alias System
 
-- [xonsh aliases API](https://xon.sh/api/_autosummary/cmd/xonsh.aliases.html) - Callable
-  alias architecture
 - [xonsh aliases.py source](https://github.com/xonsh/xonsh/blob/main/xonsh/aliases.py) -
-  Implementation of FuncAlias, ExecAlias
-- [xonsh tutorial: aliases](https://xon.sh/tutorial.html) - Lambda aliases
+  `Aliases` class, `FuncAlias`, `ExecAlias`, `eval_alias()`
+- [xonsh cli_utils.py](https://github.com/xonsh/xonsh/blob/main/xonsh/cli_utils.py) -
+  `ArgParserAlias` for structured CLI-style aliases
+- Local checkout: `attic/xonsh/xonsh/aliases.py`
 
 ### Related Clam Specs
 

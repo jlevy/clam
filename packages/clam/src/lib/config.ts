@@ -19,7 +19,7 @@ export interface ClamCodeConfig {
   /** Working directory for sessions (default: cwd) */
   cwd?: string;
 
-  /** Maximum lines to show for tool output before truncating (default: 10) */
+  /** Maximum lines to show for tool output before truncating (default: 5) */
   truncateAfter?: number;
 
   /** Show timestamps on tool outputs */
@@ -33,13 +33,17 @@ export interface ClamCodeConfig {
 
   /** Enable markdown rendering in streaming output (default: true) */
   markdownRendering?: boolean;
+
+  /** Require double-Enter to submit NL input (default: false) */
+  doubleEnterForNl?: boolean;
 }
 
 const DEFAULT_CONFIG: ClamCodeConfig = {
-  truncateAfter: 10,
+  truncateAfter: 5,
   showTimestamps: false,
   verbose: false,
   markdownRendering: true,
+  doubleEnterForNl: false,
   // agentCommand is undefined by default - uses embedded adapter
 };
 
@@ -117,6 +121,9 @@ export function loadConfig(cwd?: string): ClamCodeConfig {
         if (typeof obj.markdownRendering === 'boolean') {
           fileConfig.markdownRendering = obj.markdownRendering;
         }
+        if (typeof obj.doubleEnterForNl === 'boolean') {
+          fileConfig.doubleEnterForNl = obj.doubleEnterForNl;
+        }
         if (typeof obj.agentCommand === 'string' && obj.agentCommand.length > 0) {
           fileConfig.agentCommand = obj.agentCommand;
         }
@@ -154,6 +161,9 @@ export function loadConfig(cwd?: string): ClamCodeConfig {
   if (process.env.CLAM_CODE_NO_MARKDOWN === '1') {
     config.markdownRendering = false;
   }
+  if (process.env.CLAM_CODE_DOUBLE_ENTER_FOR_NL === '1') {
+    config.doubleEnterForNl = true;
+  }
 
   return config;
 }
@@ -164,10 +174,11 @@ export function loadConfig(cwd?: string): ClamCodeConfig {
 export function formatConfig(config: ClamCodeConfig): string[] {
   return [
     `cwd: ${config.cwd ?? process.cwd()}`,
-    `truncateAfter: ${config.truncateAfter ?? 10}`,
+    `truncateAfter: ${config.truncateAfter ?? 5}`,
     `showTimestamps: ${config.showTimestamps ?? false}`,
     `verbose: ${config.verbose ?? false}`,
     `markdownRendering: ${config.markdownRendering ?? true}`,
+    `doubleEnterForNl: ${config.doubleEnterForNl ?? false}`,
     `agentCommand: ${config.agentCommand ?? 'claude-code-acp'}`,
     `configDir: ${getConfigDir()}`,
   ];

@@ -20,6 +20,7 @@ import {
   getColorForMode,
   getPromptForMode,
   inputColors,
+  modeVisualConfig,
   promptChars,
 } from './formatting.js';
 import type { ModeDetector, InputMode } from './mode-detection.js';
@@ -114,6 +115,7 @@ export class InputReader {
   private completionAcceptedText: string | null = null; // Text to re-insert after completion accept
   private suppressPromptNewline = false; // Suppress leading newline after completion accept
   private entityCompletionCursor: number | null = null; // Cursor position for entity completion insertion
+  private waitingForPermission = false; // When true, keypresses are captured for permission prompt
 
   constructor(options: InputReaderOptions) {
     this.options = options;
@@ -176,6 +178,15 @@ export class InputReader {
     if (rlHistory && rlHistory.length > 0) {
       rlHistory.shift(); // Remove the first entry (most recent, since history is in reverse order)
     }
+  }
+
+  /**
+   * Set permission waiting state.
+   * When true, the keypress handler captures a/A/d/D and Enter directly,
+   * bypassing mode detection and readline processing.
+   */
+  setWaitingForPermission(waiting: boolean): void {
+    this.waitingForPermission = waiting;
   }
 
   /**
@@ -551,6 +562,41 @@ export class InputReader {
 
     const keypressHandler = (_ch: string, key: readline.Key | undefined) => {
       if (!key) return;
+
+      // === PERMISSION MODE: Capture single keypress for permission confirmation ===
+      if (this.waitingForPermission) {
+        const seq = key.sequence ?? '';
+        const validKeys = ['a', 'A', 'd', 'D'];
+        const isEnter = key.name === 'return';
+
+        if (validKeys.includes(seq) || isEnter) {
+          // Submit the permission response immediately
+          // For Enter, submit 'a' as default (allow once)
+          const response = isEnter ? 'a' : seq;
+
+          if (this.rl) {
+            // Clear any partial input and write the response
+            const rlInternal = this.rl as readline.Interface & { line: string; cursor: number };
+            rlInternal.line = response;
+            rlInternal.cursor = response.length;
+
+            // Simulate Enter to submit through readline
+            // Use write to inject the response and a newline
+            setImmediate(() => {
+              if (this.rl) {
+                // Clear readline buffer and write our response
+                (this.rl as readline.Interface & { line: string; cursor: number }).line = '';
+                (this.rl as readline.Interface & { line: string; cursor: number }).cursor = 0;
+                this.rl.write(response + '\n');
+              }
+            });
+          }
+          return; // Consume the keypress
+        }
+
+        // Ignore all other keypresses during permission mode
+        return;
+      }
 
       const currentLine = this.rl?.line ?? '';
       const modeDetector = this.options.modeDetector;
@@ -982,9 +1028,15 @@ export class InputReader {
               // Display exit code and timing for non-zero exits or long commands
               const exitInfo = formatExitCode(result.exitCode);
               const timeInfo = timer.format();
-              if (exitInfo || timeInfo) {
-                const parts = [exitInfo, timeInfo].filter(Boolean);
-                output.info(colors.muted(parts.join(' ')));
+              if (exitInfo && timeInfo) {
+                // Non-zero exit + timing: show exit as warning, timing as muted
+                output.warning(`${exitInfo} ${colors.muted(timeInfo)}`);
+              } else if (exitInfo) {
+                // Non-zero exit only: warning style
+                output.warning(exitInfo);
+              } else if (timeInfo) {
+                // Timing only (success): muted info
+                output.info(colors.muted(timeInfo));
               }
             } catch (error) {
               timer.stop();
@@ -1010,9 +1062,12 @@ export class InputReader {
                 // Display exit code and timing for non-zero exits or long commands
                 const exitInfo = formatExitCode(result.exitCode);
                 const timeInfo = timer.format();
-                if (exitInfo || timeInfo) {
-                  const parts = [exitInfo, timeInfo].filter(Boolean);
-                  output.info(colors.muted(parts.join(' ')));
+                if (exitInfo && timeInfo) {
+                  output.warning(`${exitInfo} ${colors.muted(timeInfo)}`);
+                } else if (exitInfo) {
+                  output.warning(exitInfo);
+                } else if (timeInfo) {
+                  output.info(colors.muted(timeInfo));
                 }
               } catch (error) {
                 timer.stop();
@@ -1139,9 +1194,12 @@ export class InputReader {
           this.completionAcceptedText = null;
 
           // Readline processed Enter and added a newline, leaving us below the input line.
-          // Move up one line and clear it to prepare for the new prompt with completion text.
+          // We need to clear BOTH:
+          // 1. The line readline just moved to (after Enter)
+          // 2. The original partial input line above it
           if (isTTY) {
-            process.stdout.write('\x1b[1A\x1b[2K');
+            process.stdout.write('\x1b[2K'); // Clear current line
+            process.stdout.write('\x1b[1A\x1b[2K'); // Move up and clear original input line
           }
 
           // Suppress the leading newline so we print the new prompt cleanly.
@@ -1162,11 +1220,12 @@ export class InputReader {
 
         // Slash commands submit immediately on first Enter
         if (isFirstLine && line.startsWith('/')) {
-          // Reprint with slash command colors (purple/violet)
+          // Reprint with slash-specific scrollback colors (dim blue ▶)
           if (isTTY) {
+            const slashConfig = modeVisualConfig.slash;
             process.stdout.write('\x1b[1A\x1b[2K'); // Move up, clear line
             process.stdout.write(
-              `${colors.inputPromptDim(`${promptChars.input} `)}${colors.slashCommand(line)}\n`
+              `${slashConfig.submittedPromptColor(`${slashConfig.char} `)}${colors.slashCommandDim(line)}\n`
             );
           }
           // Store mode for history navigation
@@ -1177,11 +1236,12 @@ export class InputReader {
 
         // Shell commands submit immediately on first Enter (if mode is still 'shell')
         if (isFirstLine && this.currentInputMode === 'shell') {
-          // Reprint with shell colors (white/default)
+          // Reprint with shell-specific scrollback colors (dim $ prompt)
           if (isTTY) {
+            const shellConfig = modeVisualConfig.shell;
             process.stdout.write('\x1b[1A\x1b[2K'); // Move up, clear line
             process.stdout.write(
-              `${colors.inputPromptDim(`${promptChars.input} `)}${colors.shellCommand(line)}\n`
+              `${shellConfig.submittedPromptColor(`${shellConfig.char} `)}${colors.shellCommandDim(line)}\n`
             );
           }
           // Store mode for history navigation
@@ -1190,7 +1250,21 @@ export class InputReader {
           return line;
         }
 
-        // Blank line submits if we have content
+        // NL single-enter mode: submit immediately on first Enter (unless doubleEnterForNl)
+        if (isFirstLine && line.length > 0 && !this.options.config?.doubleEnterForNl) {
+          // Not shell, not slash - must be NL. Submit on single Enter.
+          if (isTTY) {
+            const nlConfig = modeVisualConfig.nl;
+            process.stdout.write('\x1b[1A\x1b[2K'); // Move up, clear line
+            process.stdout.write(
+              `${nlConfig.submittedPromptColor(`${nlConfig.char} `)}${colors.userPrompt(line)}\n`
+            );
+          }
+          this.currentInputMode = 'nl'; // Reset for next input
+          return line;
+        }
+
+        // Blank line submits if we have content (multi-line NL mode)
         if (line === '' && lines.length > 0) {
           if (isTTY) {
             // Clear the continuation prompt line for cleaner output
@@ -1204,13 +1278,14 @@ export class InputReader {
             const linesToFirst = lines.length;
             process.stdout.write(`\x1b[${linesToFirst}A`);
 
-            // Reprint each line: dim prompt char, bright magenta text
+            // Reprint each line: dim NL-specific prompt char, bright magenta text
+            const nlConfig = modeVisualConfig.nl;
             for (let i = 0; i < lines.length; i++) {
               process.stdout.write('\x1b[2K'); // Clear line
               const prompt =
                 i === 0
-                  ? colors.inputPromptDim(`${promptChars.input} `)
-                  : colors.inputPromptDim(`${promptChars.continuation} `);
+                  ? nlConfig.submittedPromptColor(`${nlConfig.char} `)
+                  : nlConfig.submittedPromptColor(`${promptChars.continuation} `);
               process.stdout.write(`${prompt}${colors.userPrompt(lines[i] ?? '')}\n`);
             }
 

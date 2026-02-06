@@ -174,6 +174,19 @@ describe('ModeDetection', () => {
       expect(detector.detectModeSync('when will')).toBe('nl');
     });
 
+    it('should detect structural NL phrases (kash algorithm)', () => {
+      // 3+ words with at least one word > 3 chars → NL
+      expect(detector.detectModeSync('add a file')).toBe('nl');
+      expect(detector.detectModeSync('fix this bug')).toBe('nl');
+      expect(detector.detectModeSync("don't do that")).toBe('nl');
+      expect(detector.detectModeSync('go to the store')).toBe('nl');
+      expect(detector.detectModeSync('is this a question?')).toBe('nl');
+
+      // 2-word commands should still be shell (not caught by structural NL)
+      expect(detector.detectModeSync('git status')).toBe('shell');
+      expect(detector.detectModeSync('ls -la')).toBe('shell');
+    });
+
     it('should detect single characters as potential shell commands', () => {
       // Single characters could be the start of commands
       expect(detector.detectModeSync('l')).toBe('shell');
@@ -233,6 +246,14 @@ describe('ModeDetection', () => {
       // First word not valid, but rest has NL words → probably NL, not typo
       expect(await detector.detectMode('fix this bug')).toBe('nl');
       expect(await detector.detectMode('update the code')).toBe('nl');
+    });
+
+    it('should handle structural NL with async validation', async () => {
+      // "add a file" → sync: structural-nl → async: which("add") → null → NL
+      expect(await detector.detectMode('add a file')).toBe('nl');
+
+      // "git push origin main" → sync: structural-nl → async: which("git") → found → shell
+      expect(await detector.detectMode('git push origin main')).toBe('shell');
     });
   });
 

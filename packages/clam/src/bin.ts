@@ -14,7 +14,12 @@ import { createModeDetector } from './lib/mode-detection.js';
 import { createOutputWriter, type PermissionOption } from './lib/output.js';
 import { createShellModule } from './lib/shell.js';
 import { formatPromptWithContext } from './lib/prompts.js';
-import { detectInstalledTools, formatToolStatus } from './lib/shell/index.js';
+import {
+  detectInstalledTools,
+  formatActiveAliases,
+  formatToolStatus,
+  type AbsolutePath,
+} from './lib/shell/index.js';
 import { installEmergencyCleanup } from './lib/tty/index.js';
 
 interface CliArgs {
@@ -157,6 +162,9 @@ async function main(): Promise<void> {
   let permissionResolver: ((optionId: string) => void) | null = null;
   let pendingPermissionOptions: PermissionOption[] | null = null;
 
+  // Late-bound reference to input reader (created after acpClient)
+  let inputReaderRef: ReturnType<typeof createInputReader> | null = null;
+
   // Double Ctrl+C to exit tracking
   let lastCancelTime = 0;
   const DOUBLE_CANCEL_WINDOW_MS = 2000;
@@ -174,6 +182,8 @@ async function main(): Promise<void> {
       pendingPermissionOptions = options;
       return new Promise<string>((resolve) => {
         permissionResolver = resolve;
+        // Enable permission mode so keypresses are captured directly
+        inputReaderRef?.setWaitingForPermission(true);
       });
     },
     onComplete: (stopReason) => {
@@ -215,8 +225,9 @@ async function main(): Promise<void> {
   const modeDetector = createModeDetector({ shell });
 
   // Detect and display modern tools, then enable command aliasing
+  let installedTools = new Map<string, AbsolutePath>();
   try {
-    const installedTools = await detectInstalledTools();
+    installedTools = await detectInstalledTools();
     shell.setInstalledTools(installedTools);
 
     const toolStatus = formatToolStatus(installedTools);
@@ -295,6 +306,7 @@ async function main(): Promise<void> {
           resolver(selectedOption.id);
           permissionResolver = null;
           pendingPermissionOptions = null;
+          inputReader.setWaitingForPermission(false);
           // Remove permission response from history (it's ephemeral, not a real command)
           inputReader.removeLastHistoryEntry();
           return;
@@ -308,6 +320,7 @@ async function main(): Promise<void> {
             resolver(selectedOption.id);
             permissionResolver = null;
             pendingPermissionOptions = null;
+            inputReader.setWaitingForPermission(false);
             // Remove permission response from history (it's ephemeral, not a real command)
             inputReader.removeLastHistoryEntry();
             return;
@@ -357,6 +370,7 @@ async function main(): Promise<void> {
         }
         permissionResolver = null;
         pendingPermissionOptions = null;
+        inputReader.setWaitingForPermission(false);
         output.info('Permission request cancelled');
         lastCancelTime = 0; // Reset double-cancel tracking
         return;
@@ -385,6 +399,25 @@ async function main(): Promise<void> {
       // First Ctrl+C - warn and start timer
       lastCancelTime = now;
       output.info('Press Ctrl+C again to exit, or type /quit');
+    },
+  });
+
+  // Set late-bound reference for permission handling
+  inputReaderRef = inputReader;
+
+  // Register /aliases command to show active aliases
+  inputReader.registerCommand({
+    name: 'aliases',
+    description: 'Show active command aliases',
+    execute: () => {
+      const aliasOutput = formatActiveAliases(installedTools);
+      if (aliasOutput) {
+        output.newline();
+        output.info(colors.bold('Active Aliases:'));
+        output.info(aliasOutput);
+      } else {
+        output.info('No aliases active (no modern tools detected)');
+      }
     },
   });
 
