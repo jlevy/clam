@@ -214,22 +214,18 @@ async function main(): Promise<void> {
   const shell = createShellModule({ cwd });
   const modeDetector = createModeDetector({ shell });
 
-  // Detect and display modern tools (run in background to not block startup)
-  // Also enables command aliasing when tools are detected
-  detectInstalledTools()
-    .then((installedTools) => {
-      // Enable command aliasing with detected tools
-      shell.setInstalledTools(installedTools);
+  // Detect and display modern tools, then enable command aliasing
+  try {
+    const installedTools = await detectInstalledTools();
+    shell.setInstalledTools(installedTools);
 
-      // Display installed tools
-      const toolStatus = formatToolStatus(installedTools, { showOnlyInstalled: true });
-      if (toolStatus) {
-        output.writeLine(colors.muted(toolStatus));
-      }
-    })
-    .catch(() => {
-      // Ignore errors detecting tools
-    });
+    const toolStatus = formatToolStatus(installedTools, { showOnlyInstalled: true });
+    if (toolStatus) {
+      output.writeLine(colors.muted(toolStatus));
+    }
+  } catch {
+    // Ignore errors detecting tools
+  }
 
   output.newline();
 
