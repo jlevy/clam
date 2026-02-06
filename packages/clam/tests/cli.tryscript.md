@@ -16,7 +16,6 @@ OPTIONS:
   -h, --help        Show this help message
   -v, --version     Show version
   --verbose         Enable verbose/debug output
-  --timestamps      Show timestamps on tool outputs
   --cwd <path>      Set working directory
 
 CONFIGURATION:
@@ -26,7 +25,6 @@ CONFIGURATION:
 
 ENVIRONMENT VARIABLES:
   CLAM_CODE_VERBOSE=1          Enable verbose output
-  CLAM_CODE_SHOW_TIMESTAMPS=1  Show timestamps
   CLAM_CODE_TRUNCATE_AFTER     Max lines before truncating (default: 10)
   CLAM_CODE_AGENT_COMMAND      Agent command to spawn
 

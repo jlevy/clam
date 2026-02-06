@@ -223,24 +223,4 @@ describe('OutputWriter', () => {
       expect(result.startsWith('\n')).toBe(false);
     });
   });
-
-  describe('timestamps', () => {
-    it('should include timestamps when showTimestamps is true', () => {
-      const timestampOutput = createOutputWriter({
-        stream: mock.stream,
-        config: { showTimestamps: true },
-      });
-      timestampOutput.toolHeader('bash', 'execute', 'completed');
-      const result = mock.getOutput();
-      // Should contain timestamp format [HH:MM:SS]
-      expect(result).toMatch(/\[\d{2}:\d{2}:\d{2}\]/);
-    });
-
-    it('should not include timestamps by default', () => {
-      output.toolHeader('bash', 'execute', 'completed');
-      const result = mock.getOutput();
-      // Should not contain timestamp format
-      expect(result).not.toMatch(/\[\d{2}:\d{2}:\d{2}\]/);
-    });
-  });
 });

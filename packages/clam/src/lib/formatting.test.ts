@@ -6,7 +6,6 @@ import { describe, expect, it } from 'bun:test';
 import {
   colors,
   formatDuration,
-  formatTimestamp,
   formatTokenUsage,
   formatToolStatus,
   getColorForMode,
@@ -142,26 +141,6 @@ describe('truncateLines', () => {
     const result = truncateLines('', 5);
     expect(result.truncated).toBe(false);
     expect(result.text).toBe('');
-  });
-});
-
-describe('formatTimestamp', () => {
-  it('should format a specific date correctly', () => {
-    const date = new Date('2024-01-15T14:30:45');
-    const result = formatTimestamp(date);
-    expect(result).toContain('14:30:45');
-  });
-
-  it('should pad single digit values', () => {
-    const date = new Date('2024-01-15T09:05:03');
-    const result = formatTimestamp(date);
-    expect(result).toContain('09:05:03');
-  });
-
-  it('should use current date when no argument', () => {
-    const result = formatTimestamp();
-    // Should return a string in [HH:MM:SS] format
-    expect(result).toMatch(/\[?\d{2}:\d{2}:\d{2}\]?/);
   });
 });
 

@@ -31,7 +31,6 @@ clam
 
 # With options
 clam --verbose              # Enable debug output
-clam --timestamps           # Show timestamps on tool outputs
 clam --cwd /path/to/project # Set working directory
 ```
 
@@ -74,7 +73,6 @@ Configuration is stored in `~/.clam/`:
 ```json
 {
   "truncateAfter": 10,
-  "showTimestamps": false,
   "verbose": false,
   "agentCommand": "claude-code-acp"
 }
@@ -85,7 +83,6 @@ Configuration is stored in `~/.clam/`:
 | Variable | Description |
 | --- | --- |
 | `CLAM_VERBOSE=1` | Enable verbose output |
-| `CLAM_SHOW_TIMESTAMPS=1` | Show timestamps |
 | `CLAM_TRUNCATE_AFTER` | Max lines before truncating (default: 10) |
 | `CLAM_AGENT_COMMAND` | Agent command to spawn |
 

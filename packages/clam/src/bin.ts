@@ -26,7 +26,6 @@ interface CliArgs {
   help: boolean;
   version: boolean;
   verbose: boolean;
-  timestamps: boolean;
   cwd?: string;
 }
 
@@ -39,7 +38,6 @@ function parseArgs(): CliArgs {
     help: false,
     version: false,
     verbose: false,
-    timestamps: false,
     cwd: undefined,
   };
 
@@ -51,8 +49,6 @@ function parseArgs(): CliArgs {
       result.version = true;
     } else if (arg === '--verbose') {
       result.verbose = true;
-    } else if (arg === '--timestamps') {
-      result.timestamps = true;
     } else if (arg === '--cwd' && args[i + 1]) {
       result.cwd = args[i + 1];
       i++;
@@ -75,7 +71,6 @@ function showHelp(output: ReturnType<typeof createOutputWriter>): void {
   output.writeLine('  -h, --help        Show this help message');
   output.writeLine('  -v, --version     Show version');
   output.writeLine('  --verbose         Enable verbose/debug output');
-  output.writeLine('  --timestamps      Show timestamps on tool outputs');
   output.writeLine('  --cwd <path>      Set working directory');
   output.newline();
   output.writeLine('CONFIGURATION:');
@@ -85,7 +80,6 @@ function showHelp(output: ReturnType<typeof createOutputWriter>): void {
   output.newline();
   output.writeLine('ENVIRONMENT VARIABLES:');
   output.writeLine('  CLAM_CODE_VERBOSE=1          Enable verbose output');
-  output.writeLine('  CLAM_CODE_SHOW_TIMESTAMPS=1  Show timestamps');
   output.writeLine('  CLAM_CODE_TRUNCATE_AFTER     Max lines before truncating (default: 10)');
   output.writeLine('  CLAM_CODE_AGENT_COMMAND      Agent command to spawn');
   output.newline();
@@ -136,9 +130,6 @@ async function main(): Promise<void> {
   // Apply CLI overrides
   if (args.verbose) {
     config.verbose = true;
-  }
-  if (args.timestamps) {
-    config.showTimestamps = true;
   }
 
   const output = createOutputWriter({ config });

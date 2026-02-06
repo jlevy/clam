@@ -26,7 +26,6 @@ export {
 export {
   colors,
   formatDuration,
-  formatTimestamp,
   formatTokenUsage,
   formatToolStatus,
   symbols,

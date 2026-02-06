@@ -377,16 +377,6 @@ export function truncateLines(
 }
 
 /**
- * Format a timestamp for display.
- */
-export function formatTimestamp(date: Date = new Date()): string {
-  const hours = date.getHours().toString().padStart(2, '0');
-  const minutes = date.getMinutes().toString().padStart(2, '0');
-  const seconds = date.getSeconds().toString().padStart(2, '0');
-  return pc.gray(`[${hours}:${minutes}:${seconds}]`);
-}
-
-/**
  * Format token usage for display.
  */
 export function formatTokenUsage(input: number, output: number): string {

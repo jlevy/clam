@@ -15,7 +15,6 @@
 import type { ClamCodeConfig } from './config.js';
 import {
   colors,
-  formatTimestamp,
   formatTokenUsage,
   formatToolStatus,
   symbols,
@@ -106,7 +105,6 @@ export function createOutputWriter(options: OutputWriterOptions = {}): OutputWri
   const config = options.config ?? {};
   const truncateAfter = config.truncateAfter ?? 5;
   const verbose = config.verbose ?? false;
-  const showTimestamps = config.showTimestamps ?? false;
   const markdownRendering = config.markdownRendering ?? true;
 
   // Track state for thinking indicator
@@ -217,8 +215,7 @@ export function createOutputWriter(options: OutputWriterOptions = {}): OutputWri
 
       const statusIcon = formatToolStatus(status);
       const kindBadge = colors.muted(`[${kind}]`);
-      const timestamp = showTimestamps ? `${formatTimestamp()} ` : '';
-      writeLine(`${timestamp}${symbols.arrow} ${colors.tool(title)} ${kindBadge} ${statusIcon}`);
+      writeLine(`${symbols.arrow} ${colors.tool(title)} ${kindBadge} ${statusIcon}`);
     },
 
     toolOutput(content: string, opts?: { truncateAfter?: number }): void {
