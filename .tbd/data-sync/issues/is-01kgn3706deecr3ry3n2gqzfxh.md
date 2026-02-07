@@ -1,6 +1,4 @@
 ---
-close_reason: Implemented getColorForMode() in formatting.ts
-closed_at: 2026-02-04T22:41:48.037Z
 created_at: 2026-02-04T19:49:04.332Z
 dependencies:
   - target: is-01kgn36zyf9es0k21ws00wgphy
@@ -9,9 +7,9 @@ id: is-01kgn3706deecr3ry3n2gqzfxh
 kind: task
 labels: []
 priority: 2
-status: closed
+status: open
 title: Add getColorForMode() helper to formatting.ts for input mode colors
 type: is
-updated_at: 2026-02-06T01:30:44.173Z
-version: 11
+updated_at: 2026-02-04T19:49:18.667Z
+version: 2
 ---
