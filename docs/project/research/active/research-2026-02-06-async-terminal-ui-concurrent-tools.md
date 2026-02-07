@@ -383,19 +383,21 @@ The npm package contains obfuscated/bundled code.
 
 ### 1.9 Comparison Matrix
 
-| Feature | Claude Code | OpenCode | Toad | Aider | Amp | Ink |
-| --- | --- | --- | --- | --- | --- | --- |
-| **Buffer mode** | Primary | Alternate | Alternate | Primary | Alternate | Both* |
-| **Scrollback after exit** | ✅ Yes | ❌ Lost | ❌ Lost | ✅ Yes | ❌ Lost | ⚠️ Depends |
-| **Scrollback during use** | ⚠️ Buggy | ❌ N/A | ❌ N/A | ✅ Yes | ❌ N/A | ❌ Destroyed |
-| **Native features** | ✅ Yes | ❌ No | ❌ No | ✅ Yes | ❌ No | ⚠️ Depends |
-| **In-place updates** | ✅ Diff-based | ✅ Full redraw | ✅ Full redraw | ⚠️ Limited | ✅ Custom | ✅ Full redraw |
-| **SSH-compatible** | ✅ | ⚠️ | ⚠️ | ✅ | ⚠️ | ✅ |
-| **Concurrent tools** | ✅ Cards | ✅ Viewport | ✅ Widgets | ⚠️ Sequential | ✅ Cards | ✅ Components |
-| **Sync output** | ✅ DEC 2026 | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Flicker-free** | ⚠️ Mostly | ❌ | ❌ | N/A | ✅ Yes | ❌ |
-| **Language** | TypeScript | Go | Python | Python | TypeScript | TypeScript |
-| **Framework** | React + Custom | Bubble Tea | Textual | Rich | Custom | React + Yoga |
+| Feature | Claude Code | pi-tui | OpenCode | Toad | Aider | Amp | Ink |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| **Buffer mode** | Primary | Primary | Alternate | Alternate | Primary | Alternate | Both* |
+| **Scrollback after exit** | ✅ Yes | ✅ Yes | ❌ Lost | ❌ Lost | ✅ Yes | ❌ Lost | ⚠️ Depends |
+| **Scrollback during use** | ⚠️ Buggy | ✅ Yes | ❌ N/A | ❌ N/A | ✅ Yes | ❌ N/A | ❌ Destroyed |
+| **Native features** | ✅ Yes | ✅ Yes | ❌ No | ❌ No | ✅ Yes | ❌ No | ⚠️ Depends |
+| **In-place updates** | ✅ Cell diff | ✅ Line diff | ✅ Full redraw | ✅ Full redraw | ⚠️ Limited | ✅ Custom | ✅ Full redraw |
+| **SSH-compatible** | ✅ | ✅ | ⚠️ | ⚠️ | ✅ | ⚠️ | ✅ |
+| **Concurrent tools** | ✅ Cards | ✅ Components | ✅ Viewport | ✅ Widgets | ⚠️ Sequential | ✅ Cards | ✅ Components |
+| **Sync output** | ✅ DEC 2026 | ✅ DEC 2026 | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Flicker-free** | ⚠️ Mostly | ✅ Yes | ❌ | ❌ | N/A | ✅ Yes | ❌ |
+| **Overlay system** | Unknown | ✅ Built-in | ✅ Built-in | ❌ | ❌ | Unknown | ❌ |
+| **IME support** | Unknown | ✅ Focusable | ❌ | ❌ | ❌ | Unknown | ❌ |
+| **Language** | TypeScript | TypeScript | Go | Python | Python | TypeScript | TypeScript |
+| **Framework** | React + Custom | Custom (~1.1k LOC) | Bubble Tea | Textual | Rich | Custom | React + Yoga |
 
 *Ink uses primary screen by default (destroys scrollback on tall output) or alternate
 screen via `fullscreen-ink` package.
@@ -557,7 +559,7 @@ synchronized output mode:
 
 **Result:** Zero flickering in terminals that support it (Ghostty, VSCode 2026+, tmux)
 
-#### 3.3.1 Reference Implementation: pi
+#### 3.3.1 Reference Implementation: pi-tui (Deep Dive)
 
 [Mario Zechner’s pi](https://github.com/badlogic/pi-mono) (specifically the `pi-tui`
 library) is described by Peter Steinberger as the “gold-standard for differential
@@ -576,6 +578,261 @@ and CSI ?2026l).
 
 Worth studying for implementation patterns—see Zechner’s detailed write-up at
 [mariozechner.at](https://mariozechner.at/posts/2025-11-30-pi-coding-agent/).
+
+##### Architecture Overview
+
+pi-tui is a ~1,100 line TypeScript library with a clean component model.
+The key files:
+
+| File | Purpose |
+| --- | --- |
+| `tui.ts` | Main TUI class, differential rendering, overlay management |
+| `terminal.ts` | Terminal abstraction (ProcessTerminal for real terminals) |
+| `utils.ts` | ANSI-aware text utilities (visibleWidth, truncate, wrap) |
+| `keys.ts` | Keyboard input parsing with Kitty protocol support |
+| `components/*.ts` | Built-in components (Text, Editor, Markdown, Loader, etc.) |
+
+##### Component Interface
+
+All components implement a simple interface:
+
+```typescript
+interface Component {
+  render(width: number): string[];  // Returns array of lines
+  handleInput?(data: string): void; // Optional keyboard input
+  invalidate?(): void;              // Clear cached state
+}
+```
+
+**Critical constraint**: Each line returned by `render()` **must not exceed `width`**.
+The TUI throws an error if any line is wider than the terminal—this strict enforcement
+prevents cursor positioning bugs.
+
+##### Differential Rendering Strategy
+
+pi-tui uses **line-level diffing** (simpler than Claude Code’s cell-level approach) with
+three rendering paths:
+
+**Path 1: First Render**
+```typescript
+// Output all lines without clearing (assumes clean screen)
+if (this.previousLines.length === 0 && !widthChanged) {
+  fullRender(false);  // No clear
+  return;
+}
+```
+
+**Path 2: Width Changed**
+```typescript
+// Full re-render when terminal width changes (line wrapping changes)
+if (widthChanged) {
+  fullRender(true);  // Clear scrollback + screen
+  return;
+}
+```
+
+**Path 3: Normal Update (The Clever Part)**
+```typescript
+// Find first and last changed lines
+let firstChanged = -1, lastChanged = -1;
+for (let i = 0; i < maxLines; i++) {
+  if (oldLine !== newLine) {
+    if (firstChanged === -1) firstChanged = i;
+    lastChanged = i;
+  }
+}
+
+// Move cursor to first changed line
+const lineDiff = computeLineDiff(firstChanged);
+if (lineDiff > 0) buffer += `\x1b[${lineDiff}B`;
+else if (lineDiff < 0) buffer += `\x1b[${-lineDiff}A`;
+
+// Clear and re-render only changed lines
+for (let i = firstChanged; i <= lastChanged; i++) {
+  buffer += "\x1b[2K" + newLines[i] + "\r\n";
+}
+```
+
+**Key optimizations**:
+- Tracks `maxLinesRendered` to know the terminal’s working area
+- Computes viewport-aware line diffs for cursor movement
+- Wraps all output in synchronized output mode: `\x1b[?2026h`…`\x1b[?2026l`
+- Only re-renders the **range** of changed lines, not all lines from change to end
+
+##### Overlay System
+
+pi-tui’s overlay system is particularly elegant for modal UIs:
+
+```typescript
+// Show overlay with positioning
+const handle = tui.showOverlay(component, {
+  anchor: 'center',      // Or: top-left, bottom-right, etc.
+  width: "80%",          // Percentage or absolute
+  maxHeight: 20,
+  margin: 2,
+  visible: (w, h) => w >= 100  // Responsive hiding
+});
+
+// Control overlay
+handle.setHidden(true);   // Temporarily hide
+handle.hide();            // Permanently remove
+```
+
+**Implementation details**:
+- Overlays are composited onto content lines **before** differential comparison
+- Each overlay stores `preFocus` to restore focus when hidden
+- Compositing uses `extractSegments()` for single-pass line splicing
+- Overlay stack with visibility callbacks enables responsive behavior
+
+##### ANSI Text Utilities
+
+pi-tui includes battle-tested utilities for ANSI-aware text handling:
+
+**`visibleWidth(str: string): number`**
+- Fast path for pure ASCII (just returns length)
+- Uses `Intl.Segmenter` for grapheme-aware width calculation
+- Handles emoji (RGI_Emoji regex), wide chars (eastAsianWidth), ANSI codes
+- Caches results (512 entry LRU cache)
+
+**`truncateToWidth(text, maxWidth, ellipsis = "...")`**
+- Truncates preserving ANSI codes
+- Grapheme-aware (won’t split emoji or combining chars)
+- Adds reset code before ellipsis to prevent style bleed
+
+**`wrapTextWithAnsi(text, width)`**
+- Word wraps while preserving ANSI styling across line breaks
+- Uses `AnsiCodeTracker` to track active SGR codes
+- Handles long words by breaking at grapheme boundaries
+- Special handling for underline at line end (causes visual bleeding)
+
+**`AnsiCodeTracker` class**
+- Tracks individual SGR attributes (bold, dim, italic, fg/bg color, etc.)
+- Parses complex codes (256-color, RGB)
+- `getActiveCodes()` returns current styling as ANSI sequence
+- Used to reapply styling at start of wrapped lines
+
+##### Terminal Abstraction
+
+The `Terminal` interface abstracts terminal operations:
+
+```typescript
+interface Terminal {
+  start(onInput: (data: string) => void, onResize: () => void): void;
+  stop(): void;
+  write(data: string): void;
+  get columns(): number;
+  get rows(): number;
+  get kittyProtocolActive(): boolean;
+  moveBy(lines: number): void;
+  hideCursor(): void;
+  showCursor(): void;
+  clearLine(): void;
+  clearScreen(): void;
+  drainInput(maxMs?: number): Promise<void>;
+}
+```
+
+**ProcessTerminal implementation**:
+- Enables raw mode and bracketed paste mode on start
+- Queries and enables Kitty keyboard protocol if supported
+- Uses `StdinBuffer` to split batched input into individual sequences
+- `drainInput()` prevents Kitty key releases from leaking to parent shell on exit
+
+##### IME Support (Focusable Interface)
+
+For proper IME (Input Method Editor) support with CJK input:
+
+```typescript
+interface Focusable {
+  focused: boolean;
+}
+
+// Cursor position marker (zero-width APC sequence)
+const CURSOR_MARKER = "\x1b_pi:c\x07";
+```
+
+Components that implement `Focusable`:
+1. Emit `CURSOR_MARKER` at cursor position when focused
+2. TUI scans rendered output for marker, extracts position, strips it
+3. TUI positions hardware cursor at that location for IME candidate window
+
+##### Component Caching Pattern
+
+Components should cache rendered output for performance:
+
+```typescript
+class Text implements Component {
+  private cachedText?: string;
+  private cachedWidth?: number;
+  private cachedLines?: string[];
+
+  render(width: number): string[] {
+    if (this.cachedLines && this.cachedText === this.text
+        && this.cachedWidth === width) {
+      return this.cachedLines;  // Cache hit
+    }
+    // ... expensive rendering ...
+    this.cachedLines = lines;
+    return lines;
+  }
+
+  invalidate(): void {
+    this.cachedLines = undefined;
+  }
+}
+```
+
+##### Animated Components (Loader)
+
+The `Loader` component demonstrates the animation pattern:
+
+```typescript
+class Loader extends Text {
+  private frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+  private currentFrame = 0;
+
+  start() {
+    this.intervalId = setInterval(() => {
+      this.currentFrame = (this.currentFrame + 1) % this.frames.length;
+      this.updateDisplay();
+    }, 80);
+  }
+
+  private updateDisplay() {
+    this.setText(`${spinner(this.frames[this.currentFrame])} ${message}`);
+    this.ui.requestRender();  // Triggers differential render
+  }
+}
+```
+
+Key: Call `tui.requestRender()` after state changes.
+The differential renderer will only update the lines that actually changed.
+
+##### Why pi-tui Works
+
+| Feature | Implementation | Result |
+| --- | --- | --- |
+| **No flicker** | CSI 2026 synchronized output | Atomic screen updates |
+| **Scrollback preserved** | Primary screen buffer | Users can scroll up |
+| **Fast updates** | Line-level diff | Only changed lines redrawn |
+| **Responsive overlays** | Compositing before diff | Overlays don't corrupt base |
+| **IME support** | CURSOR_MARKER + hardware cursor | CJK input works correctly |
+| **Width safety** | Strict width enforcement | No cursor bugs |
+
+##### Comparison with Claude Code
+
+| Aspect | Claude Code | pi-tui |
+| --- | --- | --- |
+| **Diff level** | Cell | Line |
+| **Buffer type** | TypedArrays | Plain arrays |
+| **Component model** | React + custom renderer | Simple interface |
+| **Complexity** | ~50k lines (estimated) | ~1,100 lines |
+| **Performance** | Sub-16ms frames | Adequate for CLI |
+| **Overlays** | Unknown | Built-in system |
+
+**Key insight**: pi-tui proves you don’t need Claude Code’s complexity for excellent
+results. Line-level diffing with synchronized output is sufficient for most CLI
+applications.
 
 #### 3.4 What This Means for Clam
 
@@ -1281,16 +1538,18 @@ def tool_call(self, tool_call: protocol.ToolCall):
 
 #### 4.1.6 Implementation Comparison Matrix
 
-| Aspect | Claude Code | OpenTUI | ansi-diff | OpenCode | Toad | Amp | Ink |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| **Language** | TypeScript | TS + Zig | JavaScript | Go | Python | TypeScript | TypeScript |
-| **Screen mode** | Primary | Alternate | Primary | Alternate | Alternate | Alternate | Both* |
-| **Diff level** | Cell | Cell | Line | None (cache) | None (recompose) | Cell | None (full) |
-| **ANSI sync** | DEC 2026 | DEC 2026 | No | No | No | No | No |
-| **Scrollback** | ⚠️ Partial | Lost | Preserved | Lost | Lost | Lost | Destroyed** |
-| **Performance** | High | Very High | Medium | High | Medium | High | Medium |
-| **Complexity** | High | Very High | Low | Medium | Medium | High | Low |
-| **Production** | ✅ Yes | ❌ Dev | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes |
+| Aspect | Claude Code | pi-tui | OpenTUI | ansi-diff | OpenCode | Toad | Amp | Ink |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| **Language** | TypeScript | TypeScript | TS + Zig | JavaScript | Go | Python | TypeScript | TypeScript |
+| **Screen mode** | Primary | Primary | Alternate | Primary | Alternate | Alternate | Alternate | Both* |
+| **Diff level** | Cell | Line | Cell | Line | None (cache) | None (recompose) | Cell | None (full) |
+| **ANSI sync** | DEC 2026 | DEC 2026 | DEC 2026 | No | No | No | No | No |
+| **Scrollback** | ⚠️ Partial | ✅ Preserved | Lost | Preserved | Lost | Lost | Lost | Destroyed** |
+| **Overlays** | Unknown | ✅ Built-in | Unknown | ❌ | ❌ | ❌ | Unknown | ❌ |
+| **IME support** | Unknown | ✅ Focusable | Unknown | ❌ | ❌ | ❌ | Unknown | ❌ |
+| **Performance** | High | Medium | Very High | Medium | High | Medium | High | Medium |
+| **Complexity** | High | Low (~1.1k LOC) | Very High | Low | Medium | Medium | High | Low |
+| **Production** | ✅ Yes | ✅ Yes | ❌ Dev | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes |
 
 *Ink uses primary screen by default but can use alternate via `fullscreen-ink`. **Ink
 destroys scrollback when output exceeds viewport height in primary mode.
@@ -1940,6 +2199,12 @@ When Clam adds support, features light up automatically.
 
 ### TUI Frameworks
 
+- [pi-tui](https://github.com/badlogic/pi-mono/tree/main/packages/tui) - TypeScript
+  differential renderer with line-level diffing, overlays, and DEC 2026 sync (~1.1k
+  LOC). Key files:
+  [tui.ts](https://github.com/badlogic/pi-mono/blob/main/packages/tui/src/tui.ts),
+  [utils.ts](https://github.com/badlogic/pi-mono/blob/main/packages/tui/src/utils.ts),
+  [terminal.ts](https://github.com/badlogic/pi-mono/blob/main/packages/tui/src/terminal.ts)
 - [Ink](https://github.com/vadimdemedes/ink) - React for CLI (destroys scrollback on
   tall output)
 - [fullscreen-ink](https://www.npmjs.com/package/fullscreen-ink) - Alternate screen
