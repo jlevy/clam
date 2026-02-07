@@ -17,6 +17,8 @@ export interface SelectOption {
   value: string;
   /** Optional hint shown after label, e.g., "(shift+tab)" */
   hint?: string;
+  /** Optional keyboard shortcut, e.g., "a" or "A" */
+  shortcut?: string;
 }
 
 /**
@@ -152,6 +154,16 @@ export async function selectMenu(message: string, options: SelectOption[]): Prom
 
     const handleData = (data: Buffer) => {
       const key = data.toString();
+
+      // Check for shortcut keys first (single character)
+      if (key.length === 1) {
+        const matchingOption = options.find((opt) => opt.shortcut === key);
+        if (matchingOption) {
+          finish({ ok: true, value: matchingOption.value });
+          return;
+        }
+      }
+
       const action = parseKeypress(key);
 
       if (!action) return;

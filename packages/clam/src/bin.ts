@@ -11,7 +11,7 @@ import { ensureConfigDir, getHistoryPath, loadConfig } from './lib/config.js';
 import { colors } from './lib/formatting.js';
 import { createInputReader } from './lib/input.js';
 import { createModeDetector } from './lib/mode-detection.js';
-import { createOutputWriter, type PermissionOption } from './lib/output.js';
+import { createOutputWriter } from './lib/output.js';
 import { formatPromptWithContext } from './lib/prompts.js';
 import {
   type AbsolutePath,
@@ -21,6 +21,7 @@ import {
 } from './lib/shell/index.js';
 import { createShellModule } from './lib/shell.js';
 import { installEmergencyCleanup } from './lib/tty/index.js';
+import { type SelectOption, selectMenu } from './lib/ui/select-menu.js';
 
 interface CliArgs {
   help: boolean;
@@ -147,15 +148,6 @@ async function main(): Promise<void> {
   // Ensure config directory exists
   ensureConfigDir();
 
-  // Permission handling state
-  // When a permission request arrives, we store the resolver and options
-  // The next input from the user is checked against these options
-  let permissionResolver: ((optionId: string) => void) | null = null;
-  let pendingPermissionOptions: PermissionOption[] | null = null;
-
-  // Late-bound reference to input reader (created after acpClient)
-  let inputReaderRef: ReturnType<typeof createInputReader> | null = null;
-
   // Double Ctrl+C to exit tracking
   let lastCancelTime = 0;
   const DOUBLE_CANCEL_WINDOW_MS = 2000;
@@ -168,14 +160,34 @@ async function main(): Promise<void> {
     config,
     cwd,
     onPermission: async (_tool, _command, options) => {
-      // Store options and wait for user response
-      // The permission prompt is already displayed by AcpClient
-      pendingPermissionOptions = options;
-      return new Promise<string>((resolve) => {
-        permissionResolver = resolve;
-        // Enable permission mode so keypresses are captured directly
-        inputReaderRef?.setWaitingForPermission(true);
+      // Convert PermissionOption[] to SelectOption[] with keyboard shortcuts
+      const menuOptions: SelectOption[] = options.map((opt) => {
+        let shortcut: string | undefined;
+        switch (opt.kind) {
+          case 'allow_once':
+            shortcut = 'a';
+            break;
+          case 'allow_always':
+            shortcut = 'A';
+            break;
+          case 'reject_once':
+            shortcut = 'd';
+            break;
+          case 'reject_always':
+            shortcut = 'D';
+            break;
+        }
+        const hint = shortcut ? `(${shortcut})` : undefined;
+        return { label: opt.name, value: opt.id, hint, shortcut };
       });
+
+      const result = await selectMenu('Select an option:', menuOptions);
+      if (result.ok) {
+        return result.value;
+      }
+      // Cancelled - return first reject option or first option as fallback
+      const rejectOpt = options.find((o) => o.kind.includes('reject'));
+      return rejectOpt?.id ?? options[0]?.id ?? '';
     },
     onComplete: (stopReason) => {
       output.debug(`Completed: ${stopReason}`);
@@ -254,78 +266,6 @@ async function main(): Promise<void> {
       process.exit(0);
     },
     onPrompt: async (text) => {
-      // Check if we're waiting for a permission response
-      // Capture to local vars to satisfy TypeScript control flow analysis
-      const resolver = permissionResolver;
-      const options = pendingPermissionOptions;
-      if (resolver && options) {
-        const trimmed = text.trim();
-
-        // Map letter shortcuts to permission kinds
-        // Use flexible matching: 'a' matches 'allow_once' or anything with 'allow' + 'once'
-        // 'A' matches 'allow_always' or anything with 'allow' + 'always'
-        let selectedOption: (typeof options)[0] | undefined;
-
-        switch (trimmed) {
-          case 'a':
-            // Allow once - prefer exact match, fall back to any "allow" that's not "always"
-            selectedOption =
-              options.find((o) => o.kind === 'allow_once') ??
-              options.find((o) => o.kind.includes('allow') && !o.kind.includes('always'));
-            break;
-          case 'A':
-            // Allow always - prefer exact match, fall back to any "allow" with "always"
-            selectedOption =
-              options.find((o) => o.kind === 'allow_always') ??
-              options.find((o) => o.kind.includes('allow') && o.kind.includes('always'));
-            break;
-          case 'd':
-            // Reject once - prefer exact match, fall back to any "reject" that's not "always"
-            selectedOption =
-              options.find((o) => o.kind === 'reject_once') ??
-              options.find((o) => o.kind.includes('reject') && !o.kind.includes('always'));
-            break;
-          case 'D':
-            // Reject always - prefer exact match, fall back to any "reject" with "always"
-            selectedOption =
-              options.find((o) => o.kind === 'reject_always') ??
-              options.find((o) => o.kind.includes('reject') && o.kind.includes('always'));
-            break;
-        }
-
-        if (selectedOption) {
-          resolver(selectedOption.id);
-          permissionResolver = null;
-          pendingPermissionOptions = null;
-          inputReader.setWaitingForPermission(false);
-          // Remove permission response from history (it's ephemeral, not a real command)
-          inputReader.removeLastHistoryEntry();
-          return;
-        }
-
-        // Also support numeric input for backwards compatibility
-        const choice = Number.parseInt(trimmed, 10);
-        if (choice >= 1 && choice <= options.length) {
-          selectedOption = options[choice - 1];
-          if (selectedOption) {
-            resolver(selectedOption.id);
-            permissionResolver = null;
-            pendingPermissionOptions = null;
-            inputReader.setWaitingForPermission(false);
-            // Remove permission response from history (it's ephemeral, not a real command)
-            inputReader.removeLastHistoryEntry();
-            return;
-          }
-        }
-
-        // Debug: show what options we have
-        output.debug(`Options: ${options.map((o) => `${o.kind}:${o.name}`).join(', ')}`);
-
-        // Invalid choice - show warning
-        output.warning('Please enter a/A/d/D (or 1-4)');
-        return;
-      }
-
       // Send prompt to ACP with working directory context
       if (acpClient.isConnected()) {
         output.spinnerStart();
@@ -346,26 +286,6 @@ async function main(): Promise<void> {
     },
     onCancel: async () => {
       const now = Date.now();
-
-      // Cancel permission request if pending
-      const resolver = permissionResolver;
-      const options = pendingPermissionOptions;
-      if (resolver && options && options.length > 0) {
-        // Default to reject - find any reject option
-        const rejectOption = options.find((o) => o.kind.includes('reject'));
-        const fallbackOption = options[0];
-        if (rejectOption) {
-          resolver(rejectOption.id);
-        } else if (fallbackOption) {
-          resolver(fallbackOption.id);
-        }
-        permissionResolver = null;
-        pendingPermissionOptions = null;
-        inputReader.setWaitingForPermission(false);
-        output.info('Permission request cancelled');
-        lastCancelTime = 0; // Reset double-cancel tracking
-        return;
-      }
 
       // Cancel ongoing prompt if prompting
       if (acpClient.isCurrentlyPrompting()) {
@@ -392,9 +312,6 @@ async function main(): Promise<void> {
       output.info('Press Ctrl+C again to exit, or type /quit');
     },
   });
-
-  // Set late-bound reference for permission handling
-  inputReaderRef = inputReader;
 
   // Register /aliases command to show active aliases
   inputReader.registerCommand({
