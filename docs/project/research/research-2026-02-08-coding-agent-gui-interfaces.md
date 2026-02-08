@@ -10,7 +10,7 @@ author: Joshua Levy with LLM assistance
 
 **Author:** Joshua Levy with LLM assistance
 
-**Status:** Complete
+**Status:** In Progress
 
 ## Overview
 
@@ -705,3 +705,48 @@ Open-source pair programmer:
 - [Best AI Coding Assistants Feb 2026 (Shakudo)](https://www.shakudo.io/blog/best-ai-coding-assistants)
 - [OpenCode InfoQ Article](https://www.infoq.com/news/2026/02/opencode-coding-agent/)
 - [Manus AI Review (MIT Technology Review)](https://www.technologyreview.com/2025/03/11/1113133/manus-ai-review/)
+
+---
+
+## Appendix: Deep-Dive Beads
+
+Each tool and component library has a dedicated bead for in-depth technical research.
+The task for each bead is: **check out the source repo (where open source), examine the
+actual UI implementation, and document ~1 page of technical detail** covering:
+- GUI widget inventory (chat, thinking, tool use, diffs, timelines, file trees, terminals)
+- Implementation tech stack (React, Svelte, webview, Electron, Tauri, etc.)
+- Key dependencies (specific npm packages, component libraries used)
+- How each widget works (component names, rendering approach, state management)
+- Maturity, quality, and reusability assessment
+
+**Parent epic:** `clam-ng04` — Deep-dive research: coding agent GUI interfaces and widget
+implementations
+
+### Coding Agent Tools
+
+| Bead | Tool | Scope | Open Source? |
+|------|------|-------|--------------|
+| `clam-gfwe` | Claude Code | CLI, VSCode extension webview, Cloud web UI, MCP apps in chat | Partially (CLI is OSS) |
+| `clam-epmq` | OpenAI Codex | Web app (ChatGPT), desktop app, CLI | CLI is OSS (Rust) |
+| `clam-o83q` | Cursor IDE | Agent/Composer, inline edit, Design Mode, multi-agent sidebar | No (VSCode fork) |
+| `clam-iq2i` | Windsurf (Codeium) | Cascade sidebar, flow visualization, turbo mode | No (VSCode fork) |
+| `clam-il8f` | GitHub Copilot Chat | VSCode agent mode, tool invocation UI, multi-agent orchestration | Partially (VSCode is OSS) |
+| `clam-ox80` | OpenCode | Bubble Tea TUI, Tauri desktop app, community web UIs | Yes (MIT) |
+| `clam-lb1g` | Manus AI | Web interface, "Manus's Computer" live view, agent visualization | No |
+| `clam-89x6` | Aider | Terminal UI, experimental browser UI | Yes (Apache 2.0) |
+| `clam-f3lv` | OpenHands | React SPA, VS Code web, terminal, Chromium browser, VNC | Yes (MIT) |
+| `clam-y5ee` | bolt.diy | CodeMirror editor, xterm.js terminal, live preview, chat | Yes (MIT) |
+| `clam-5gpv` | Goose (Block) | Rust CLI, Electron desktop app | Yes (Apache 2.0) |
+| `clam-8a9d` | Cline | VSCode webview (React), ChatRow, diff, checkpoints | Yes (Apache 2.0) |
+| `clam-0wkm` | Roo Code | Enhanced Cline fork, prettier thinking blocks, timeline | Yes (Apache 2.0) |
+| `clam-rua7` | Amp (Sourcegraph) | CLI, VSCode extension, deep mode | No |
+| `clam-56mu` | Devon | Python agent, devon-ui web frontend | Yes (MIT) |
+
+### Component Libraries & Frameworks
+
+| Bead | Library | Scope |
+|------|---------|-------|
+| `clam-ucpl` | Vercel AI SDK + AI Elements | useChat/useCompletion hooks, 20+ React components, streaming, tool display, reasoning |
+| `clam-s9pf` | CopilotKit + AG-UI Protocol | Chat UI framework, generative UI, human-in-the-loop, 17 AG-UI event types |
+| `clam-aeil` | assistant-ui | React chat components, streaming, message rendering |
+| `clam-4de5` | Diff/Editor components | Monaco diff editor, CodeMirror merge, diff2html, react-diff-viewer |
