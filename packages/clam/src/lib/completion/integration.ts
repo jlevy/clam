@@ -8,16 +8,16 @@
  * - Terminal output (with scrollback protection)
  */
 
+import { updateInputStateWithTokens } from '../input/parser.js';
+import { createInputState, type InputMode } from '../input/state.js';
+import { createCommandCompleter } from './completers/command-completer.js';
+import { createEntityCompleter } from './completers/entity-completer.js';
+import { createSlashCompleter } from './completers/slash-completer.js';
+import { createCompletionKeyHandler, KeyAction, type KeyModifiers } from './key-handler.js';
 import { CompletionManager } from './manager.js';
 import { CompletionMenu } from './menu.js';
-import { createCompletionKeyHandler, KeyAction, type KeyModifiers } from './key-handler.js';
+import { clearMenu, wrapMenuRender } from './terminal.js';
 import { detectTrigger } from './trigger.js';
-import { createCommandCompleter } from './completers/command-completer.js';
-import { createSlashCompleter } from './completers/slash-completer.js';
-import { createEntityCompleter } from './completers/entity-completer.js';
-import { wrapMenuRender, clearMenu } from './terminal.js';
-import { createInputState, type InputMode } from '../input/state.js';
-import { updateInputStateWithTokens } from '../input/parser.js';
 import type { Completion } from './types.js';
 
 /**
@@ -71,7 +71,6 @@ export class CompletionIntegration {
   private keyHandler: ReturnType<typeof createCompletionKeyHandler>;
   private options: CompletionIntegrationOptions;
   private menuLinesShown = 0;
-  private lastInput = '';
   private cwd: string;
 
   constructor(options: CompletionIntegrationOptions = {}) {
@@ -107,8 +106,6 @@ export class CompletionIntegration {
    * Call this on each keystroke (debounced in practice).
    */
   async updateCompletions(rawText: string, cursorPos: number, mode: InputMode): Promise<void> {
-    this.lastInput = rawText;
-
     // Create InputState
     const state = updateInputStateWithTokens(createInputState(rawText, cursorPos, mode, this.cwd));
 
@@ -260,7 +257,6 @@ export class CompletionIntegration {
   reset(): void {
     this.keyHandler.reset();
     this.menuLinesShown = 0;
-    this.lastInput = '';
   }
 
   /**

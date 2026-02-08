@@ -27,14 +27,13 @@
  * ```
  */
 
+export { type BlockDetector, createBlockDetector } from './block-detector.js';
 export {
-  createBlockRenderer,
-  renderMarkdownBlock,
   type BlockRenderer,
   type BlockRendererOptions,
+  createBlockRenderer,
+  renderMarkdownBlock,
 } from './block-renderer.js';
-
-export { createBlockDetector, type BlockDetector } from './block-detector.js';
 
 export { createCodeHighlighter, highlightCode, isLanguageSupported } from './code-highlighter.js';
 

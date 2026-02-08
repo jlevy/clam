@@ -1,5 +1,5 @@
+import { beforeEach, describe, expect, it } from 'bun:test';
 import pc from 'picocolors';
-import { describe, expect, it, beforeEach } from 'vitest';
 
 import { createBlockRenderer } from './block-renderer.js';
 import type { StreamRenderer } from './types.js';

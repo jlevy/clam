@@ -6,9 +6,9 @@
  */
 
 import type { InputState } from '../../input/state.js';
-import type { Completer, Completion } from '../types.js';
-import { CompletionGroup, COMPLETION_ICONS } from '../types.js';
 import { calculatePrefixScore } from '../scoring.js';
+import type { Completer, Completion } from '../types.js';
+import { COMPLETION_ICONS, CompletionGroup } from '../types.js';
 
 /**
  * SlashCompleter implements the Completer interface for slash commands.

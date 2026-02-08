@@ -2,8 +2,8 @@
  * Tests for configuration module.
  */
 
+import { afterEach, describe, expect, it } from 'bun:test';
 import { homedir } from 'node:os';
-import { afterEach, describe, expect, it } from 'vitest';
 import { formatConfig, getConfigDir, getConfigPath, getHistoryPath, loadConfig } from './config.js';
 
 describe('getConfigDir', () => {
@@ -45,7 +45,6 @@ describe('loadConfig', () => {
     const config = loadConfig('/nonexistent/path');
     // Just verify we get a valid config object with expected properties
     expect(config.truncateAfter).toBeGreaterThan(0);
-    expect(typeof config.showTimestamps).toBe('boolean');
     expect(typeof config.verbose).toBe('boolean');
   });
 
@@ -53,12 +52,6 @@ describe('loadConfig', () => {
     process.env.CLAM_CODE_VERBOSE = '1';
     const config = loadConfig('/nonexistent/path');
     expect(config.verbose).toBe(true);
-  });
-
-  it('should respect CLAM_CODE_SHOW_TIMESTAMPS environment variable', () => {
-    process.env.CLAM_CODE_SHOW_TIMESTAMPS = '1';
-    const config = loadConfig('/nonexistent/path');
-    expect(config.showTimestamps).toBe(true);
   });
 
   it('should respect CLAM_CODE_TRUNCATE_AFTER environment variable', () => {
@@ -91,7 +84,6 @@ describe('formatConfig', () => {
     const config = {
       cwd: '/test/path',
       truncateAfter: 15,
-      showTimestamps: true,
       verbose: true,
       agentCommand: 'custom-agent',
     };
@@ -109,7 +101,6 @@ describe('formatConfig', () => {
     const lines = formatConfig(config);
 
     expect(lines.some((l) => l.includes('truncateAfter'))).toBe(true);
-    expect(lines.some((l) => l.includes('showTimestamps'))).toBe(true);
     expect(lines.some((l) => l.includes('verbose'))).toBe(true);
   });
 

@@ -11,7 +11,7 @@
  * Based on the @agentclientprotocol/sdk.
  */
 
-import { type ChildProcess, spawn } from 'node:child_process';
+import { type ChildProcess, type SpawnOptions, spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { Readable, Writable } from 'node:stream';
 import * as acp from '@agentclientprotocol/sdk';
@@ -62,6 +62,18 @@ export interface AcpCommand {
 }
 
 /**
+ * Terminal state for tracking spawned processes.
+ */
+interface TerminalState {
+  process: ChildProcess;
+  output: string;
+  exitCode: number | null;
+  signal: string | null;
+  exited: boolean;
+  exitPromise: Promise<{ exitCode: number | null; signal: string | null }>;
+}
+
+/**
  * ACP Client for connecting to Claude Code via claude-code-acp adapter.
  */
 export class AcpClient {
@@ -71,6 +83,8 @@ export class AcpClient {
   private options: AcpClientOptions;
   private isPrompting = false;
   private availableCommands: AcpCommand[] = [];
+  private terminals: Map<string, TerminalState> = new Map();
+  private terminalIdCounter = 0;
 
   constructor(options: AcpClientOptions) {
     this.options = options;
@@ -453,6 +467,133 @@ export class AcpClient {
           const message = error instanceof Error ? error.message : String(error);
           output.error(`Failed to write file ${params.path}: ${message}`);
           throw new Error(`Failed to write file ${params.path}: ${message}`);
+        }
+      },
+
+      createTerminal: async (
+        params: acp.CreateTerminalRequest
+      ): Promise<acp.CreateTerminalResponse> => {
+        const terminalId = `term-${++this.terminalIdCounter}`;
+        output.debug(`Creating terminal ${terminalId}: ${params.command}`);
+
+        const spawnOptions: SpawnOptions = {
+          cwd: params.cwd ?? this.options.cwd,
+          env: {
+            ...process.env,
+            ...(params.env?.reduce((acc, { name, value }) => ({ ...acc, [name]: value }), {}) ??
+              {}),
+          },
+          stdio: ['pipe', 'pipe', 'pipe'],
+          shell: true,
+        };
+
+        const args = params.args ?? [];
+        const proc = spawn(params.command, args, spawnOptions);
+
+        let terminalOutput = '';
+        const outputLimit = params.outputByteLimit ? Number(params.outputByteLimit) : 32000;
+
+        proc.stdout?.on('data', (data: Buffer) => {
+          const chunk = data.toString();
+          if (terminalOutput.length < outputLimit) {
+            terminalOutput += chunk.slice(0, outputLimit - terminalOutput.length);
+          }
+        });
+
+        proc.stderr?.on('data', (data: Buffer) => {
+          const chunk = data.toString();
+          if (terminalOutput.length < outputLimit) {
+            terminalOutput += chunk.slice(0, outputLimit - terminalOutput.length);
+          }
+        });
+
+        const exitPromise = new Promise<{ exitCode: number | null; signal: string | null }>(
+          (resolve) => {
+            proc.on('close', (code, signal) => {
+              const state = this.terminals.get(terminalId);
+              if (state) {
+                state.exitCode = code;
+                state.signal = signal;
+                state.exited = true;
+              }
+              resolve({ exitCode: code, signal });
+            });
+            proc.on('error', (err) => {
+              output.debug(`Terminal ${terminalId} error: ${err.message}`);
+              const state = this.terminals.get(terminalId);
+              if (state) {
+                state.output += `\nError: ${err.message}`;
+                state.exited = true;
+                state.exitCode = 1;
+              }
+              resolve({ exitCode: 1, signal: null });
+            });
+          }
+        );
+
+        const state: TerminalState = {
+          process: proc,
+          get output() {
+            return terminalOutput;
+          },
+          exitCode: null,
+          signal: null,
+          exited: false,
+          exitPromise,
+        };
+
+        this.terminals.set(terminalId, state);
+        return { terminalId };
+      },
+
+      terminalOutput: async (
+        params: acp.TerminalOutputRequest
+      ): Promise<acp.TerminalOutputResponse> => {
+        const state = this.terminals.get(params.terminalId);
+        if (!state) {
+          throw new Error(`Terminal not found: ${params.terminalId}`);
+        }
+        const outputLimit = 32000;
+        return {
+          output: state.output,
+          truncated: state.output.length >= outputLimit,
+          exitStatus: state.exited
+            ? { exitCode: state.exitCode ?? 0, signal: state.signal ?? undefined }
+            : undefined,
+        };
+      },
+
+      waitForTerminalExit: async (
+        params: acp.WaitForTerminalExitRequest
+      ): Promise<acp.WaitForTerminalExitResponse> => {
+        const state = this.terminals.get(params.terminalId);
+        if (!state) {
+          throw new Error(`Terminal not found: ${params.terminalId}`);
+        }
+        const { exitCode, signal } = await state.exitPromise;
+        return {
+          exitCode: exitCode ?? undefined,
+          signal: signal ?? undefined,
+        };
+      },
+
+      killTerminal: async (params: acp.KillTerminalCommandRequest): Promise<void> => {
+        const state = this.terminals.get(params.terminalId);
+        if (!state) {
+          throw new Error(`Terminal not found: ${params.terminalId}`);
+        }
+        if (!state.exited) {
+          state.process.kill('SIGTERM');
+        }
+      },
+
+      releaseTerminal: async (params: acp.ReleaseTerminalRequest): Promise<void> => {
+        const state = this.terminals.get(params.terminalId);
+        if (state) {
+          if (!state.exited) {
+            state.process.kill('SIGKILL');
+          }
+          this.terminals.delete(params.terminalId);
         }
       },
     };

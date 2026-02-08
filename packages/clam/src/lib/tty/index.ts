@@ -3,11 +3,11 @@
  */
 
 export {
-  saveTtyState,
-  restoreTtyState,
   disableRawMode,
-  enableRawMode,
   emergencyCleanup,
+  enableRawMode,
   installEmergencyCleanup,
+  restoreTtyState,
+  saveTtyState,
   withTtyManagement,
 } from './tty-manager.js';

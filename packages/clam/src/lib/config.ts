@@ -22,9 +22,6 @@ export interface ClamCodeConfig {
   /** Maximum lines to show for tool output before truncating (default: 5) */
   truncateAfter?: number;
 
-  /** Show timestamps on tool outputs */
-  showTimestamps?: boolean;
-
   /** Enable verbose/debug output */
   verbose?: boolean;
 
@@ -40,7 +37,6 @@ export interface ClamCodeConfig {
 
 const DEFAULT_CONFIG: ClamCodeConfig = {
   truncateAfter: 3,
-  showTimestamps: false,
   verbose: false,
   markdownRendering: true,
   doubleEnterForNl: false,
@@ -112,9 +108,6 @@ export function loadConfig(cwd?: string): ClamCodeConfig {
         if (typeof obj.truncateAfter === 'number' && obj.truncateAfter > 0) {
           fileConfig.truncateAfter = obj.truncateAfter;
         }
-        if (typeof obj.showTimestamps === 'boolean') {
-          fileConfig.showTimestamps = obj.showTimestamps;
-        }
         if (typeof obj.verbose === 'boolean') {
           fileConfig.verbose = obj.verbose;
         }
@@ -152,9 +145,6 @@ export function loadConfig(cwd?: string): ClamCodeConfig {
   if (process.env.CLAM_CODE_VERBOSE === '1') {
     config.verbose = true;
   }
-  if (process.env.CLAM_CODE_SHOW_TIMESTAMPS === '1') {
-    config.showTimestamps = true;
-  }
   if (process.env.CLAM_CODE_AGENT_COMMAND) {
     config.agentCommand = process.env.CLAM_CODE_AGENT_COMMAND;
   }
@@ -175,7 +165,6 @@ export function formatConfig(config: ClamCodeConfig): string[] {
   return [
     `cwd: ${config.cwd ?? process.cwd()}`,
     `truncateAfter: ${config.truncateAfter ?? 5}`,
-    `showTimestamps: ${config.showTimestamps ?? false}`,
     `verbose: ${config.verbose ?? false}`,
     `markdownRendering: ${config.markdownRendering ?? true}`,
     `doubleEnterForNl: ${config.doubleEnterForNl ?? false}`,

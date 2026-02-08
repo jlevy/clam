@@ -24,7 +24,7 @@
  * - When a phrase is misclassified, add a test case FIRST, then fix
  */
 
-import { spawnSync } from 'child_process';
+import { spawnSync } from 'node:child_process';
 
 import { isShellBuiltin, type ShellModule } from './shell.js';
 
@@ -103,7 +103,7 @@ export interface ModeDetectorOptions {
  * These are commands that clam handles directly, not shell commands.
  * Add new slash commands here when implementing them.
  */
-export const KNOWN_SLASH_COMMANDS = new Set([
+export const KNOWN_SLASH_COMMANDS: Set<string> = new Set([
   'help',
   'quit',
   'exit',
@@ -843,14 +843,14 @@ function levenshteinDistance(a: string, b: string): number {
   for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {
       if (a[i - 1] === b[j - 1]) {
-        dp[i]![j] = dp[i - 1]![j - 1]!;
+        dp[i]![j] = dp[i - 1]?.[j - 1]!;
       } else {
-        dp[i]![j] = 1 + Math.min(dp[i - 1]![j]!, dp[i]![j - 1]!, dp[i - 1]![j - 1]!);
+        dp[i]![j] = 1 + Math.min(dp[i - 1]?.[j]!, dp[i]?.[j - 1]!, dp[i - 1]?.[j - 1]!);
       }
     }
   }
 
-  return dp[m]![n]!;
+  return dp[m]?.[n]!;
 }
 
 /**
@@ -869,7 +869,7 @@ export function suggestCommand(typo: string): string | null {
   }
 
   let bestMatch: string | null = null;
-  let bestDistance = Infinity;
+  let bestDistance = Number.POSITIVE_INFINITY;
 
   // Maximum distance threshold based on typo length
   // Allow more edits for longer words, but always allow at least 2

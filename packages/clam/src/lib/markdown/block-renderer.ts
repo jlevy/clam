@@ -17,7 +17,7 @@ import { Marked } from 'marked';
 import { markedTerminal } from 'marked-terminal';
 import pc from 'picocolors';
 
-import { createBlockDetector, type BlockDetector } from './block-detector.js';
+import { type BlockDetector, createBlockDetector } from './block-detector.js';
 import { highlightCode as cliHighlightCode } from './code-highlighter.js';
 import { formatInline } from './inline-formatter.js';
 import type { BlockType, StreamRenderer } from './types.js';
@@ -163,12 +163,6 @@ function formatBlock(
   switch (type) {
     case 'code_fence':
       return formatCodeFence(content, language, highlightCode);
-
-    case 'header':
-    case 'table':
-    case 'list':
-    case 'blockquote':
-    case 'paragraph':
     default:
       return renderMarkdownBlock(content);
   }

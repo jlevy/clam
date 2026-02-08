@@ -8,16 +8,16 @@
  * - Explicit shell trigger (!)
  */
 
-import { describe, expect, it, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'bun:test';
 import {
   createModeDetector,
   hasShellOperators,
-  isExplicitShell,
   isExplicitNL,
-  stripShellTrigger,
-  stripNLTrigger,
-  suggestCommand,
+  isExplicitShell,
   type ModeDetector,
+  stripNLTrigger,
+  stripShellTrigger,
+  suggestCommand,
 } from './mode-detection.js';
 import type { ShellModule } from './shell.js';
 
@@ -71,13 +71,17 @@ describe('ModeDetection', () => {
       expect(detector.detectModeSync('!echo hello')).toBe('shell');
     });
 
-    it('should detect shell operators with real commands', () => {
-      expect(detector.detectModeSync('cat file | grep foo')).toBe('shell');
-      expect(detector.detectModeSync('echo hello > file.txt')).toBe('shell');
-      expect(detector.detectModeSync('ls && pwd')).toBe('shell');
-      expect(detector.detectModeSync('ls || echo fail')).toBe('shell');
-      expect(detector.detectModeSync('echo $(whoami)')).toBe('shell');
-    });
+    // Skip on Windows - these tests rely on Unix commands (cat, grep, ls, pwd, whoami)
+    it.skipIf(process.platform === 'win32')(
+      'should detect shell operators with real commands',
+      () => {
+        expect(detector.detectModeSync('cat file | grep foo')).toBe('shell');
+        expect(detector.detectModeSync('echo hello > file.txt')).toBe('shell');
+        expect(detector.detectModeSync('ls && pwd')).toBe('shell');
+        expect(detector.detectModeSync('ls || echo fail')).toBe('shell');
+        expect(detector.detectModeSync('echo $(whoami)')).toBe('shell');
+      }
+    );
 
     it('should return nothing for shell operators with invalid commands', () => {
       // If first word isn't a real command, it's invalid even with shell operators
@@ -194,11 +198,11 @@ describe('ModeDetection', () => {
     });
 
     it('should return nothing for non-commands', () => {
-      // Words that look like commands but don't exist on any platform
-      // Note: avoid single letters like 'n' which IS a real command (Node.js version manager)
-      expect(detector.detectModeSync('notarealcmd')).toBe('nothing');
-      expect(detector.detectModeSync('xyzzy')).toBe('nothing');
-      expect(detector.detectModeSync('qqqqq')).toBe('nothing');
+      // Unknown command-like words (use gibberish that won't exist on any system)
+      // Note: Single letters like 'n' can be real commands (e.g., Node version manager)
+      expect(detector.detectModeSync('xyznotarealcmd')).toBe('nothing');
+      expect(detector.detectModeSync('notarealcommand123')).toBe('nothing');
+      expect(detector.detectModeSync('qwerty_fake_cmd')).toBe('nothing');
     });
 
     it('should detect real commands', () => {
@@ -226,10 +230,14 @@ describe('ModeDetection', () => {
       expect(await detector.detectMode('!echo hello')).toBe('shell');
     });
 
-    it('should detect shell operators with valid first command', async () => {
-      // shell operators + valid first command → shell
-      expect(await detector.detectMode('cat | grep')).toBe('shell');
-    });
+    // Skip on Windows - relies on Unix commands (cat, grep)
+    it.skipIf(process.platform === 'win32')(
+      'should detect shell operators with valid first command',
+      async () => {
+        // shell operators + valid first command → shell
+        expect(await detector.detectMode('cat | grep')).toBe('shell');
+      }
+    );
 
     it('should return nothing for invalid shell commands with operators', async () => {
       // Invalid command with shell operators → clearly trying to run shell but command doesn't exist

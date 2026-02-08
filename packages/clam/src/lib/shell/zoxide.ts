@@ -6,7 +6,7 @@
  * function for updating zoxide's database after successful cd.
  */
 
-import { execPromise, type AbsolutePath } from './utils.js';
+import { type AbsolutePath, execPromise } from './utils.js';
 
 /**
  * Check if zoxide is available from pre-detected tools map.

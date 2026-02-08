@@ -5,13 +5,16 @@
  * code duplication. All command availability checks should use these functions.
  */
 
-import { exec as execCallback } from 'node:child_process';
+import { type ExecOptions, exec as execCallback } from 'node:child_process';
 import { promisify } from 'node:util';
 
 /**
  * Promisified exec for async command execution.
  */
-export const execPromise = promisify(execCallback);
+export const execPromise: (
+  command: string,
+  options?: ExecOptions
+) => Promise<{ stdout: string; stderr: string }> = promisify(execCallback);
 
 /**
  * Branded type for absolute file paths.

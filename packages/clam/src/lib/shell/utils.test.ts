@@ -1,11 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 
 import {
-  execPromise,
-  isCommandAvailable,
-  getCommandPath,
-  asAbsolutePath,
   type AbsolutePath,
+  asAbsolutePath,
+  execPromise,
+  getCommandPath,
+  isCommandAvailable,
 } from './utils.js';
 
 describe('shell/utils', () => {
@@ -23,7 +23,7 @@ describe('shell/utils', () => {
   describe('asAbsolutePath', () => {
     it('should brand a string as AbsolutePath', () => {
       const path: AbsolutePath = asAbsolutePath('/usr/bin/ls');
-      expect(path).toBe('/usr/bin/ls');
+      expect(path).toBe(asAbsolutePath('/usr/bin/ls'));
       // The branded type is still usable as a string
       expect(path.startsWith('/')).toBe(true);
     });

@@ -2,49 +2,44 @@
   "name": "clam-workspace",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@10.28.2",
+  "workspaces": [
+    "packages/*"
+  ],
   "engines": {
     "node": ">=22"
   },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild"
-    ]
-  },
   "scripts": {
     "prepare": "lefthook install",
-    "build": "pnpm -r build",
-    "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test",
-    "test:coverage": "pnpm --filter get-clam test:coverage",
-    "publint": "pnpm -r publint",
-    "format": "prettier --write --log-level warn .",
-    "format:check": "prettier --check --log-level warn .",
-    "lint": "eslint . --fix && pnpm typecheck && eslint . --max-warnings 0",
-    "lint:check": "pnpm typecheck && eslint . --max-warnings 0",
-    "precommit": "pnpm format && pnpm lint && pnpm build && pnpm test",
-    "ci": "pnpm format:check && pnpm lint:check && pnpm build && pnpm test",
+    "build": "bun run --filter '*' build",
+    "typecheck": "bun run --filter '*' typecheck",
+    "test": "bun run --filter '*' test",
+    "test:coverage": "bun run --filter get-clam test:coverage",
+    "publint": "bun run --filter '*' publint",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "lint": "biome check --write . && bun run typecheck",
+    "lint:check": "biome check . && bun run typecheck",
+    "check": "biome check --write .",
+    "check:ci": "biome ci .",
+    "precommit": "bun run check && bun run typecheck && bun run build && bun run test",
+    "ci": "bun run check:ci && bun run typecheck && bun run build && bun run test",
     "changeset": "changeset",
-    "version-packages": "changeset version",
-    "release": "pnpm build && pnpm publint && changeset publish",
-    "upgrade:check": "ncu --format group",
-    "upgrade": "ncu --target minor -u && pnpm install && pnpm test",
-    "upgrade:major": "ncu --target latest --interactive --format group",
-    "clam": "tsx packages/clam/src/bin.ts",
-    "clam:dev": "tsx watch packages/clam/src/bin.ts",
-    "test:install": "pnpm --filter get-clam test:install",
-    "test:uninstall": "pnpm --filter get-clam test:uninstall"
+    "version-packages": "changeset version && bun update",
+    "release": "bun run build && bun run publint && bun run publish-packages",
+    "publish-packages": "for dir in packages/*; do (cd \"$dir\" && bun publish || true); done && changeset tag",
+    "upgrade:check": "bunx npm-check-updates --format group",
+    "upgrade": "bunx npm-check-updates --target minor -u && bun install && bun run test",
+    "upgrade:major": "bunx npm-check-updates --target latest --interactive --format group",
+    "clam": "bun packages/clam/src/bin.ts",
+    "clam:dev": "bun --watch packages/clam/src/bin.ts",
+    "test:install": "bun run --filter get-clam test:install",
+    "test:uninstall": "bun run --filter get-clam test:uninstall"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.3.14",
     "@changesets/cli": "^2.29.8",
     "lefthook": "^1.11.13",
-    "@eslint/js": "^9.39.2",
-    "eslint": "^9.39.2",
-    "eslint-config-prettier": "^10.1.8",
     "npm-check-updates": "^17.1.18",
-    "prettier": "^3.8.1",
-    "tsx": "^4.21.0",
-    "typescript": "^5.9.3",
-    "typescript-eslint": "^8.54.0"
+    "typescript": "^5.9.3"
   }
 }

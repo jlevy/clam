@@ -9,10 +9,10 @@
 ## Overview
 
 Clam is a terminal-based ACP (Agent Client Protocol) client for Claude Code that
-combines natural language interaction with direct shell command execution. Unlike
-traditional TUI applications, clam uses true terminal scrollback—all output flows
-sequentially into the terminal's native scrollback buffer with no cursor
-repositioning or alternate screen.
+combines natural language interaction with direct shell command execution.
+Unlike traditional TUI applications, clam uses true terminal scrollback—all output flows
+sequentially into the terminal’s native scrollback buffer with no cursor repositioning
+or alternate screen.
 
 The shell implementation is the subsystem responsible for:
 
@@ -45,7 +45,7 @@ behind them.
 
 ## System Context
 
-Clam sits between the user's terminal and Claude Code (via ACP). User input is
+Clam sits between the user’s terminal and Claude Code (via ACP). User input is
 classified and routed to one of three handlers:
 
 ```
@@ -88,8 +88,8 @@ classified and routed to one of three handlers:
 
 ### Component 1: Shell Execution (`src/lib/shell.ts`)
 
-**Responsibility:** Execute shell commands, look up commands via `which`, track
-working directory state, apply command aliases.
+**Responsibility:** Execute shell commands, look up commands via `which`, track working
+directory state, apply command aliases.
 
 **Interface:** `ShellModule` — created via `createShellModule()`.
 
@@ -110,7 +110,8 @@ interface ShellModule {
 **Command execution flow:**
 
 1. Detect zoxide commands (`z`, `zi`) and rewrite to `cd "$(zoxide query ...)"`.
-2. Apply command aliases (`ls` → `eza`, `cat` → `bat`, etc.) via `rewriteCommand()`.
+2. Apply command aliases (`ls` → `eza`, `cat` → `bat`, etc.)
+   via `rewriteCommand()`.
 3. Build environment (optionally with `FORCE_COLOR=1` and `CLICOLOR_FORCE=1`).
 4. Branch on execution mode:
    - **Interactive** (`captureOutput: false`): Use `spawnSync` wrapped in
@@ -120,30 +121,29 @@ interface ShellModule {
 6. If zoxide is installed, call `zoxide add` in the background to update frecency.
 
 **Working directory tracking:** The shell module maintains a mutable `currentCwd`
-variable that persists across commands. This is necessary because each `spawnSync`
-or `spawn` runs in a subprocess that cannot modify the parent's `process.cwd()`.
-For `cd` commands:
+variable that persists across commands.
+This is necessary because each `spawnSync` or `spawn` runs in a subprocess that cannot
+modify the parent’s `process.cwd()`. For `cd` commands:
 
 - In captured mode, `&& pwd` is appended to extract the resulting directory.
-- In interactive mode, the target is parsed from the command and resolved
-  separately.
+- In interactive mode, the target is parsed from the command and resolved separately.
 
 **`which` caching:** Results from `which` lookups are cached in a
-`Map<string, string | null>` to avoid repeated subprocess invocations. Shell
-builtins (`cd`, `export`, `pwd`, etc.) are recognized from a hardcoded set and
-return `'builtin'` without spawning a process.
+`Map<string, string | null>` to avoid repeated subprocess invocations.
+Shell builtins (`cd`, `export`, `pwd`, etc.)
+are recognized from a hardcoded set and return `'builtin'` without spawning a process.
 
 ### Component 2: TTY Management (`src/lib/tty/tty-manager.ts`)
 
 **Responsibility:** Save and restore terminal state around interactive subprocess
-execution. Ensure the terminal is never left in a corrupted state, even after
-crashes.
+execution. Ensure the terminal is never left in a corrupted state, even after crashes.
 
 **The problem:** When clam runs interactive commands like `bash` or `vim`, the child
-process calls `tcsetpgrp()` to become the foreground process group. If Node's
-readline is simultaneously reading from stdin (via async event handlers), the parent
-process receives `SIGTTIN` and gets suspended. The terminal also enters raw mode
-conflicts where neither process properly controls the TTY.
+process calls `tcsetpgrp()` to become the foreground process group.
+If Node’s readline is simultaneously reading from stdin (via async event handlers), the
+parent process receives `SIGTTIN` and gets suspended.
+The terminal also enters raw mode conflicts where neither process properly controls the
+TTY.
 
 **The solution (spawnSync + TTY management):**
 
@@ -160,43 +160,46 @@ The `withTtyManagement()` wrapper implements this sequence:
 1. **Save state** — record whether stdin was in raw mode.
 2. **Disable raw mode** — allow the subprocess to control the terminal.
 3. **Execute** — run the provided function (which uses `spawnSync`).
-4. **Restore** — run `stty sane` to clean up any terminal corruption, then
-   re-enable raw mode if it was previously active.
+4. **Restore** — run `stty sane` to clean up any terminal corruption, then re-enable raw
+   mode if it was previously active.
 
 **Why `spawnSync`:** Node.js does not expose `tcsetpgrp()` natively
-([nodejs/node#5549](https://github.com/nodejs/node/issues/5549)). The `detached`
-option only calls `setsid()`, which creates a new session but does not make the
-child the foreground process group. Using `spawnSync` blocks the entire Node event
-loop, which prevents readline from competing for stdin during subprocess execution.
+([nodejs/node#5549](https://github.com/nodejs/node/issues/5549)). The `detached` option
+only calls `setsid()`, which creates a new session but does not make the child the
+foreground process group.
+Using `spawnSync` blocks the entire Node event loop, which prevents readline from
+competing for stdin during subprocess execution.
 This is a deliberate trade-off:
 
 - **Pro:** No native dependencies, works cross-platform, simple to maintain.
-- **Pro:** Appropriate for interactive commands where we're waiting anyway.
+- **Pro:** Appropriate for interactive commands where we’re waiting anyway.
 - **Con:** Blocks the event loop (acceptable since user is interacting with the
   subprocess, not clam).
 
-**Emergency cleanup:** `installEmergencyCleanup()` is called once at application
-startup (`bin.ts:126`). It registers handlers on `exit`, `SIGINT`, `SIGTERM`,
-`uncaughtException`, and `unhandledRejection` that all call `stty sane`. This
-ensures the terminal is restored even if clam crashes. The handlers carefully
-preserve existing signal listeners by saving and re-emitting them.
+**Emergency cleanup:** `installEmergencyCleanup()` is called once at application startup
+(`bin.ts:126`). It registers handlers on `exit`, `SIGINT`, `SIGTERM`,
+`uncaughtException`, and `unhandledRejection` that all call `stty sane`. This ensures
+the terminal is restored even if clam crashes.
+The handlers carefully preserve existing signal listeners by saving and re-emitting
+them.
 
 ### Component 3: Mode Detection (`src/lib/mode-detection.ts`)
 
-**Responsibility:** Classify user input as `shell`, `nl` (natural language),
-`slash`, `ambiguous`, or `nothing`.
+**Responsibility:** Classify user input as `shell`, `nl` (natural language), `slash`,
+`ambiguous`, or `nothing`.
 
 **Design philosophy:** The detector does NOT attempt to enumerate all of English.
 Instead, it uses two layers:
 
 1. **Sync detection** (`detectModeSync`) — For real-time coloring UX. Uses pattern
-   matching and word lists. Runs on every keystroke (via `setImmediate` in the
-   keypress handler). Some flicker is acceptable since async validation ensures
-   correctness before execution.
+   matching and word lists.
+   Runs on every keystroke (via `setImmediate` in the keypress handler).
+   Some flicker is acceptable since async validation ensures correctness before
+   execution.
 
-2. **Async detection** (`detectMode`) — For accuracy before execution. Verifies
-   the first word via `which` lookup. If `which` returns null, the input is
-   reclassified as `nl` or `nothing`.
+2. **Async detection** (`detectMode`) — For accuracy before execution.
+   Verifies the first word via `which` lookup.
+   If `which` returns null, the input is reclassified as `nl` or `nothing`.
 
 **Detection rules (priority order):**
 
@@ -221,18 +224,18 @@ Instead, it uses two layers:
 | fallback-nl | Everything else | `nl` | Yes |
 
 **The `nothing` mode:** When async validation finds the first word is not a valid
-command AND the input doesn't look like natural language, it returns `nothing`.
-This triggers an error message with Levenshtein-based command suggestions (e.g.,
-"gti" → "Did you mean: git?").
+command AND the input doesn’t look like natural language, it returns `nothing`. This
+triggers an error message with Levenshtein-based command suggestions (e.g., “gti” → “Did
+you mean: git?”).
 
 **Word lists are test-driven:** The `NL_ONLY_WORDS`, `AMBIGUOUS_COMMANDS`, and
-`QUESTION_WORDS` sets are minimal. New words are added only when test cases require
-them.
+`QUESTION_WORDS` sets are minimal.
+New words are added only when test cases require them.
 
 ### Component 4: Input System (`src/lib/input.ts`, `src/lib/input/`)
 
-**Responsibility:** Handle terminal input, manage readline, route input to the
-correct handler, provide visual feedback (syntax coloring, prompt changes).
+**Responsibility:** Handle terminal input, manage readline, route input to the correct
+handler, provide visual feedback (syntax coloring, prompt changes).
 
 **Architecture:**
 
@@ -276,22 +279,22 @@ correct handler, provide visual feedback (syntax coloring, prompt changes).
 - **Natural language:** Two-enter mode — Enter adds lines, blank line submits.
   This allows multi-line prompts for Claude.
 
-**Visual feedback:** The keypress handler runs `detectModeSync()` on every
-keystroke (via `setImmediate` to run after readline processes the key) and
-recolors the input line:
+**Visual feedback:** The keypress handler runs `detectModeSync()` on every keystroke
+(via `setImmediate` to run after readline processes the key) and recolors the input
+line:
 
 - **NL mode:** Pink `▶` prompt, pink text.
 - **Shell mode:** White `$` prompt, white text with syntax coloring.
 - **Slash mode:** Blue `▶` prompt, purple text.
 
-**History:** Command history is loaded from/saved to `~/.clam/code/history`.
-Each history entry stores its mode so that navigating back to a shell command
-shows it with shell colors, not NL pink.
+**History:** Command history is loaded from/saved to `~/.clam/code/history`. Each
+history entry stores its mode so that navigating back to a shell command shows it with
+shell colors, not NL pink.
 
 #### InputState Data Model (`src/lib/input/state.ts`)
 
-The `InputState` is the single source of truth for the current input. It is
-updated by keystrokes and drives both rendering and completion:
+The `InputState` is the single source of truth for the current input.
+It is updated by keystrokes and drives both rendering and completion:
 
 ```typescript
 interface InputState {
@@ -312,8 +315,8 @@ interface InputState {
 }
 ```
 
-This follows the pattern used by xonsh's `CompletionContext`, providing parsed
-command structure and cursor position to all consumers.
+This follows the pattern used by xonsh’s `CompletionContext`, providing parsed command
+structure and cursor position to all consumers.
 
 #### Token Parser (`src/lib/input/parser.ts`)
 
@@ -330,15 +333,14 @@ Tokenizes input into typed tokens for syntax coloring and completion context:
 | `operator` | `\|`, `&&` | yellow |
 | `whitespace` | spaces | none |
 
-The parser handles quoted strings (with escape sequences), multi-character
-operators (`&&`, `||`, `>>`, `<<`), and resets the command position after pipe
-operators (so `git log | grep foo` correctly identifies both `git` and `grep` as
-commands).
+The parser handles quoted strings (with escape sequences), multi-character operators
+(`&&`, `||`, `>>`, `<<`), and resets the command position after pipe operators (so
+`git log | grep foo` correctly identifies both `git` and `grep` as commands).
 
 ### Component 5: Completion System (`src/lib/completion/`)
 
-**Responsibility:** Provide contextual completions for commands, files, slash
-commands, and entity references.
+**Responsibility:** Provide contextual completions for commands, files, slash commands,
+and entity references.
 
 **Architecture:**
 
@@ -376,9 +378,9 @@ interface Completer {
 }
 ```
 
-Each completer receives the full `InputState` and decides whether to run based on
-state properties. The `CompletionManager` runs relevant completers in parallel with
-a 100ms timeout for responsive UI.
+Each completer receives the full `InputState` and decides whether to run based on state
+properties. The `CompletionManager` runs relevant completers in parallel with a 100ms
+timeout for responsive UI.
 
 **Scoring algorithm (`src/lib/completion/scoring.ts`):**
 
@@ -410,14 +412,14 @@ a 100ms timeout for responsive UI.
 - **Enter:** Accept selected completion (inserts text, does NOT execute).
 - **Escape:** Dismiss menu.
 
-**Menu rendering:** Uses ANSI escape sequences (`\x1b[s` save cursor, `\x1b[u`
-restore) to render the menu below the input line without disrupting scrollback.
+**Menu rendering:** Uses ANSI escape sequences (`\x1b[s` save cursor, `\x1b[u` restore)
+to render the menu below the input line without disrupting scrollback.
 The menu is ephemeral—cleared on any non-navigation keypress.
 
 ### Component 6: Modern Tool Integration (`src/lib/shell/`)
 
-**Responsibility:** Detect installed modern CLI tools at startup and transparently
-alias traditional commands to their modern equivalents.
+**Responsibility:** Detect installed modern CLI tools at startup and transparently alias
+traditional commands to their modern equivalents.
 
 #### Tool Detection (`modern-tools.ts`)
 
@@ -434,8 +436,8 @@ At startup, `detectInstalledTools()` runs `which` checks for all tools in parall
 | duf | df | Modern disk free |
 | hexyl | — | Modern hex viewer |
 
-Returns `Map<string, AbsolutePath>` — only installed tools are in the map (presence
-= installed). Other modules consume this map rather than re-detecting.
+Returns `Map<string, AbsolutePath>` — only installed tools are in the map (presence =
+installed). Other modules consume this map rather than re-detecting.
 
 #### Command Aliasing (`command-aliases.ts`)
 
@@ -462,22 +464,22 @@ Provides smart directory jumping:
 - `zi <query>` → `cd "$(zoxide query -i -- <query>)"` (interactive)
 - `z` with no args → `cd ~`
 
-After every successful `cd` (including zoxide jumps), `zoxide add` is called in
-the background to update the frecency database.
+After every successful `cd` (including zoxide jumps), `zoxide add` is called in the
+background to update the frecency database.
 
 #### Color Preservation (`color-env.ts`, `color-commands.ts`)
 
-Many commands check `isatty(stdout)` and disable colors when piped. Clam forces
-color through two mechanisms:
+Many commands check `isatty(stdout)` and disable colors when piped.
+Clam forces color through two mechanisms:
 
 1. **Environment variables:** `FORCE_COLOR=1` and `CLICOLOR_FORCE=1` in subprocess
    environment. Works with chalk, supports-color, and BSD tools.
 
-2. **Command-specific flags:** `--color=always` injected for known commands (ls,
-   eza, grep, rg, diff, and git subcommands like diff/log/show/status/branch).
+2. **Command-specific flags:** `--color=always` injected for known commands (ls, eza,
+   grep, rg, diff, and git subcommands like diff/log/show/status/branch).
 
-For interactive commands (`captureOutput: false`), color preservation is automatic
-since `stdio: 'inherit'` passes through the real TTY.
+For interactive commands (`captureOutput: false`), color preservation is automatic since
+`stdio: 'inherit'` passes through the real TTY.
 
 ### Data Flow
 
@@ -542,61 +544,61 @@ subprocess execution.
 
 **Alternatives considered:**
 
-- **Async spawn with keypress listener removal:** Removes readline's keypress
-  handler before spawning. Requires careful coordination between `input.ts` and
-  `shell.ts`. Rejected because the race condition between disabling the listener
-  and the child calling `tcsetpgrp` is hard to eliminate.
+- **Async spawn with keypress listener removal:** Removes readline’s keypress handler
+  before spawning. Requires careful coordination between `input.ts` and `shell.ts`.
+  Rejected because the race condition between disabling the listener and the child
+  calling `tcsetpgrp` is hard to eliminate.
 
-- **node-pty:** Full PTY emulation via native module. Would solve the problem
-  completely but adds a native dependency requiring compilation on each platform.
-  Rejected to keep clam dependency-free and easy to install.
+- **node-pty:** Full PTY emulation via native module.
+  Would solve the problem completely but adds a native dependency requiring compilation
+  on each platform. Rejected to keep clam dependency-free and easy to install.
 
-- **Proper Unix approach (tcsetpgrp):** Create new process group, call
-  `tcsetpgrp()` for foreground control, block `SIGTTIN`/`SIGTTOU`. This is what
-  xonsh does. Rejected because Node.js does not expose `tcsetpgrp()` natively
+- **Proper Unix approach (tcsetpgrp):** Create new process group, call `tcsetpgrp()` for
+  foreground control, block `SIGTTIN`/`SIGTTOU`. This is what xonsh does.
+  Rejected because Node.js does not expose `tcsetpgrp()` natively
   ([nodejs/node#5549](https://github.com/nodejs/node/issues/5549)).
 
-**Rationale:** `spawnSync` is the simplest approach that works reliably. It
-requires no native dependencies, works across platforms, and is appropriate for
+**Rationale:** `spawnSync` is the simplest approach that works reliably.
+It requires no native dependencies, works across platforms, and is appropriate for
 interactive commands where the user is interacting with the subprocess (not clam)
 anyway.
 
 ### Decision 2: Two-Layer Mode Detection
 
-**Chosen approach:** Fast sync detection for UX coloring + accurate async
-detection before execution.
+**Chosen approach:** Fast sync detection for UX coloring + accurate async detection
+before execution.
 
 **Alternatives considered:**
 
-- **Async-only detection:** Would cause visible latency on every keystroke since
-  `which` lookups take ~5-50ms. Rejected for poor UX.
+- **Async-only detection:** Would cause visible latency on every keystroke since `which`
+  lookups take ~5-50ms. Rejected for poor UX.
 
 - **Comprehensive word lists:** Enumerate all English words to distinguish NL from
-  shell. Impossible to be complete and would create a maintenance burden. Rejected.
+  shell. Impossible to be complete and would create a maintenance burden.
+  Rejected.
 
-- **ML-based classification:** Use a language model to classify input. Would add
-  latency and complexity. Rejected—the heuristic approach with `which` validation
-  is sufficient.
+- **ML-based classification:** Use a language model to classify input.
+  Would add latency and complexity.
+  Rejected—the heuristic approach with `which` validation is sufficient.
 
 **Rationale:** The two-layer approach provides instant visual feedback (sync) while
-ensuring correct behavior before execution (async). Some coloring flicker is an
-acceptable trade-off for simplicity and reliability.
+ensuring correct behavior before execution (async).
+Some coloring flicker is an acceptable trade-off for simplicity and reliability.
 
 ### Decision 3: InputState as Single Source of Truth
 
-**Chosen approach:** A single `InputState` object drives both rendering and
-completion.
+**Chosen approach:** A single `InputState` object drives both rendering and completion.
 
 **Alternatives considered:**
 
-- **Separate contexts for completion and rendering:** Would lead to divergent
-  state and inconsistencies.
+- **Separate contexts for completion and rendering:** Would lead to divergent state and
+  inconsistencies.
 
-- **Event-based updates:** Emit events on each keystroke. More complex and harder
-  to reason about.
+- **Event-based updates:** Emit events on each keystroke.
+  More complex and harder to reason about.
 
-**Rationale:** Following xonsh's `CompletionContext` pattern, having one state
-object that all consumers read from ensures consistency and simplifies debugging.
+**Rationale:** Following xonsh’s `CompletionContext` pattern, having one state object
+that all consumers read from ensures consistency and simplifies debugging.
 
 ### Decision 4: No Native PTY Dependency
 
@@ -605,16 +607,18 @@ interactive commands.
 
 **Alternatives considered:**
 
-- **node-pty:** Full PTY emulation. Would handle all terminal edge cases
-  perfectly but requires native compilation (problematic for npm distribution).
+- **node-pty:** Full PTY emulation.
+  Would handle all terminal edge cases perfectly but requires native compilation
+  (problematic for npm distribution).
 
-- **node-termios:** POSIX termios bindings. Would give fine-grained terminal
-  control but is another native dependency with maintenance burden.
+- **node-termios:** POSIX termios bindings.
+  Would give fine-grained terminal control but is another native dependency with
+  maintenance burden.
 
-**Rationale:** The pure-JavaScript approach covers the critical use cases (bash,
-vim, less work correctly). `stty sane` is the same recovery mechanism xonsh uses
-for terminal restoration. If edge cases arise, node-pty can be added later as an
-optional dependency.
+**Rationale:** The pure-JavaScript approach covers the critical use cases (bash, vim,
+less work correctly).
+`stty sane` is the same recovery mechanism xonsh uses for terminal restoration.
+If edge cases arise, node-pty can be added later as an optional dependency.
 
 ### Decision 5: Command Aliasing via Rewriting
 
@@ -623,15 +627,16 @@ optional dependency.
 
 **Alternatives considered:**
 
-- **Callable aliases (like xonsh):** Define aliases as functions that receive
-  arguments and return modified commands. More flexible but more complex. Planned
-  for a future functional alias system.
+- **Callable aliases (like xonsh):** Define aliases as functions that receive arguments
+  and return modified commands.
+  More flexible but more complex.
+  Planned for a future functional alias system.
 
-- **Shell-level aliases:** Set aliases in the bash subprocess. Would not persist
-  across `spawnSync` calls since each creates a new shell.
+- **Shell-level aliases:** Set aliases in the bash subprocess.
+  Would not persist across `spawnSync` calls since each creates a new shell.
 
-**Rationale:** String rewriting is simple and sufficient for the current alias
-set. The future functional alias system will consolidate `rewriteCommand()` and
+**Rationale:** String rewriting is simple and sufficient for the current alias set.
+The future functional alias system will consolidate `rewriteCommand()` and
 `rewriteZoxideCommand()` into a single `expandAlias()` function.
 
 ## File Structure
@@ -718,29 +723,29 @@ The startup sequence in `bin.ts` initializes components in dependency order:
 
 ## Open Questions
 
-- Should `stty sane` be replaced with `node-termios` for more precise terminal
-  control? (Current approach works well in practice.)
+- Should `stty sane` be replaced with `node-termios` for more precise terminal control?
+  (Current approach works well in practice.)
 - How to handle GNU vs BSD flag differences in command aliases?
 - Should color forcing be configurable per-command?
 - Should the functional alias system (callable aliases) replace string rewriting?
 
 ## References
 
-- [Shell Polish Spec](../project/specs/active/plan-2026-02-05-shell-polish.md) —
-  TTY management, modern tool detection
-- [Unified Completion Spec](../project/specs/active/plan-2026-02-05-better-shell-completions.md) —
-  Completion system architecture
-- [ANSI Color Spec](../project/specs/active/plan-2026-02-05-ansi-color-subprocess-output.md) —
-  Color preservation
-- [Clam ACP Client Spec](../project/specs/active/plan-2026-02-03-clam-acp-client-spike.md) —
-  Overall architecture
-- [Shell UX Research](../project/research/active/research-2026-02-04-shell-ux-typescript.md) —
-  kash and xonsh analysis
+- [Shell Polish Spec](../project/specs/active/plan-2026-02-05-shell-polish.md) — TTY
+  management, modern tool detection
+- [Unified Completion Spec](../project/specs/active/plan-2026-02-05-better-shell-completions.md)
+  — Completion system architecture
+- [ANSI Color Spec](../project/specs/active/plan-2026-02-05-ansi-color-subprocess-output.md)
+  — Color preservation
+- [Clam ACP Client Spec](../project/specs/active/plan-2026-02-03-clam-acp-client-spike.md)
+  — Overall architecture
+- [Shell UX Research](../project/research/active/research-2026-02-04-shell-ux-typescript.md)
+  — kash and xonsh analysis
 - [PR #5](https://github.com/jlevy/clam/pull/5) — Shell polish implementation
-- [GNU Job Control](https://www.gnu.org/software/libc/manual/html_node/Job-Control.html) —
-  Terminal process group management
-- [POSIX termios](https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/termios.h.html) —
-  Terminal interface specification
+- [GNU Job Control](https://www.gnu.org/software/libc/manual/html_node/Job-Control.html)
+  — Terminal process group management
+- [POSIX termios](https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/termios.h.html)
+  — Terminal interface specification
 - [Node.js #5549](https://github.com/nodejs/node/issues/5549) — Missing tcsetpgrp
 - [FORCE_COLOR](https://force-color.org/) — Color forcing standard
 - [CLICOLOR](http://bixense.com/clicolors/) — BSD color convention

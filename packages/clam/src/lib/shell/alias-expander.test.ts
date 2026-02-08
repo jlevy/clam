@@ -6,7 +6,7 @@
  * previously tested in command-aliases.test.ts and zoxide.test.ts.
  */
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 
 import { getAliasDefinition, getAliasNames } from './alias-definitions.js';
 import {
@@ -17,7 +17,7 @@ import {
   isAliasActive,
   parseCommand,
 } from './alias-expander.js';
-import { asAbsolutePath, type AbsolutePath } from './utils.js';
+import { type AbsolutePath, asAbsolutePath } from './utils.js';
 
 // ── Test fixtures ───────────────────────────────────────────────────────
 

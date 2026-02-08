@@ -137,8 +137,6 @@ export function createBlockDetector() {
 
         case 'in_blockquote':
           return findBlockquoteEnd(buffer);
-
-        case 'normal':
         default:
           return findNormalBlockEnd(buffer, this);
       }

@@ -26,7 +26,6 @@ export {
 export {
   colors,
   formatDuration,
-  formatTimestamp,
   formatTokenUsage,
   formatToolStatus,
   symbols,
@@ -35,6 +34,14 @@ export {
 export type { InputContext, InputReaderOptions, SlashCommand } from './lib/input.js';
 // Input handling
 export { createInputReader, InputReader } from './lib/input.js';
+export type { InputMode, ModeDetector, ModeDetectorOptions } from './lib/mode-detection.js';
+// Mode detection
+export {
+  createModeDetector,
+  hasShellOperators,
+  isExplicitShell,
+  stripShellTrigger,
+} from './lib/mode-detection.js';
 export type { OutputWriter, OutputWriterOptions, ToolStatus } from './lib/output.js';
 // Core interfaces and implementations
 export { createOutputWriter } from './lib/output.js';
@@ -49,11 +56,3 @@ export {
 export type { ExecOptions, ExecResult, ShellModule, ShellModuleOptions } from './lib/shell.js';
 // Shell utilities
 export { createShellModule, isShellBuiltin } from './lib/shell.js';
-export type { InputMode, ModeDetector, ModeDetectorOptions } from './lib/mode-detection.js';
-// Mode detection
-export {
-  createModeDetector,
-  hasShellOperators,
-  isExplicitShell,
-  stripShellTrigger,
-} from './lib/mode-detection.js';

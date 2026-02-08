@@ -2,48 +2,48 @@
  * Shell utilities - color environment, command flags, and subprocess execution.
  */
 
+export { ALIASES, getAliasDefinition, getAliasNames } from './alias-definitions.js';
 export {
-  execPromise,
-  isCommandAvailable,
-  getCommandPath,
-  asAbsolutePath,
-  type AbsolutePath,
-} from './utils.js';
-export { COLOR_FORCING_ENV, getColorEnv } from './color-env.js';
+  expandAlias,
+  formatActiveAliases,
+  formatAliasesCompact,
+  getActiveAliases,
+  isAliasActive,
+  parseCommand,
+} from './alias-expander.js';
+export type {
+  AliasContext,
+  AliasDefinition,
+  AliasExpansion,
+  AliasExpansionResult,
+} from './alias-types.js';
 export {
+  addColorFlags,
   COLOR_ALWAYS_COMMANDS,
   GIT_COLOR_SUBCOMMANDS,
-  addColorFlags,
   shouldForceColor,
 } from './color-commands.js';
+export { COLOR_FORCING_ENV, getColorEnv } from './color-env.js';
 export {
-  MODERN_TOOLS,
+  type CommandTimer,
+  createCommandTimer,
+  formatDuration,
+  formatExitCode,
+  isDirectoryPath,
+} from './conveniences.js';
+export {
   detectInstalledTools,
   formatToolStatus,
-  getToolDetails,
   getModernAlternatives,
+  getToolDetails,
+  MODERN_TOOLS,
   type ToolInfo,
 } from './modern-tools.js';
 export {
-  type AliasContext,
-  type AliasDefinition,
-  type AliasExpansion,
-  type AliasExpansionResult,
-} from './alias-types.js';
-export { ALIASES, getAliasNames, getAliasDefinition } from './alias-definitions.js';
-export {
-  expandAlias,
-  isAliasActive,
-  getActiveAliases,
-  formatActiveAliases,
-  formatAliasesCompact,
-  parseCommand,
-} from './alias-expander.js';
+  type AbsolutePath,
+  asAbsolutePath,
+  execPromise,
+  getCommandPath,
+  isCommandAvailable,
+} from './utils.js';
 export { isZoxideAvailable, zoxideAdd } from './zoxide.js';
-export {
-  isDirectoryPath,
-  formatExitCode,
-  formatDuration,
-  createCommandTimer,
-  type CommandTimer,
-} from './conveniences.js';

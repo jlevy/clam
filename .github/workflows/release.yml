@@ -17,22 +17,24 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: pnpm/action-setup@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
 
+      # Node.js still needed for npm provenance
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
           registry-url: 'https://registry.npmjs.org'
 
-      - run: pnpm install --frozen-lockfile
+      - run: bun install --frozen-lockfile
 
-      - run: pnpm build
+      - run: bun run build
 
-      - run: pnpm publint
+      - run: bun run publint
 
       - name: Publish to npm
-        run: pnpm -r publish --access public --no-git-checks
+        run: bun run publish-packages
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
@@ -41,14 +43,29 @@ jobs:
         id: version
         run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
-      - name: Extract changelog for this version
+      - name: Extract release notes
         id: changelog
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          CHANGELOG=$(awk "/^## ${VERSION//./\\.}$/,/^## [0-9]/" packages/clam/CHANGELOG.md | head -n -1)
-          if [ -z "$CHANGELOG" ]; then
-            CHANGELOG="Release v${VERSION}"
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+
+          # Try to extract from CHANGELOG.md
+          CHANGELOG=$(awk "/^## ${VERSION//./\\.}/,/^## [0-9]/" packages/clam/CHANGELOG.md 2>/dev/null | head -n -1 || true)
+
+          # If no CHANGELOG entry, create placeholder with commit range
+          if [ -z "$CHANGELOG" ] || [ "$CHANGELOG" = "" ]; then
+            if [ -n "$PREV_TAG" ]; then
+              COMPARE_URL="https://github.com/${{ github.repository }}/compare/${PREV_TAG}...v${VERSION}"
+              CHANGELOG="## What's Changed
+
+See [full commit history](${COMPARE_URL}) for details.
+
+*Edit this release to add curated release notes following the template in docs/project/templates/release-notes.md*"
+            else
+              CHANGELOG="Release v${VERSION}"
+            fi
           fi
+
           echo "body<<EOF" >> $GITHUB_OUTPUT
           echo "$CHANGELOG" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT

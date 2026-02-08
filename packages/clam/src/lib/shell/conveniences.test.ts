@@ -2,13 +2,13 @@
  * Tests for shell convenience features.
  */
 
+import { describe, expect, it } from 'bun:test';
 import { tmpdir } from 'node:os';
-import { describe, expect, it } from 'vitest';
 import {
-  isDirectoryPath,
-  formatExitCode,
-  formatDuration,
   createCommandTimer,
+  formatDuration,
+  formatExitCode,
+  isDirectoryPath,
 } from './conveniences.js';
 
 describe('Shell Conveniences', () => {

@@ -479,6 +479,6 @@ export function printTestCaseSummary(): void {
     }
   }
 
-  console.log('\n' + '='.repeat(60));
+  console.log(`\n${'='.repeat(60)}`);
   console.log(`Total: ${getTestCaseCount()} test cases`);
 }

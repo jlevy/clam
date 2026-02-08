@@ -8,7 +8,7 @@
  * Based on kash's modern tool detection system.
  */
 
-import { getCommandPath, type AbsolutePath } from './utils.js';
+import { type AbsolutePath, getCommandPath } from './utils.js';
 
 /**
  * Information about a modern CLI tool.

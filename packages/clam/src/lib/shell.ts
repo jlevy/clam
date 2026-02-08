@@ -9,14 +9,12 @@
  * Used by mode detection to identify shell commands.
  */
 
-import { spawn, spawnSync } from 'node:child_process';
+import { exec as execCallback, spawn, spawnSync } from 'node:child_process';
 import { promisify } from 'node:util';
-import { exec as execCallback } from 'node:child_process';
-
-import { getColorEnv } from './shell/color-env.js';
 import { expandAlias } from './shell/alias-expander.js';
-import { zoxideAdd } from './shell/zoxide.js';
+import { getColorEnv } from './shell/color-env.js';
 import type { AbsolutePath } from './shell/utils.js';
+import { zoxideAdd } from './shell/zoxide.js';
 import { withTtyManagement } from './tty/index.js';
 
 const execPromise = promisify(execCallback);
@@ -417,14 +415,12 @@ export function createShellModule(options: ShellModuleOptions = {}): ShellModule
           { timeout: whichTimeout }
         );
         return stdout.trim().split('\n').filter(Boolean);
-      } else {
-        // Complete files/directories
-        const { stdout } = await execPromise(
-          `compgen -f -- ${shellEscape(currentWord)} | head -20`,
-          { timeout: whichTimeout }
-        );
-        return stdout.trim().split('\n').filter(Boolean);
       }
+      // Complete files/directories
+      const { stdout } = await execPromise(`compgen -f -- ${shellEscape(currentWord)} | head -20`, {
+        timeout: whichTimeout,
+      });
+      return stdout.trim().split('\n').filter(Boolean);
     } catch {
       return [];
     }

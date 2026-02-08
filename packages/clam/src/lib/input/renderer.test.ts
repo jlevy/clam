@@ -1,7 +1,7 @@
-import { describe, it, expect } from 'vitest';
-import { renderInput, getTokenColor, TOKEN_COLORS } from './renderer.js';
-import { createInputState } from './state.js';
+import { describe, expect, it } from 'bun:test';
 import { updateInputStateWithTokens } from './parser.js';
+import { getTokenColor, renderInput, TOKEN_COLORS } from './renderer.js';
+import { createInputState } from './state.js';
 
 describe('InputRenderer', () => {
   describe('getTokenColor', () => {

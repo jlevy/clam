@@ -3,10 +3,9 @@
  * z/zi command expansion tests are in alias-expander.test.ts.
  */
 
-import { describe, expect, it } from 'vitest';
-
+import { describe, expect, it } from 'bun:test';
+import { type AbsolutePath, asAbsolutePath } from './utils.js';
 import { isZoxideAvailable } from './zoxide.js';
-import { asAbsolutePath, type AbsolutePath } from './utils.js';
 
 describe('Zoxide Integration', () => {
   describe('isZoxideAvailable', () => {

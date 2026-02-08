@@ -2,15 +2,15 @@
  * Tests for modern tool detection.
  */
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import {
-  MODERN_TOOLS,
   detectInstalledTools,
   formatToolStatus,
-  getToolDetails,
   getModernAlternatives,
+  getToolDetails,
+  MODERN_TOOLS,
 } from './modern-tools.js';
-import { asAbsolutePath, type AbsolutePath } from './utils.js';
+import { type AbsolutePath, asAbsolutePath } from './utils.js';
 
 describe('Modern Tools', () => {
   describe('MODERN_TOOLS', () => {
@@ -35,11 +35,16 @@ describe('Modern Tools', () => {
   });
 
   describe('detectInstalledTools', () => {
-    it('should return a map of tool paths', async () => {
-      const installed = await detectInstalledTools();
-      expect(installed).toBeInstanceOf(Map);
-      // Only installed tools are in the map now
-    });
+    // Increase timeout for this test - on macOS CI, tool detection can be slow
+    it(
+      'should return a map of tool paths',
+      async () => {
+        const installed = await detectInstalledTools();
+        expect(installed).toBeInstanceOf(Map);
+        // Only installed tools are in the map now
+      },
+      { timeout: 30000 }
+    );
 
     it('should detect common tools like ls alternative', async () => {
       const installed = await detectInstalledTools();
@@ -98,7 +103,7 @@ describe('Modern Tools', () => {
       const bat = details.find((d) => d.name === 'bat');
 
       expect(eza?.available).toBe(true);
-      expect(eza?.path).toBe('/usr/bin/eza');
+      expect(eza?.path).toBe(asAbsolutePath('/usr/bin/eza'));
       expect(eza?.replaces).toBe('ls');
       expect(bat?.available).toBe(false);
       expect(bat?.path).toBeUndefined();

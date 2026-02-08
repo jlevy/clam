@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'bun:test';
+import { updateInputStateWithTokens } from '../../input/parser.js';
+import { createInputState } from '../../input/state.js';
+import { CompletionGroup } from '../types.js';
 import type { SlashCompleter } from './slash-completer.js';
 import { createSlashCompleter } from './slash-completer.js';
-import { CompletionGroup } from '../types.js';
-import { createInputState } from '../../input/state.js';
-import { updateInputStateWithTokens } from '../../input/parser.js';
 
 describe('SlashCompleter', () => {
   let completer: SlashCompleter;

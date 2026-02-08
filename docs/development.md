@@ -5,19 +5,19 @@ This document covers development setup and workflows for `get-clam` (the clam CL
 ## Prerequisites
 
 - Node.js >= 22
-- pnpm (will be installed automatically via corepack)
+- [Bun](https://bun.sh/) >= 1.3
 
 ## Setup
 
 ```bash
-# Enable corepack (includes pnpm)
-corepack enable
+# Install Bun (if not already installed)
+curl -fsSL https://bun.sh/install | bash
 
 # Install dependencies
-pnpm install
+bun install
 
 # Install git hooks
-pnpm prepare
+bun run prepare
 ```
 
 ## Development Workflow
@@ -27,8 +27,8 @@ pnpm prepare
 During development, run the CLI directly from TypeScript source (no build needed):
 
 ```bash
-pnpm clam --help
-pnpm clam
+bun run clam --help
+bun run clam
 ```
 
 ### Running the built CLI
@@ -36,8 +36,8 @@ pnpm clam
 To test the production build:
 
 ```bash
-pnpm build
-node packages/clam/dist/bin.mjs --help
+bun run build
+node packages/clam/dist/bin.js --help
 ```
 
 ### Testing the packaged installation
@@ -46,13 +46,13 @@ To test the CLI exactly as users would install it from npm:
 
 ```bash
 # Build, pack, and install globally (like npm install -g get-clam)
-pnpm test:install
+bun run test:install
 
 # Test the installed binary
 clam --help
 
 # Uninstall when done
-pnpm test:uninstall
+bun run test:uninstall
 ```
 
 This creates an npm tarball and installs from it, validating the full package structure.
@@ -61,49 +61,49 @@ This creates an npm tarball and installs from it, validating the full package st
 
 ```bash
 # Build all packages
-pnpm build
+bun run build
 
 # Watch mode for development
-pnpm clam:dev
+bun run clam:dev
 ```
 
 ### Testing
 
 ```bash
 # Run tests
-pnpm test
+bun run test
 
 # Run tests with coverage
-pnpm test:coverage
+bun run test:coverage
 
 # Watch mode
-pnpm --filter get-clam test:watch
+bun run --filter get-clam test:watch
 ```
 
 ### Formatting and Linting
 
 ```bash
 # Format code (auto-fix)
-pnpm format
+bun run format
 
 # Check formatting (CI)
-pnpm format:check
+bun run format:check
 
 # Lint with auto-fix
-pnpm lint
+bun run lint
 
 # Lint check only (CI)
-pnpm lint:check
+bun run lint:check
 
 # Type check
-pnpm typecheck
+bun run typecheck
 ```
 
 ### Validating Package
 
 ```bash
 # Validate package.json exports
-pnpm publint
+bun run publint
 ```
 
 ### Pre-commit Checks
@@ -111,7 +111,7 @@ pnpm publint
 Run all checks before committing:
 
 ```bash
-pnpm precommit
+bun run precommit
 ```
 
 This runs format, lint, build, and test.
@@ -171,18 +171,19 @@ chore: Update dependencies
 ### Notes
 
 - Keep the first line under 72 characters
-- Use imperative mood ("Add feature" not "Added feature")
+- Use imperative mood ("Add feature" not “Added feature”)
 
 ## Creating Releases
 
-We use [Changesets](https://github.com/changesets/changesets) for versioning. See [publishing.md](publishing.md) for the full release process.
+We use [Changesets](https://github.com/changesets/changesets) for versioning.
+See [publishing.md](publishing.md) for the full release process.
 
 ### Adding a changeset
 
 When making a change that should be included in a release:
 
 ```bash
-pnpm changeset
+bun run changeset
 ```
 
 Follow the prompts to describe your change and select the version bump type.

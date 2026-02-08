@@ -1,8 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import {
-  RECOMMENDED_COMMANDS,
-  isRecommendedCommand,
   getCommandCategory,
+  isRecommendedCommand,
+  RECOMMENDED_COMMANDS,
 } from './recommended-commands.js';
 
 describe('Recommended Commands', () => {

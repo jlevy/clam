@@ -14,7 +14,11 @@
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import * as readline from 'node:readline';
-import { formatConfig, type ClamCodeConfig } from './config.js';
+import {
+  type CompletionIntegration,
+  createCompletionIntegration,
+} from './completion/integration.js';
+import { type ClamCodeConfig, formatConfig } from './config.js';
 import {
   colors,
   getColorForMode,
@@ -23,15 +27,11 @@ import {
   modeVisualConfig,
   promptChars,
 } from './formatting.js';
-import type { ModeDetector, InputMode } from './mode-detection.js';
+import type { InputMode, ModeDetector } from './mode-detection.js';
 import { isExplicitShell, stripShellTrigger, suggestCommand } from './mode-detection.js';
 import type { OutputWriter } from './output.js';
+import { createCommandTimer, formatExitCode, isDirectoryPath } from './shell/index.js';
 import type { ShellModule } from './shell.js';
-import { isDirectoryPath, formatExitCode, createCommandTimer } from './shell/index.js';
-import {
-  createCompletionIntegration,
-  type CompletionIntegration,
-} from './completion/integration.js';
 
 /** Check if stdout is a TTY for cursor control sequences */
 const isTTY = process.stdout.isTTY ?? false;
@@ -115,7 +115,6 @@ export class InputReader {
   private completionAcceptedText: string | null = null; // Text to re-insert after completion accept
   private suppressPromptNewline = false; // Suppress leading newline after completion accept
   private entityCompletionCursor: number | null = null; // Cursor position for entity completion insertion
-  private waitingForPermission = false; // When true, keypresses are captured for permission prompt
 
   constructor(options: InputReaderOptions) {
     this.options = options;
@@ -165,28 +164,6 @@ export class InputReader {
     } catch {
       // Ignore errors saving history
     }
-  }
-
-  /**
-   * Remove the most recent entry from readline history.
-   * Useful for removing ephemeral inputs like permission responses (A/a/d/D)
-   * that shouldn't pollute command history.
-   */
-  removeLastHistoryEntry(): void {
-    if (!this.rl) return;
-    const rlHistory = (this.rl as readline.Interface & { history?: string[] }).history;
-    if (rlHistory && rlHistory.length > 0) {
-      rlHistory.shift(); // Remove the first entry (most recent, since history is in reverse order)
-    }
-  }
-
-  /**
-   * Set permission waiting state.
-   * When true, the keypress handler captures a/A/d/D and Enter directly,
-   * bypassing mode detection and readline processing.
-   */
-  setWaitingForPermission(waiting: boolean): void {
-    this.waitingForPermission = waiting;
   }
 
   /**
@@ -563,41 +540,6 @@ export class InputReader {
     const keypressHandler = (_ch: string, key: readline.Key | undefined) => {
       if (!key) return;
 
-      // === PERMISSION MODE: Capture single keypress for permission confirmation ===
-      if (this.waitingForPermission) {
-        const seq = key.sequence ?? '';
-        const validKeys = ['a', 'A', 'd', 'D'];
-        const isEnter = key.name === 'return';
-
-        if (validKeys.includes(seq) || isEnter) {
-          // Submit the permission response immediately
-          // For Enter, submit 'a' as default (allow once)
-          const response = isEnter ? 'a' : seq;
-
-          if (this.rl) {
-            // Clear any partial input and write the response
-            const rlInternal = this.rl as readline.Interface & { line: string; cursor: number };
-            rlInternal.line = response;
-            rlInternal.cursor = response.length;
-
-            // Simulate Enter to submit through readline
-            // Use write to inject the response and a newline
-            setImmediate(() => {
-              if (this.rl) {
-                // Clear readline buffer and write our response
-                (this.rl as readline.Interface & { line: string; cursor: number }).line = '';
-                (this.rl as readline.Interface & { line: string; cursor: number }).cursor = 0;
-                this.rl.write(response + '\n');
-              }
-            });
-          }
-          return; // Consume the keypress
-        }
-
-        // Ignore all other keypresses during permission mode
-        return;
-      }
-
       const currentLine = this.rl?.line ?? '';
       const modeDetector = this.options.modeDetector;
 
@@ -750,7 +692,7 @@ export class InputReader {
             const atPos = this.entityCompletionCursor;
             const beforeAt = oldLine.slice(0, atPos);
             const afterCursor = oldLine.slice(cursorPos);
-            newLine = beforeAt + result.insertText + ' ' + afterCursor;
+            newLine = `${beforeAt + result.insertText} ${afterCursor}`;
             this.entityCompletionCursor = null;
           } else {
             // Command/other completion: find start of current token and replace it
@@ -761,7 +703,7 @@ export class InputReader {
             }
             const beforeToken = oldLine.slice(0, tokenStart);
             const afterCursor = oldLine.slice(cursorPos);
-            newLine = beforeToken + result.insertText + ' ' + afterCursor;
+            newLine = `${beforeToken + result.insertText} ${afterCursor}`;
           }
 
           // Store the complete new line to re-insert after the Enter is processed

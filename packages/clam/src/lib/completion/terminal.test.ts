@@ -1,16 +1,16 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import {
   ANSI,
-  saveCursor,
-  restoreCursor,
-  hideCursor,
-  showCursor,
   clearLine,
-  clearToEndOfLine,
-  moveUp,
-  moveDown,
-  wrapMenuRender,
   clearMenu,
+  clearToEndOfLine,
+  hideCursor,
+  moveDown,
+  moveUp,
+  restoreCursor,
+  saveCursor,
+  showCursor,
+  wrapMenuRender,
 } from './terminal.js';
 
 describe('terminal utilities', () => {

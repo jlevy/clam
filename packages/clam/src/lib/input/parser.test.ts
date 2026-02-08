@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import { tokenize, updateInputStateWithTokens } from './parser.js';
 import { createInputState } from './state.js';
 

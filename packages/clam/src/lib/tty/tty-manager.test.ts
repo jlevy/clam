@@ -5,12 +5,12 @@
  * focus on the logic that can be tested without a real TTY.
  */
 
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, jest } from 'bun:test';
 import {
-  saveTtyState,
-  restoreTtyState,
   disableRawMode,
   enableRawMode,
+  restoreTtyState,
+  saveTtyState,
   withTtyManagement,
 } from './tty-manager.js';
 
@@ -62,7 +62,7 @@ describe('TTY Manager', () => {
 
   describe('withTtyManagement', () => {
     it('executes the provided function', async () => {
-      const fn = vi.fn().mockResolvedValue('result');
+      const fn = jest.fn().mockResolvedValue('result');
       const result = await withTtyManagement(fn);
       expect(fn).toHaveBeenCalled();
       expect(result).toBe('result');
@@ -80,7 +80,7 @@ describe('TTY Manager', () => {
 
     it('restores state even when function throws', async () => {
       // Even if the function throws, restoreTtyState should be called
-      const fn = vi.fn().mockRejectedValue(new Error('test'));
+      const fn = jest.fn().mockRejectedValue(new Error('test'));
 
       try {
         await withTtyManagement(fn);

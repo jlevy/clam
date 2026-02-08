@@ -4,7 +4,7 @@
  * Tests the full flow from streaming chunks through formatted output,
  * verifying end-to-end behavior across all block types.
  */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it } from 'bun:test';
 
 import { createBlockRenderer, type StreamRenderer } from './index.js';
 

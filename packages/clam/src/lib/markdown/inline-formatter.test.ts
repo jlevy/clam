@@ -1,5 +1,5 @@
+import { describe, expect, it } from 'bun:test';
 import pc from 'picocolors';
-import { describe, expect, it } from 'vitest';
 
 import { formatInline, hasUnclosedFormatting } from './inline-formatter.js';
 
