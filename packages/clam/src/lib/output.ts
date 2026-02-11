@@ -267,14 +267,11 @@ export function createOutputWriter(options: OutputWriterOptions = {}): OutputWri
     },
 
     // Interactive elements
-    permissionPrompt(tool: string, command: string, options: PermissionOption[]): void {
+    permissionPrompt(tool: string, command: string, _options: PermissionOption[]): void {
       // TODO: Clam code upgrade point - becomes clickable button overlay
       //
-      // Letter shortcuts for permission options:
-      //   a = allow once     A = allow always
-      //   d = deny once      D = deny always
-      //
-      // Left-border-only layout with YAML-like key: value formatting
+      // This function only renders the header/context.
+      // The actual options are displayed by selectMenu in bin.ts.
 
       // Ensure we're on a fresh line before permission prompt
       ensureNewline();
@@ -289,74 +286,6 @@ export function createOutputWriter(options: OutputWriterOptions = {}): OutputWri
         writeLine(border + colors.muted('command: ') + colors.permissionCommand(command));
       }
       writeLine(border);
-
-      // Map options to letter shortcuts based on kind
-      const optionKeys: { key: string; option: PermissionOption }[] = [];
-      for (const opt of options) {
-        let key: string;
-        switch (opt.kind) {
-          case 'allow_once':
-            key = 'a';
-            break;
-          case 'allow_always':
-            key = 'A';
-            break;
-          case 'reject_once':
-            key = 'd';
-            break;
-          case 'reject_always':
-            key = 'D';
-            break;
-          default:
-            key = String(optionKeys.length + 1);
-        }
-        optionKeys.push({ key, option: opt });
-      }
-
-      // Display options in a 2x2 grid if we have 4 options
-      if (optionKeys.length === 4) {
-        // Row 1: allow options
-        const allowOnce = optionKeys.find((o) => o.option.kind === 'allow_once');
-        const allowAlways = optionKeys.find((o) => o.option.kind === 'allow_always');
-        // Row 2: deny options
-        const denyOnce = optionKeys.find((o) => o.option.kind === 'reject_once');
-        const denyAlways = optionKeys.find((o) => o.option.kind === 'reject_always');
-
-        if (allowOnce && allowAlways) {
-          writeLine(
-            border +
-              colors.permissionKey(`[${allowOnce.key}]`) +
-              ' ' +
-              colors.permissionAllow(allowOnce.option.name.padEnd(16)) +
-              colors.permissionKey(`[${allowAlways.key}]`) +
-              ' ' +
-              colors.permissionAllow(allowAlways.option.name)
-          );
-        }
-        if (denyOnce && denyAlways) {
-          writeLine(
-            border +
-              colors.permissionKey(`[${denyOnce.key}]`) +
-              ' ' +
-              colors.permissionDeny(denyOnce.option.name.padEnd(16)) +
-              colors.permissionKey(`[${denyAlways.key}]`) +
-              ' ' +
-              colors.permissionDeny(denyAlways.option.name)
-          );
-        }
-      } else {
-        // Fallback: list all options vertically
-        for (const { key, option } of optionKeys) {
-          const isAllow = option.kind.startsWith('allow');
-          const colorFn = isAllow ? colors.permissionAllow : colors.permissionDeny;
-          writeLine(`${border}${colors.permissionKey(`[${key}]`)} ${colorFn(option.name)}`);
-        }
-      }
-
-      writeLine(border);
-      // Build prompt from actual available keys
-      const keyList = optionKeys.map((o) => o.key).join('/');
-      write(colors.bold(`Choice (${keyList}): `));
     },
 
     thinking(charCount: number): void {

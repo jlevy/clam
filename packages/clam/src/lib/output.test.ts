@@ -175,7 +175,7 @@ describe('OutputWriter', () => {
   });
 
   describe('permission prompt', () => {
-    it('should display tool, command, and letter-based options', () => {
+    it('should display tool and command header (options handled by selectMenu)', () => {
       output.permissionPrompt('bash', 'rm -rf node_modules', [
         { id: '1', name: 'Allow once', kind: 'allow_once' },
         { id: '2', name: 'Allow always', kind: 'allow_always' },
@@ -183,16 +183,13 @@ describe('OutputWriter', () => {
         { id: '4', name: 'Reject always', kind: 'reject_always' },
       ]);
       const result = mock.getOutput();
+      // permissionPrompt only shows header/context - selectMenu handles options
       expect(result).toContain('Permission Required');
       expect(result).toContain('bash');
       expect(result).toContain('rm -rf node_modules');
-      // Letter-based shortcuts: a=allow_once, A=allow_always, d=reject_once, D=reject_always
-      expect(result).toContain('[a]');
-      expect(result).toContain('[A]');
-      expect(result).toContain('[d]');
-      expect(result).toContain('[D]');
-      expect(result).toContain('Allow once');
-      expect(result).toContain('Allow always');
+      // Options are NOT displayed here - they're handled by selectMenu in bin.ts
+      expect(result).not.toContain('[a]');
+      expect(result).not.toContain('Allow once');
     });
   });
 
