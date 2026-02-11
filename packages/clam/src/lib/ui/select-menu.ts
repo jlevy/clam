@@ -8,6 +8,13 @@
 import pc from 'picocolors';
 
 /**
+ * Flag indicating whether selectMenu is currently active.
+ * Other input handlers (like readline keypress handlers) should
+ * check this and skip processing to avoid interference.
+ */
+export let isSelectMenuActive = false;
+
+/**
  * An option in the select menu.
  */
 export interface SelectOption {
@@ -129,6 +136,16 @@ export async function selectMenu(message: string, options: SelectOption[]): Prom
     render();
   };
 
+  // Mark selectMenu as active to prevent interference from other handlers
+  isSelectMenuActive = true;
+
+  // Store and remove ALL existing 'data' listeners to prevent readline interference
+  // This is critical: readline processes keystrokes at a low level before our handlers
+  const existingDataListeners = stdin.listeners('data') as ((...args: unknown[]) => void)[];
+  for (const listener of existingDataListeners) {
+    stdin.removeListener('data', listener);
+  }
+
   // Initial render
   render();
 
@@ -137,12 +154,21 @@ export async function selectMenu(message: string, options: SelectOption[]): Prom
     stdin.setRawMode(true);
     stdin.resume();
 
+    // Track when we started to ignore stale buffered data
+    const startTime = Date.now();
+    const DEBOUNCE_MS = 50; // Ignore data arriving within 50ms of start
+
     const cleanup = () => {
       stdin.removeListener('data', handleData);
       if (!wasRaw) {
         stdin.setRawMode(false);
       }
-      stdin.pause();
+      // Restore the original data listeners for readline
+      for (const listener of existingDataListeners) {
+        stdin.on('data', listener);
+      }
+      // Clear the active flag so other handlers resume normal operation
+      isSelectMenuActive = false;
     };
 
     const finish = (result: SelectResult) => {
@@ -153,6 +179,12 @@ export async function selectMenu(message: string, options: SelectOption[]): Prom
     };
 
     const handleData = (data: Buffer) => {
+      // Ignore stale buffered data that arrives immediately after starting
+      // This prevents auto-selection from leftover stdin data
+      if (Date.now() - startTime < DEBOUNCE_MS) {
+        return;
+      }
+
       const key = data.toString();
 
       // Check for shortcut keys first (single character)
