@@ -16,7 +16,7 @@ kind: epic
 labels: []
 priority: 2
 spec_path: docs/project/specs/active/plan-2026-02-05-bun-ecosystem-migration-spike.md
-status: open
+status: closed
 title: "Spec: Complete Bun Migration Spike (Phases 5-7)"
 type: is
 updated_at: 2026-02-05T09:25:52.108Z

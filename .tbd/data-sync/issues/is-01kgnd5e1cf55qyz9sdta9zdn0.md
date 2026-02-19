@@ -12,7 +12,7 @@ id: is-01kgnd5e1cf55qyz9sdta9zdn0
 kind: epic
 labels: []
 priority: 2
-status: open
+status: closed
 title: "Enhanced mode detection: ambiguous and nothing modes"
 type: is
 updated_at: 2026-02-06T01:30:44.271Z

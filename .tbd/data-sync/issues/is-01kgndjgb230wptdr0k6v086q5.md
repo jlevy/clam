@@ -5,7 +5,7 @@ id: is-01kgndjgb230wptdr0k6v086q5
 kind: bug
 labels: []
 priority: 2
-status: open
+status: closed
 title: Empty prompt Enter should erase prompt line, not show two blank prompts
 type: is
 updated_at: 2026-02-06T01:30:44.312Z

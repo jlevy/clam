@@ -9,7 +9,7 @@ labels: []
 parent_id: is-01kgpbbnhx2x9e14s4fbv24k6k
 priority: 2
 spec_path: docs/project/specs/active/plan-2026-02-05-bun-ecosystem-migration-spike.md
-status: open
+status: closed
 title: "Phase 2: Replace tsdown with Bunup"
 type: is
 updated_at: 2026-02-05T07:31:40.843Z

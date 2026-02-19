@@ -7,7 +7,7 @@ id: is-01kgpm4v2fkf09snym8xg8mp2q
 kind: epic
 labels: []
 priority: 1
-status: open
+status: closed
 title: Completion system bugs and polish
 type: is
 updated_at: 2026-02-06T01:30:44.776Z

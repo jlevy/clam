@@ -8,7 +8,7 @@ kind: bug
 labels: []
 priority: 1
 spec_path: docs/project/specs/active/plan-2026-02-05-shell-polish.md
-status: open
+status: closed
 title: Fix interactive command handling (bash/vim terminal corruption)
 type: is
 updated_at: 2026-02-06T01:56:17.578Z

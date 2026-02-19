@@ -7,7 +7,7 @@ id: is-01kgn3706deecr3ry3n2gqzfxh
 kind: task
 labels: []
 priority: 2
-status: open
+status: closed
 title: Add getColorForMode() helper to formatting.ts for input mode colors
 type: is
 updated_at: 2026-02-04T19:49:18.667Z

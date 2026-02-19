@@ -8,7 +8,7 @@ kind: task
 labels: []
 priority: 1
 spec_path: docs/project/specs/active/plan-2026-02-06-confirmation-dialog-fix.md
-status: open
+status: closed
 title: Create reusable SelectMenu component for terminal UI
 type: is
 updated_at: 2026-02-06T21:15:46.360Z

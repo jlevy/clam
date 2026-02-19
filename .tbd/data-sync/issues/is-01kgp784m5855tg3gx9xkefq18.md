@@ -5,7 +5,7 @@ id: is-01kgp784m5855tg3gx9xkefq18
 kind: task
 labels: []
 priority: 2
-status: open
+status: closed
 title: Port kash tldr_standard_commands.sh recipe snippets data file
 type: is
 updated_at: 2026-02-06T01:30:44.336Z

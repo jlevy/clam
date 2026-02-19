@@ -12,7 +12,7 @@ kind: epic
 labels: []
 priority: 1
 spec_path: docs/project/specs/active/plan-2026-02-07-kerm-first-terminal-ui.md
-status: open
+status: closed
 title: "Phase 1: Fix broken permission input"
 type: is
 updated_at: 2026-02-07T09:13:29.859Z

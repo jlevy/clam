@@ -9,7 +9,7 @@ labels: []
 parent_id: is-01kgphvp7rpf7358bcwdrh42tw
 priority: 2
 spec_path: docs/project/specs/active/plan-2026-02-05-bun-ecosystem-migration-spike.md
-status: open
+status: closed
 title: "Phase 5c: Verify bun-types in package dependencies"
 type: is
 updated_at: 2026-02-05T09:26:26.157Z

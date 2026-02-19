@@ -8,7 +8,7 @@ kind: feature
 labels: []
 priority: 2
 spec_path: docs/project/specs/active/plan-2026-02-05-shell-polish.md
-status: open
+status: closed
 title: Modern tool detection and startup display
 type: is
 updated_at: 2026-02-06T01:56:17.592Z

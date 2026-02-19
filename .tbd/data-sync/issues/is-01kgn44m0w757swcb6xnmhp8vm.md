@@ -6,7 +6,7 @@ kind: feature
 labels: []
 priority: 2
 spec_path: docs/project/specs/active/plan-2026-02-04-automatic-input-suggestions.md
-status: open
+status: closed
 title: Implement @ menu trigger for file/entity mentions
 type: is
 updated_at: 2026-02-06T01:30:44.213Z
