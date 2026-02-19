@@ -716,9 +716,489 @@ Shell mode (white, single Enter):
 - “echo $HOME” - has $ variable
 - “a > b” - has redirect operator
 
+### Issue 11: @ Sign Inserted in Shell Commands (clam-ek39)
+
+**Current Behavior:**
+
+When using @ to trigger file completion in shell mode:
+
+```
+$ ls @
+  □ biome.json
+> □ README.md
+
+[User selects README.md]
+
+$ ls @README.md               ← @ incorrectly kept in command
+"@README.md": No such file or directory
+```
+
+**Expected Behavior:**
+
+The @ is a trigger character that should be completely replaced:
+
+```
+$ ls @
+> □ README.md
+
+[User selects]
+
+$ ls README.md                ← @ replaced with just filename
+```
+
+**Root Cause:**
+
+In `entity-completer.ts:99`, the completion value includes the @ prefix:
+```typescript
+value: `@${file}`,  // BUG: Returns "@package.json" instead of "package.json"
+```
+
+The insertion logic at `input.ts:700` already handles replacement correctly, but since
+the value contains @, it gets doubled.
+
+**Fix:**
+
+Change `entity-completer.ts:99` to return just the filename without @:
+```typescript
+value: file,  // Returns "package.json"
+```
+
+### Issue 12: Duplicate Prompts When Accepting @ Completion (clam-82oz)
+
+**Current Behavior:**
+
+When completing with @, duplicate prompts appear:
+
+```
+$ ls @
+> □ biome.json
+
+[User presses Enter]
+
+▶ ls biome.json               ← NL prompt (wrong mode)
+$ ls biome.json               ← Shell prompt (correct but duplicated)
+```
+
+**Expected Behavior:**
+
+Single clean line after completion:
+
+```
+$ ls biome.json               ← Single shell prompt
+```
+
+**Root Cause:**
+
+The completion acceptance flow at `input.ts:1138-1166` doesn’t properly:
+1. Clear all lines including the old input and any menu remnants
+2. Track that we need more than 2 lines of cleanup when menu was visible
+
+### Issue 13: Mode Confusion During @ Completion (clam-au0s)
+
+**Current Behavior:**
+
+After @ completion, the prompt shows NL mode (▶) even though we were in shell mode ($):
+
+```
+▶ ls biome.json               ← Shows NL prompt character
+$ ls biome.json               ← Should be shell prompt
+```
+
+**Root Cause:**
+
+At `input.ts:1160-1163`, after writing the completion text via `rl.write()`, the mode is
+re-detected from the new text:
+```typescript
+const mode = this.options.modeDetector?.detectModeSync(textToInsert) ?? 'shell';
+this.currentInputMode = mode;
+```
+
+But mode detection on “ls biome.json” might incorrectly classify it.
+The original mode (shell) should be preserved instead of re-detecting.
+
+**Fix:**
+
+Store the original mode before completion and restore it after:
+```typescript
+const originalMode = this.currentInputMode;  // Before clearing
+// ... after rl.write() ...
+this.currentInputMode = originalMode;  // Restore, don't re-detect
+```
+
+### Issue 14: Incremental Search After @ (clam-hcbm)
+
+**Current Behavior:**
+
+After typing @, the completion menu appears.
+But typing more letters DISMISSES the menu instead of filtering results:
+
+```
+$ ls @
+  □ biome.json
+  □ bun.lock
+  □ package.json
+  □ README.md
+
+[User types 'b']
+
+$                              ← Menu dismissed, back to normal input
+```
+
+**Expected Behavior:**
+
+Typing after @ should filter the completion list (like fish/zsh):
+
+```
+$ ls @
+  □ biome.json
+  □ bun.lock
+  □ package.json
+  □ README.md
+
+[User types 'b']
+
+$ ls @b
+  □ biome.json
+  □ bun.lock
+
+[User types 'i']
+
+$ ls @bi
+  □ biome.json
+
+[User presses Enter]
+
+$ ls biome.json
+```
+
+**Root Cause:**
+
+At `input.ts:740-755`, the “any other key” handler dismisses the completion menu when
+any letter is typed:
+```typescript
+if (completionMenuTriggered && !['tab', 'up', 'down', 'return', 'escape'].includes(key.name ?? '')) {
+  // ... dismisses menu ...
+  completionMenuTriggered = false;
+  this.completionIntegration.reset();
+}
+```
+
+**Fix:**
+
+When @ entity completion is active (`entityCompletionCursor !== null`), typing letters
+should call `updateCompletions()` with the new prefix instead of dismissing the menu.
+
+### Issue 15: Tab Completion Should Use Incremental Search (clam-42m0)
+
+**Current Behavior:**
+
+Tab completion for file arguments in shell mode shows the menu but typing more letters
+dismisses it instead of filtering:
+
+```
+$ cat b<tab>
+  □ biome.json
+  □ bun.lock
+
+[User types 'i']
+
+$ cat bi                        ← Menu dismissed
+```
+
+**Expected Behavior:**
+
+Tab should trigger the same incremental search as @ for file arguments:
+
+```
+$ cat b<tab>
+  □ biome.json
+  □ bun.lock
+
+[User types 'i']
+
+$ cat bi
+  □ biome.json
+
+[User presses Enter]
+
+$ cat biome.json
+```
+
+**Root Cause:**
+
+The Tab handler in `input.ts` sets `entityCompletionCursor` for argument position, but
+the entity completer’s `isRelevant()` only returns true for:
+1. `state.isEntityTrigger` (@ token type)
+2. `state.prefix.startsWith('@')`
+
+For Tab completion of “cat b”, neither condition is true.
+
+**Fix:**
+
+Modify `entity-completer.ts:isRelevant()` to also return true for shell mode when in
+argument position (tokenIndex > 0):
+```typescript
+isRelevant(state: InputState): boolean {
+  if (state.isEntityTrigger || state.prefix.startsWith('@')) {
+    return true;
+  }
+  // Also relevant for shell mode arguments (Tab completion on files)
+  if (state.mode === 'shell' && state.tokenIndex > 0) {
+    return true;
+  }
+  return false;
+}
+```
+
+### Phase 10: Fix @ Entity Completion Bugs (clam-wb8b Epic)
+
+- [x] Fix Issue 11: Remove @ from completion value in `entity-completer.ts`
+- [x] Fix Issue 12: Proper line clearing during completion acceptance
+- [x] Fix Issue 13: Preserve original mode instead of re-detecting
+- [x] Fix Issue 14: Add incremental filtering for @ completions
+- [x] Fix Issue 15: Tab completion incremental search for file arguments
+- [x] Test all fixes work together
+
+### Issue 16: Directory Traversal in Tab Completion (clam-uq0t)
+
+**Current Behavior:**
+
+Tab completion only shows files in the current directory:
+
+```
+$ ls -l d<tab>
+  □ docs/
+
+[User selects docs/]
+
+$ ls -l docs/
+  (nothing happens - completion stops)
+```
+
+**Expected Behavior:**
+
+When prefix contains `/`, complete within that directory:
+
+```
+$ ls -l d<tab>
+  □ docs/
+
+[User types or selects docs/]
+
+$ ls -l docs/<tab>
+  □ docs/architecture/
+  □ docs/project/
+  □ docs/README.md
+```
+
+* * *
+
+## Design: Path Completion Architecture
+
+### Xonsh Reference Implementation
+
+Xonsh’s path completion (`attic/xonsh/xonsh/completers/path.py`) provides a robust
+model:
+
+**Key mechanisms:**
+
+1. **Glob-based completion** - `iglobpath(prefix + "*")` matches files
+2. **Directory detection** - `os.path.isdir()` appends “/” to directories
+3. **Path normalization** - `_normpath()` preserves “./”, trailing “/”
+4. **Quote handling** - Proper escaping for paths with spaces
+5. **Subsequence matching** - Fallback for `~/u/ro` → `~/lou/carcolh`
+6. **CDPATH support** - For `cd` commands, search CDPATH directories
+
+**CompletionContext** (from xonsh):
+```python
+context.command.raw_prefix  # The partial path: "docs/ar"
+context.command.arg_index   # Which argument position (0=command)
+```
+
+### Clam Design: Unified Path Completion
+
+#### Core Abstraction: `PathCompleter`
+
+Rename/extend `EntityCompleter` to `PathCompleter` that handles both:
+- `@` entity mentions (existing)
+- Tab-triggered file arguments (existing)
+- Directory traversal (new)
+
+**Key insight:** The completer should work with `prefix` that may contain path
+separators. When prefix is `docs/ar`, complete files in `docs/` matching `ar*`.
+
+#### Implementation: `getFilesForPrefix()`
+
+```typescript
+/**
+ * Get files matching a prefix, handling directory traversal.
+ *
+ * Examples:
+ * - prefix="" → files in cwd
+ * - prefix="d" → files in cwd starting with 'd'
+ * - prefix="docs/" → files in docs/
+ * - prefix="docs/ar" → files in docs/ starting with 'ar'
+ */
+function getFilesForPrefix(cwd: string, prefix: string): PathCompletion[] {
+  // 1. Parse prefix into directory + filename prefix
+  const lastSlash = prefix.lastIndexOf('/');
+  const dirPart = lastSlash >= 0 ? prefix.slice(0, lastSlash + 1) : '';
+  const filePart = lastSlash >= 0 ? prefix.slice(lastSlash + 1) : prefix;
+
+  // 2. Resolve target directory
+  const targetDir = path.resolve(cwd, dirPart || '.');
+
+  // 3. Read directory and filter
+  const entries = readdirSync(targetDir);
+  const completions: PathCompletion[] = [];
+
+  for (const entry of entries) {
+    // Skip hidden files unless prefix starts with .
+    if (entry.startsWith('.') && !filePart.startsWith('.')) continue;
+
+    // Filter by prefix
+    if (filePart && !entry.toLowerCase().startsWith(filePart.toLowerCase())) {
+      continue;
+    }
+
+    // Check if directory
+    const fullPath = path.join(targetDir, entry);
+    const isDir = statSync(fullPath).isDirectory();
+
+    // Build completion value (preserve dirPart)
+    const value = dirPart + entry + (isDir ? '/' : '');
+
+    completions.push({
+      value,
+      display: entry + (isDir ? '/' : ''),
+      isDirectory: isDir,
+    });
+  }
+
+  return completions;
+}
+```
+
+#### Changes to Entity Completer
+
+```typescript
+// entity-completer.ts
+
+getCompletions(state: InputState): Promise<Completion[]> {
+  const rawPrefix = state.prefix.trim();
+  const prefix = rawPrefix.startsWith('@') ? rawPrefix.slice(1) : rawPrefix;
+
+  // NEW: Handle path with directory components
+  const files = getFilesForPrefix(state.cwd, prefix);
+
+  // ... rest of completion logic
+}
+```
+
+#### Insertion Logic Update
+
+When inserting a path completion, preserve the path structure:
+
+```typescript
+// input.ts - completion insertion
+
+if (this.entityCompletionCursor !== null) {
+  const insertPos = this.entityCompletionCursor;
+  const beforeInsert = oldLine.slice(0, insertPos);
+  const afterCursor = oldLine.slice(cursorPos);
+
+  // result.insertText is already the full path (e.g., "docs/architecture/")
+  const separator = afterCursor.length > 0 && !afterCursor.startsWith(' ') ? ' ' : '';
+
+  // Don't add space if completion ends with / (more paths to come)
+  const needsSpace = !result.insertText.endsWith('/');
+  newLine = `${beforeInsert}${result.insertText}${needsSpace ? separator : ''}${afterCursor}`;
+}
+```
+
+#### Directory Completion Behavior
+
+When a directory is selected:
+1. Insert `dirname/` (with trailing slash)
+2. Keep completion menu open (or re-trigger on next keystroke)
+3. Allow immediate Tab to show contents
+
+**Option A: Auto-continue completion**
+```
+$ cat docs/<enter>
+→ docs/ is inserted
+→ Completion menu immediately shows docs/* contents
+```
+
+**Option B: Re-trigger on Tab**
+```
+$ cat docs/<enter>
+→ docs/ is inserted, menu closes
+$ cat docs/<tab>
+→ Menu shows docs/* contents
+```
+
+Option B is simpler and matches traditional shell behavior.
+Recommend this for v1.
+
+### InputState Changes
+
+Add path context to InputState:
+
+```typescript
+interface InputState {
+  // ... existing fields ...
+
+  /** The raw prefix including path separators */
+  rawPrefix: string;
+
+  /** Directory portion of path being completed (empty or ends with /) */
+  pathDir: string;
+
+  /** Filename portion of path being completed */
+  pathFile: string;
+}
+```
+
+Update `updateInputStateWithTokens()` to parse path components.
+
+### Phase 11: Directory Traversal Completion
+
+- [ ] Add `getFilesForPrefix()` helper function with directory parsing
+- [ ] Update `entity-completer.ts` to use `getFilesForPrefix()`
+- [ ] Update insertion logic to not add space after `/`
+- [ ] Add tests for directory traversal cases
+- [ ] Test edge cases: root paths, relative paths, hidden files
+
+### Test Cases
+
+**Basic directory traversal:**
+```
+ls d<tab>         → shows docs/
+ls docs/<tab>     → shows docs/* contents
+ls docs/p<tab>    → shows docs/project/
+```
+
+**Relative paths:**
+```
+cat ./<tab>       → shows ./* (current dir)
+cat ../<tab>      → shows ../* (parent dir)
+```
+
+**Nested paths:**
+```
+cat docs/project/specs/<tab>  → shows specs/* contents
+```
+
+**Hidden files:**
+```
+ls .<tab>         → shows .git/, .gitignore, etc.
+ls .g<tab>        → shows .git/, .gitignore (filtered)
+```
+
 ## Open Questions
 
-*None currently - awaiting additional issues from user*
+*None currently*
 
 ## References
 
@@ -732,3 +1212,5 @@ Shell mode (white, single Enter):
 - Reference: `repos/tbd/packages/tbd/src/lib/settings.ts` (YAML stringify options)
 - Reference: `repos/kash/src/kash/xonsh_custom/command_nl_utils.py` (NL detection
   algorithm)
+- Reference: `attic/xonsh/xonsh/completers/path.py` (xonsh path completion - key
+  patterns for directory traversal)

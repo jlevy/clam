@@ -32,6 +32,7 @@ import { isExplicitShell, stripShellTrigger, suggestCommand } from './mode-detec
 import type { OutputWriter } from './output.js';
 import { createCommandTimer, formatExitCode, isDirectoryPath } from './shell/index.js';
 import type { ShellModule } from './shell.js';
+import { isSelectMenuActive } from './ui/select-menu.js';
 
 /** Check if stdout is a TTY for cursor control sequences */
 const isTTY = process.stdout.isTTY ?? false;
@@ -115,6 +116,7 @@ export class InputReader {
   private completionAcceptedText: string | null = null; // Text to re-insert after completion accept
   private suppressPromptNewline = false; // Suppress leading newline after completion accept
   private entityCompletionCursor: number | null = null; // Cursor position for entity completion insertion
+  private entityCompletionMode: InputMode | null = null; // Mode when @ completion started (to preserve after accept)
 
   constructor(options: InputReaderOptions) {
     this.options = options;
@@ -540,6 +542,10 @@ export class InputReader {
     const keypressHandler = (_ch: string, key: readline.Key | undefined) => {
       if (!key) return;
 
+      // Skip processing when selectMenu is active to avoid interference
+      // (selectMenu handles its own input in raw mode)
+      if (isSelectMenuActive) return;
+
       const currentLine = this.rl?.line ?? '';
       const modeDetector = this.options.modeDetector;
 
@@ -561,6 +567,8 @@ export class InputReader {
             completionMenuTriggered = true;
             const mode = modeDetector?.detectModeSync(lineWithAt) ?? 'shell';
             const completionMode = mode === 'ambiguous' || mode === 'nothing' ? 'shell' : mode;
+            // Store the mode to preserve after completion (don't re-detect)
+            this.entityCompletionMode = completionMode;
             void this.completionIntegration
               .updateCompletions(lineWithAt, cursorPos, completionMode)
               .then(() => {
@@ -590,6 +598,21 @@ export class InputReader {
         if (!completionMenuTriggered) {
           // First Tab - trigger completions
           completionMenuTriggered = true;
+
+          // In shell mode, enable incremental search for file argument completion
+          // Find the start of the current token (word being completed)
+          if (completionMode === 'shell') {
+            let tokenStart = cursorPos;
+            while (tokenStart > 0 && !/\s/.test(currentLine[tokenStart - 1] ?? '')) {
+              tokenStart--;
+            }
+            // If we're completing an argument (not at start of line), enable entity-style completion
+            if (tokenStart > 0) {
+              this.entityCompletionCursor = tokenStart;
+              this.entityCompletionMode = completionMode;
+            }
+          }
+
           void this.completionIntegration
             .updateCompletions(currentLine, cursorPos, completionMode)
             .then(() => {
@@ -692,8 +715,11 @@ export class InputReader {
             const atPos = this.entityCompletionCursor;
             const beforeAt = oldLine.slice(0, atPos);
             const afterCursor = oldLine.slice(cursorPos);
-            newLine = `${beforeAt + result.insertText} ${afterCursor}`;
+            // Add space only if afterCursor has content and doesn't start with space
+            const separator = afterCursor.length > 0 && !afterCursor.startsWith(' ') ? ' ' : '';
+            newLine = `${beforeAt}${result.insertText}${separator}${afterCursor}`;
             this.entityCompletionCursor = null;
+            // Note: entityCompletionMode is cleared in prompt() after use
           } else {
             // Command/other completion: find start of current token and replace it
             // Look backwards from cursor to find start of current word
@@ -726,17 +752,72 @@ export class InputReader {
           process.stdout.write(`\x1b[${lineCount}A`);
         }
         completionMenuTriggered = false;
+        this.entityCompletionCursor = null;
+        this.entityCompletionMode = null;
         this.completionIntegration.reset();
         const mode = modeDetector?.detectModeSync(currentLine) ?? 'nl';
         this.recolorLine(currentLine, mode);
         return;
       }
 
-      // === ANY OTHER KEY: Dismiss completion menu if open ===
+      // === ANY OTHER KEY: Update @ completion with incremental search, or dismiss other menus ===
       if (
         completionMenuTriggered &&
         !['tab', 'up', 'down', 'return', 'escape'].includes(key.name ?? '')
       ) {
+        // Check if this is @ entity completion - support incremental filtering
+        if (this.entityCompletionCursor !== null) {
+          // Defer to after readline processes the keystroke
+          setImmediate(() => {
+            const updatedLine = this.rl?.line ?? '';
+            const cursorPos =
+              (this.rl as readline.Interface & { cursor?: number })?.cursor ?? updatedLine.length;
+
+            // Get previous menu line count for clearing
+            const prevLineCount = this.completionIntegration.getState().menuLines;
+
+            // Use stored mode for consistency - don't re-detect during completion
+            // This prevents confusing mode switches while typing
+            const storedMode = this.entityCompletionMode;
+            const completionMode =
+              storedMode === 'shell' || storedMode === 'nl' || storedMode === 'slash'
+                ? storedMode
+                : 'shell';
+            void this.completionIntegration
+              .updateCompletions(updatedLine, cursorPos, completionMode)
+              .then(() => {
+                // Clear old menu
+                if (prevLineCount > 0) {
+                  process.stdout.write('\x1b[s');
+                  process.stdout.write('\n');
+                  for (let i = 0; i < prevLineCount; i++) {
+                    process.stdout.write('\x1b[2K\n');
+                  }
+                  process.stdout.write(`\x1b[${prevLineCount}A`);
+                  process.stdout.write('\x1b[u');
+                }
+
+                if (this.completionIntegration.isActive()) {
+                  // Re-render menu with updated completions
+                  process.stdout.write('\x1b[s\x1b[0m\n');
+                  const menuOutput = this.completionIntegration.renderMenuRaw();
+                  if (menuOutput) {
+                    process.stdout.write(menuOutput);
+                  }
+                  process.stdout.write('\x1b[u');
+                } else {
+                  // No more matches - dismiss menu
+                  completionMenuTriggered = false;
+                  this.entityCompletionCursor = null;
+                  this.entityCompletionMode = null;
+                  this.completionIntegration.reset();
+                }
+              });
+          });
+          return; // Don't fall through to mode detection
+        }
+
+        // Non-entity completions - dismiss as before
         const lineCount = this.completionIntegration.getState().menuLines;
         if (lineCount > 0) {
           process.stdout.write('\n');
@@ -746,6 +827,8 @@ export class InputReader {
           process.stdout.write(`\x1b[${lineCount}A`);
         }
         completionMenuTriggered = false;
+        this.entityCompletionCursor = null;
+        this.entityCompletionMode = null;
         this.completionIntegration.reset();
       }
 
@@ -1135,13 +1218,22 @@ export class InputReader {
           const textToInsert = this.completionAcceptedText;
           this.completionAcceptedText = null;
 
+          // Use stored entity mode if available, otherwise detect
+          const storedMode = this.entityCompletionMode;
+          this.entityCompletionMode = null; // Clear after use
+
           // Readline processed Enter and added a newline, leaving us below the input line.
-          // We need to clear BOTH:
-          // 1. The line readline just moved to (after Enter)
-          // 2. The original partial input line above it
+          // We need to clear the lines that show the old input with @ prefix.
+          // When entity completion was active with incremental typing, there may be
+          // extra lines to clear due to menu clearing and cursor position changes.
           if (isTTY) {
             process.stdout.write('\x1b[2K'); // Clear current line
-            process.stdout.write('\x1b[1A\x1b[2K'); // Move up and clear original input line
+            process.stdout.write('\x1b[1A\x1b[2K'); // Move up and clear
+            // If entity completion was active, clear one more line up
+            // (the original input line with @ may still be visible above)
+            if (storedMode !== null) {
+              process.stdout.write('\x1b[1A\x1b[2K'); // Move up and clear again
+            }
           }
 
           // Suppress the leading newline so we print the new prompt cleanly.
@@ -1151,8 +1243,9 @@ export class InputReader {
           if (this.rl) {
             setImmediate(() => {
               this.rl?.write(textToInsert);
-              // Detect and set the mode for proper coloring
-              const mode = this.options.modeDetector?.detectModeSync(textToInsert) ?? 'shell';
+              // Use stored mode to preserve original (e.g., shell mode stays shell)
+              const mode =
+                storedMode ?? this.options.modeDetector?.detectModeSync(textToInsert) ?? 'shell';
               this.currentInputMode = mode;
               this.recolorLine(textToInsert, mode);
             });

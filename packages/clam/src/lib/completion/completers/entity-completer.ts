@@ -63,12 +63,23 @@ export function createEntityCompleter(): EntityCompleter {
 
     isRelevant(state: InputState): boolean {
       // Relevant when @ trigger detected or prefix starts with @
-      return state.isEntityTrigger || state.prefix.startsWith('@');
+      if (state.isEntityTrigger || state.prefix.startsWith('@')) {
+        return true;
+      }
+
+      // Also relevant for shell mode arguments (Tab completion on files)
+      // tokenIndex > 0 means we're past the command position
+      if (state.mode === 'shell' && state.tokenIndex > 0) {
+        return true;
+      }
+
+      return false;
     },
 
     getCompletions(state: InputState): Promise<Completion[]> {
-      // Strip @ from prefix
-      const rawPrefix = state.prefix;
+      // Strip @ from prefix and trim whitespace
+      // (whitespace prefix means cursor is after a space - show all files)
+      const rawPrefix = state.prefix.trim();
       const prefix = rawPrefix.startsWith('@') ? rawPrefix.slice(1) : rawPrefix;
 
       // Get files from current directory
@@ -96,7 +107,7 @@ export function createEntityCompleter(): EntityCompleter {
         const icon = isDir ? COMPLETION_ICONS.directory : COMPLETION_ICONS.file;
 
         completions.push({
-          value: `@${file}`,
+          value: file, // No @ prefix - insertion logic handles @ replacement
           display: file,
           group: CompletionGroup.Entity,
           score,

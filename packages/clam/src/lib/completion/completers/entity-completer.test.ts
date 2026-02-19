@@ -23,8 +23,22 @@ describe('EntityCompleter', () => {
       expect(completer.isRelevant(state)).toBe(true);
     });
 
-    it('should not be relevant without @ trigger', () => {
-      const state = updateInputStateWithTokens(createInputState('git status', 10, 'shell', '/'));
+    it('should be relevant for shell arguments (enables Tab file completion)', () => {
+      const state = updateInputStateWithTokens(createInputState('cat file', 8, 'shell', '/'));
+      // tokenIndex > 0 means we're past the command position
+      expect(completer.isRelevant(state)).toBe(true);
+    });
+
+    it('should be relevant for shell arguments with no prefix (cursor after space)', () => {
+      // "ls -l " with cursor at end (position 6, after the space)
+      const state = updateInputStateWithTokens(createInputState('ls -l ', 6, 'shell', '/'));
+      // tokenIndex > 0 means we're past the command position
+      expect(completer.isRelevant(state)).toBe(true);
+    });
+
+    it('should not be relevant for command position (tokenIndex 0)', () => {
+      const state = updateInputStateWithTokens(createInputState('git', 3, 'shell', '/'));
+      // At command position, command completer should handle it, not entity
       expect(completer.isRelevant(state)).toBe(false);
     });
 
@@ -64,15 +78,27 @@ describe('EntityCompleter', () => {
       }
     });
 
-    it('should strip @ from prefix when searching', async () => {
+    it('should strip @ from prefix when searching and return clean values', async () => {
       const state = updateInputStateWithTokens(createInputState('@src', 4, 'shell', '/'));
 
       // Should search for 'src' not '@src'
       const completions = await completer.getCompletions(state);
-      // The completion values should start with @ for entity references
+      // The completion values should NOT include @ prefix - the insertion logic handles @ replacement
       if (completions.length > 0) {
-        expect(completions.every((c) => c.value.startsWith('@'))).toBe(true);
+        expect(completions.every((c) => !c.value.startsWith('@'))).toBe(true);
       }
+    });
+
+    it('should return all files when prefix is whitespace (Tab after space)', async () => {
+      // Simulate "ls " with cursor at position 3 (after the space)
+      // The current token would be whitespace, so prefix is " "
+      const state = updateInputStateWithTokens(createInputState('ls ', 3, 'shell', '/tmp'));
+
+      const completions = await completer.getCompletions(state);
+
+      // Should return files without filtering (whitespace prefix treated as empty)
+      // At least verify it doesn't crash and returns some results (or empty if /tmp is empty)
+      expect(Array.isArray(completions)).toBe(true);
     });
   });
 
