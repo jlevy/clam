@@ -7,7 +7,7 @@ id: is-01kgn370n9pgb9zcx20pqqj4ky
 kind: task
 labels: []
 priority: 2
-status: closed
+status: open
 title: Add TTY detection guard to recolorLine() for non-interactive mode
 type: is
 updated_at: 2026-02-04T19:49:19.003Z

@@ -7,7 +7,7 @@ id: is-01kgn36qgyj4c2msxgpwv3qr0y
 kind: task
 labels: []
 priority: 2
-status: closed
+status: open
 title: Add keypress event handler to InputReader for real-time mode detection
 type: is
 updated_at: 2026-02-04T19:49:19.114Z
