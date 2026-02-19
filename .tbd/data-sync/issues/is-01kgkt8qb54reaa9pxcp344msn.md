@@ -15,7 +15,7 @@ id: is-01kgkt8qb54reaa9pxcp344msn
 kind: epic
 labels: []
 priority: 1
-status: open
+status: closed
 title: "Epic: Complete clam ACP Client Implementation"
 type: is
 updated_at: 2026-02-06T01:30:44.005Z
